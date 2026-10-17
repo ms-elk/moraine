@@ -50,6 +50,24 @@ jobs:
             exit 1
           fi
 
+      - name: Point the README's images and links at this ref
+        run: |
+          python - "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" <<'EOF'
+          import re, sys
+          repo, ref = sys.argv[1:]
+          raw = f"https://raw.githubusercontent.com/{repo}/{ref}/"
+          blob = f"https://github.com/{repo}/blob/{ref}/"
+          tree = f"https://github.com/{repo}/tree/{ref}/"
+          text = open("README.md", encoding="utf-8", newline="").read()
+          text, images = re.subn(r'(<img src=")(?!https?://)', r"\g<1>" + raw, text)
+          def link(m):
+              target = m.group(1)
+              return "](" + (tree if target.endswith("/") else blob) + target + ")"
+          text, links = re.subn(r"\]\(((?!https?://|#|mailto:)[^)]+)\)", link, text)
+          open("README.md", "w", encoding="utf-8", newline="").write(text)
+          print(f"README.md: {images} images and {links} links now point at {ref}")
+          EOF
+
       - name: Build sdist and wheel
         run: |
           python -m pip install build twine
