@@ -1,0 +1,15 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "pl01", "op": "cylinder", "params": {"radius": 0.25, "height": 0.04, "segments": 48}},
+{"id": "pl02", "op": "transform", "inputs": ["pl01"], "params": {"translate": [0.0, 0.02, 0.0]}},
+{"id": "bt01", "op": "cylinder", "params": {"radius": 0.02, "height": 0.08, "segments": 16}},
+{"id": "bt02", "op": "transform", "inputs": ["bt01"], "params": {"translate": [0.18, 0.02, 0.0]}},
+{"id": "ar01", "op": "array", "inputs": ["bt02"], "params": {"count": 8, "step_rotate_deg": [0.0, 45.0, 0.0]}},
+{"id": "bk01", "op": "bake_instances", "inputs": ["ar01"], "params": {}},
+{"id": "bl01", "op": "boolean", "inputs": ["pl02", "bk01"], "params": {"mode": "difference"}}
+],
+"outputs": {
+"plate": "bl01"
+}
+}

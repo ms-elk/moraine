@@ -1,0 +1,18 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "pd01", "op": "box", "params": {"size": [0.6, 0.4, 0.6]}},
+{"id": "pd02", "op": "transform", "inputs": ["pd01"], "params": {"translate": [0.0, 0.2, 0.0]}},
+{"id": "pd03", "op": "tag", "inputs": ["pd02"], "params": {"name": "top", "select": {"normal_y": {"gt": 0.9}}}},
+{"id": "pd04", "op": "array", "inputs": ["pd03"], "params": {"count": 3, "step_translate": [0.8, 0.0, 0.0]}},
+{"id": "cr01", "op": "box", "params": {"size": [0.4, 0.4, 0.4]}},
+{"id": "cr02", "op": "place", "inputs": ["pd04", "cr01"], "params": {"anchor": "top", "mode": "on_top", "offset": [0.0, 0.0, 0.0], "instance": 1}}
+],
+"outputs": {
+"pedestals": "pd04",
+"crate": "cr02"
+},
+"asserts": [
+{"id": "crate_on_pedestal", "kind": "contact", "outputs": ["pedestals", "crate"], "owner": "agent"}
+]
+}

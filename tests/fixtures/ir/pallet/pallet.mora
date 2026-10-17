@@ -1,0 +1,23 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "sl01", "op": "box", "params": {"size": [0.1, 0.022, 0.8]}},
+{"id": "tp01", "op": "transform", "inputs": ["sl01"], "params": {"translate": [-0.55, 0.133, 0.0]}},
+{"id": "ta01", "op": "array", "inputs": ["tp01"], "params": {"count": 7, "step_translate": [0.1833333, 0.0, 0.0]}},
+{"id": "bt01", "op": "transform", "inputs": ["sl01"], "params": {"translate": [-0.55, 0.011, 0.0]}},
+{"id": "ba01", "op": "array", "inputs": ["bt01"], "params": {"count": 3, "step_translate": [0.55, 0.0, 0.0]}},
+{"id": "br01", "op": "box", "params": {"size": [1.2, 0.1, 0.1]}},
+{"id": "bp01", "op": "transform", "inputs": ["br01"], "params": {"translate": [0.0, 0.072, -0.35]}},
+{"id": "bb01", "op": "array", "inputs": ["bp01"], "params": {"count": 3, "step_translate": [0.0, 0.0, 0.35]}}
+],
+"outputs": {
+"deck": "ta01",
+"bearers": "bb01",
+"base": "ba01"
+},
+"asserts": [
+{"id": "deck_on_bearers", "kind": "contact", "outputs": ["deck", "bearers"], "every": ["deck"], "owner": "human"},
+{"id": "bearers_on_base", "kind": "contact", "outputs": ["bearers", "base"], "every": ["bearers"], "owner": "human"},
+{"id": "deck_gaps", "kind": "clearance", "outputs": ["deck"], "self": true, "min": 0.05, "owner": "agent"}
+]
+}

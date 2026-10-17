@@ -1,0 +1,17 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "rf01", "op": "asset_ref", "params": {"asset": "subassets/panel.mora", "output": "panel"}},
+{"id": "rf02", "op": "asset_ref", "params": {"asset": "subassets/panel.mora", "output": "panel", "overrides": {"wear_seed": 23, "paint_roughness": 0.85}, "material_rename": {"panel_paint": "panel_paint_worn"}}},
+{"id": "tr01", "op": "transform", "inputs": ["rf01"], "params": {"translate": [-0.7, 0.0, 0.0]}},
+{"id": "tr02", "op": "transform", "inputs": ["rf02"], "params": {"translate": [0.7, 0.0, 0.0]}}
+],
+"outputs": {
+"panel_a": "tr01",
+"panel_b": "tr02"
+},
+"asserts": [
+{"id": "panels_apart", "kind": "clearance", "outputs": ["panel_a", "panel_b"], "min": 0.001, "owner": "agent"}
+],
+"budgets": {"materials": 2}
+}

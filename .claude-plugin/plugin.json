@@ -1,0 +1,11 @@
+{
+  "name": "moraine",
+  "description": "Installs or upgrades Moraine, scaffolds a workspace, and hands off to the authoring guide Moraine ships.",
+  "author": {
+    "name": "ms-elk"
+  },
+  "homepage": "https://github.com/ms-elk/moraine",
+  "repository": "https://github.com/ms-elk/moraine",
+  "license": "Apache-2.0",
+  "keywords": ["3d-assets", "ai-agents", "gltf", "procedural-modeling"]
+}

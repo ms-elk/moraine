@@ -1,0 +1,17 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "rv01", "op": "revolve", "params": {"profile": [[0.3, 0.0], [0.3, 0.05], [0.24, 0.09], [0.2, 0.13], [0.16, 0.18], [0.13, 2.2], [0.18, 2.26], [0.24, 2.3], [0.24, 2.36]], "segments": 48}},
+{"id": "tg01", "op": "tag", "inputs": ["rv01"], "params": {"name": "capital", "select": {"normal_y": {"gt": 0.9}, "center_y": {"gt": 2.3}}}},
+{"id": "ar01", "op": "array", "inputs": ["tg01"], "params": {"count": 4, "step_translate": [1.5, 0.0, 0.0]}},
+{"id": "bm01", "op": "box", "params": {"size": [5.1, 0.3, 0.5]}},
+{"id": "pl01", "op": "place", "inputs": ["ar01", "bm01"], "params": {"anchor": "capital", "instance": 0, "offset": [2.25, 0.0, 0.0]}}
+],
+"outputs": {
+"colonnade": "ar01",
+"architrave": "pl01"
+},
+"asserts": [
+{"id": "architrave_rests", "kind": "contact", "outputs": ["colonnade", "architrave"], "every": ["colonnade"], "owner": "agent"}
+]
+}

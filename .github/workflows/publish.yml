@@ -1,0 +1,115 @@
+name: Publish
+
+# Two paths, one build:
+# - Tag push v* -> test, build, publish to PyPI (Trusted Publisher, OIDC).
+# - Manual dispatch -> test, build, publish to TestPyPI (dry-run target).
+# Both use PyPI Trusted Publishing; no API tokens are stored in the repo.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    # Publishing is gated on every supported OS (the project ships
+    # Windows + macOS support), not just the build runner's.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: |
+          python -m pip install .[dev]
+          python -m pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check tag matches project version
+        if: github.event_name == 'push'
+        run: |
+          V=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          if [ "v$V" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match project.version $V"
+            exit 1
+          fi
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check --strict dist/*
+
+      - name: Check the wheel packages exactly src/moraine3d
+        run: |
+          python - <<'EOF'
+          import glob, os, sys, zipfile
+          wheel, = glob.glob("dist/*.whl")
+          names = zipfile.ZipFile(wheel).namelist()
+          top = {n.split("/", 1)[0] for n in names}
+          packaged = {n for n in names if n.startswith("moraine3d/")}
+          src = set()
+          for root, dirs, files in os.walk("src/moraine3d"):
+              dirs[:] = [d for d in dirs if d != "__pycache__"]
+              src.update(os.path.relpath(os.path.join(root, f), "src").replace(os.sep, "/") for f in files)
+          problems = {
+              "top_level": sorted(top - {"moraine3d", os.path.basename(wheel).rsplit("-py3", 1)[0] + ".dist-info"}),
+              "missing": sorted(src - packaged),
+              "extra": sorted(packaged - src),
+          }
+          if any(problems.values()):
+              print(f"::error::{wheel} does not package exactly src/moraine3d: {problems}")
+              sys.exit(1)
+          print(f"{wheel}: {len(packaged)} files, the same set as src/moraine3d")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

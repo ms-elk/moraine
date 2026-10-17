@@ -1,0 +1,56 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "tk01", "op": "cylinder", "params": {"radius": 1.0, "height": 1.5, "segments": 48}},
+{"id": "tk02", "op": "transform", "inputs": ["tk01"], "params": {"translate": [0.0, 4.75, 0.0]}},
+{"id": "dm01", "op": "sphere", "params": {"radius": 1.0, "segments": 48, "rings": 24}},
+{"id": "dm02", "op": "transform", "inputs": ["dm01"], "params": {"translate": [0.0, 5.5, 0.0]}},
+{"id": "db01", "op": "box", "params": {"size": [2.2, 1.1, 2.2]}},
+{"id": "db02", "op": "transform", "inputs": ["db01"], "params": {"translate": [0.0, 6.05, 0.0]}},
+{"id": "dm03", "op": "boolean", "inputs": ["dm02", "db02"], "params": {"mode": "intersection"}},
+{"id": "tk03", "op": "boolean", "inputs": ["tk02", "dm03"], "params": {"mode": "union"}},
+{"id": "lg01", "op": "box", "params": {"size": [0.12, 4.3, 0.12]}},
+{"id": "lg02", "op": "transform", "inputs": ["lg01"], "params": {"translate": [0.707, 2.05, 0.707], "rotate_deg": [-3.8, 0.0, 3.8]}},
+{"id": "lc01", "op": "box", "params": {"size": [0.8, 0.4, 0.8]}},
+{"id": "lc02", "op": "transform", "inputs": ["lc01"], "params": {"translate": [0.707, -0.2, 0.707]}},
+{"id": "lg04", "op": "boolean", "inputs": ["lg02", "lc02"], "params": {"mode": "difference"}},
+{"id": "lg03", "op": "array", "inputs": ["lg04"], "params": {"count": 4, "step_rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "bl01", "op": "box", "params": {"size": [1.62, 0.08, 0.08]}},
+{"id": "bl02", "op": "transform", "inputs": ["bl01"], "params": {"translate": [0.0, 1.5, 0.75]}},
+{"id": "bl03", "op": "array", "inputs": ["bl02"], "params": {"count": 4, "step_rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "bh01", "op": "box", "params": {"size": [1.42, 0.08, 0.08]}},
+{"id": "bh02", "op": "transform", "inputs": ["bh01"], "params": {"translate": [0.0, 3.0, 0.652]}},
+{"id": "bh03", "op": "array", "inputs": ["bh02"], "params": {"count": 4, "step_rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "rl01", "op": "box", "params": {"size": [0.04, 4.5, 0.04]}},
+{"id": "rl02", "op": "transform", "inputs": ["rl01"], "params": {"translate": [-0.18, 2.25, 0.95]}},
+{"id": "rl03", "op": "array", "inputs": ["rl02"], "params": {"count": 2, "step_translate": [0.36, 0.0, 0.0]}},
+{"id": "rg01", "op": "box", "params": {"size": [0.4, 0.03, 0.03]}},
+{"id": "rg02", "op": "transform", "inputs": ["rg01"], "params": {"translate": [0.0, 0.3, 0.95]}},
+{"id": "rg03", "op": "array", "inputs": ["rg02"], "params": {"count": 14, "step_translate": [0.0, 0.3, 0.0]}}
+],
+"params": [
+{"id": "tank_radius", "value": 1.0, "node": "tk01", "param": "radius", "min": 0.6, "max": 1.6}
+],
+"outputs": {
+"tank": "tk03",
+"legs": "lg03",
+"brace_low": "bl03",
+"brace_high": "bh03",
+"rails": "rl03",
+"rungs": "rg03"
+},
+"asserts": [
+{"id": "rails_clear_legs", "kind": "clearance", "outputs": ["rails", "legs"], "min": 0.05, "owner": "human"},
+{"id": "rungs_clear_legs", "kind": "clearance", "outputs": ["rungs", "legs"], "min": 0.05, "owner": "human"},
+{"id": "rungs_span_rails", "kind": "contact", "outputs": ["rungs", "rails"], "every": ["rungs"], "owner": "human"},
+{"id": "low_braces_ring", "kind": "embedded", "outputs": ["brace_low"], "connected": true, "min": 0.01, "max": 0.05, "owner": "agent"},
+{"id": "high_braces_ring", "kind": "embedded", "outputs": ["brace_high"], "connected": true, "min": 0.01, "max": 0.05, "owner": "agent"},
+{"id": "low_braces_tie_legs", "kind": "embedded", "outputs": ["brace_low", "legs"], "min": 0.02, "max": 0.05, "owner": "agent"},
+{"id": "high_braces_tie_legs", "kind": "embedded", "outputs": ["brace_high", "legs"], "min": 0.02, "max": 0.05, "owner": "agent"},
+{"id": "legs_root_in_tank", "kind": "embedded", "outputs": ["legs", "tank"], "owner": "agent"},
+{"id": "rungs_thread_rails", "kind": "embedded", "outputs": ["rails", "rungs"], "min": 0.005, "max": 0.02, "owner": "agent"},
+{"id": "rails_root_in_tank", "kind": "embedded", "outputs": ["rails", "tank"], "owner": "agent"},
+{"id": "top_rungs_reach_tank", "kind": "embedded", "outputs": ["rungs", "tank"], "owner": "agent"},
+{"id": "legs_on_ground", "kind": "extent", "outputs": ["legs"], "measure": "min_y", "every": true, "value": 0, "owner": "human"}
+]
+}

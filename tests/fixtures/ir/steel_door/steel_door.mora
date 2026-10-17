@@ -1,0 +1,39 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "sa01", "op": "box", "params": {"size": [2.4, 0.1, 0.02]}},
+{"id": "sa02", "op": "unwrap", "inputs": ["sa01"], "params": {}},
+{"id": "sa03", "op": "transform", "inputs": ["sa02"], "params": {"translate": [0.0, 0.05, 0.0]}},
+{"id": "sa04", "op": "array", "inputs": ["sa03"], "params": {"count": 6, "step_translate": [0.0, 0.2, 0.0]}},
+{"id": "sb01", "op": "box", "params": {"size": [2.4, 0.1, 0.02]}},
+{"id": "sb02", "op": "unwrap", "inputs": ["sb01"], "params": {}},
+{"id": "sb03", "op": "transform", "inputs": ["sb02"], "params": {"translate": [0.0, 0.15, -0.002]}},
+{"id": "sb04", "op": "array", "inputs": ["sb03"], "params": {"count": 6, "step_translate": [0.0, 0.2, 0.0]}},
+{"id": "nz01", "op": "noise_texture", "params": {"seed": 21, "size": 256, "scale": 5, "octaves": 5}},
+{"id": "rc01", "op": "ramp", "inputs": ["nz01"], "params": {"stops": [0.0, 0.45, 0.65, 1.0], "values": [[0.3, 0.33, 0.36], [0.46, 0.48, 0.5], [0.36, 0.38, 0.41], [0.58, 0.59, 0.6]]}},
+{"id": "st01", "op": "streaks", "params": {"seed": 22, "size": 256, "count": 14, "length": 0.6, "width": 0.03, "wiggle": 0.015, "low": 0.35, "high": 0.95}},
+{"id": "mt01", "op": "material", "inputs": ["sa04", "rc01", "st01"], "params": {"name": "door_steel", "slots": ["base_color", "roughness"], "metallic": 0.15}},
+{"id": "mt02", "op": "material", "inputs": ["sb04", "rc01", "st01"], "params": {"name": "door_steel", "slots": ["base_color", "roughness"], "metallic": 0.15}},
+{"id": "fr01", "op": "box", "params": {"size": [0.08, 1.26, 0.06]}},
+{"id": "fr02", "op": "unwrap", "inputs": ["fr01"], "params": {}},
+{"id": "fr03", "op": "transform", "inputs": ["fr02"], "params": {"translate": [-1.24, 0.63, -0.01]}},
+{"id": "fr04", "op": "array", "inputs": ["fr03"], "params": {"count": 2, "step_translate": [2.48, 0.0, 0.0]}},
+{"id": "ng01", "op": "noise_texture", "params": {"seed": 23, "size": 256, "scale": 6, "octaves": 4, "mode": "ridged"}},
+{"id": "rg01", "op": "ramp", "inputs": ["ng01"], "params": {"stops": [0.0, 0.6, 1.0], "values": [0.45, 0.6, 0.9]}},
+{"id": "mt03", "op": "material", "inputs": ["fr04", "rg01"], "params": {"name": "frame_steel", "slots": ["roughness"], "base_color": [0.32, 0.33, 0.35], "metallic": 0.4}}
+],
+"params": [
+{"id": "streak_seed", "value": 22, "node": "st01", "param": "seed", "label": "Streak seed", "min": 0, "max": 99, "step": 1},
+{"id": "weathering", "value": 0.95, "node": "st01", "param": "high", "label": "Weathering strength", "min": 0.55, "max": 1.0, "step": 0.05},
+{"id": "paint_seed", "value": 21, "node": "nz01", "param": "seed", "label": "Paint variation seed", "min": 0, "max": 99, "step": 1}
+],
+"outputs": {
+"door": "mt01",
+"door_b": "mt02",
+"frame": "mt03"
+},
+"asserts": [
+{"id": "door_in_frame", "kind": "contact", "outputs": ["door", "frame"], "every": ["door", "frame"], "owner": "agent"},
+{"id": "door_b_in_frame", "kind": "contact", "outputs": ["door_b", "frame"], "every": ["door_b", "frame"], "owner": "agent"}
+]
+}

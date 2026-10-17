@@ -1,0 +1,30 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "tb01", "op": "cylinder", "params": {"radius": 0.1095, "height": 1.0, "segments": 48}},
+{"id": "tt01", "op": "transform", "inputs": ["tb01"], "params": {"translate": [0.0, 0.5, 0.0]}},
+{"id": "fl01", "op": "cylinder", "params": {"radius": 0.17, "height": 0.024, "segments": 48}},
+{"id": "ft01", "op": "transform", "inputs": ["fl01"], "params": {"translate": [0.0, 0.012, 0.0]}},
+{"id": "ft02", "op": "transform", "inputs": ["fl01"], "params": {"translate": [0.0, 0.988, 0.0]}},
+{"id": "un01", "op": "boolean", "inputs": ["tt01", "ft01", "ft02"], "params": {"mode": "union"}},
+{"id": "bo01", "op": "cylinder", "params": {"radius": 0.0995, "height": 1.2, "segments": 48}},
+{"id": "bt01", "op": "transform", "inputs": ["bo01"], "params": {"translate": [0.0, 0.5, 0.0]}},
+{"id": "hl01", "op": "cylinder", "params": {"radius": 0.0115, "height": 1.2, "segments": 16}},
+{"id": "ht01", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.1475, 0.5, 0.0]}},
+{"id": "ht02", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.1043, 0.5, 0.1043]}},
+{"id": "ht03", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.0, 0.5, 0.1475]}},
+{"id": "ht04", "op": "transform", "inputs": ["hl01"], "params": {"translate": [-0.1043, 0.5, 0.1043]}},
+{"id": "ht05", "op": "transform", "inputs": ["hl01"], "params": {"translate": [-0.1475, 0.5, 0.0]}},
+{"id": "ht06", "op": "transform", "inputs": ["hl01"], "params": {"translate": [-0.1043, 0.5, -0.1043]}},
+{"id": "ht07", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.0, 0.5, -0.1475]}},
+{"id": "ht08", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.1043, 0.5, -0.1043]}},
+{"id": "cut1", "op": "boolean", "inputs": ["un01", "bt01", "ht01", "ht02", "ht03", "ht04", "ht05", "ht06", "ht07", "ht08"], "params": {"mode": "difference"}}
+],
+"outputs": {
+"pipe": "cut1"
+},
+"asserts": [
+{"id": "length", "kind": "extent", "outputs": ["pipe"], "measure": "size_y", "value": 1.0, "owner": "human"},
+{"id": "flange_dia", "kind": "extent", "outputs": ["pipe"], "measure": "size_x", "value": 0.34, "owner": "human"}
+]
+}

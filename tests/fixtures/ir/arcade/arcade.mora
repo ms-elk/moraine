@@ -1,0 +1,22 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "wl01", "op": "box", "params": {"size": [6.0, 3.2, 0.4]}},
+{"id": "wt01", "op": "transform", "inputs": ["wl01"], "params": {"translate": [0.0, 1.6, 0.0]}},
+{"id": "bc01", "op": "box", "params": {"size": [1.2, 1.5, 0.7]}},
+{"id": "bt01", "op": "transform", "inputs": ["bc01"], "params": {"translate": [0.0, 0.75, 0.0]}},
+{"id": "cy01", "op": "cylinder", "params": {"radius": 0.6, "height": 0.7, "segments": 48}},
+{"id": "cy02", "op": "transform", "inputs": ["cy01"], "params": {"translate": [0.0, 1.5, 0.0], "rotate_deg": [90.0, 0.0, 0.0]}},
+{"id": "ac01", "op": "boolean", "inputs": ["bt01", "cy02"], "params": {"mode": "union"}},
+{"id": "at01", "op": "transform", "inputs": ["ac01"], "params": {"translate": [-1.9, 0.0, 0.0]}},
+{"id": "at02", "op": "transform", "inputs": ["ac01"], "params": {"translate": [0.0, 0.0, 0.0]}},
+{"id": "at03", "op": "transform", "inputs": ["ac01"], "params": {"translate": [1.9, 0.0, 0.0]}},
+{"id": "cut1", "op": "boolean", "inputs": ["wt01", "at01", "at02", "at03"], "params": {"mode": "difference"}},
+{"id": "cp01", "op": "box", "params": {"size": [6.2, 0.15, 0.5]}},
+{"id": "ct01", "op": "transform", "inputs": ["cp01"], "params": {"translate": [0.0, 3.275, 0.0]}},
+{"id": "un01", "op": "boolean", "inputs": ["cut1", "ct01"], "params": {"mode": "union"}}
+],
+"outputs": {
+"arcade": "un01"
+}
+}

@@ -1,0 +1,13 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "bx01", "op": "box", "params": {"size": [1.0, 0.5, 0.5]}},
+{"id": "tr01", "op": "transform", "inputs": ["bx01"], "params": {"translate": [0.0, 0.25, 0.0]}},
+{"id": "uw01", "op": "unwrap", "inputs": ["tr01"], "params": {"mode": "box", "uv_scale": 4.0}},
+{"id": "ck01", "op": "checker_texture", "params": {"size": 256, "tiles": 8}},
+{"id": "mt01", "op": "material", "inputs": ["uw01", "ck01"], "params": {"name": "uv_check", "slots": ["base_color"], "roughness": 0.9}}
+],
+"outputs": {
+"main": "mt01"
+}
+}

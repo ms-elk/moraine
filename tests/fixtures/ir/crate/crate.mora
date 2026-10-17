@@ -1,0 +1,14 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "bx01", "op": "box", "params": {"size": [0.8, 0.5, 0.5]}},
+{"id": "bv01", "op": "bevel", "inputs": ["bx01"], "params": {"width": 0.02}},
+{"id": "uw01", "op": "unwrap", "inputs": ["bv01"], "params": {"mode": "box"}},
+{"id": "tr01", "op": "transform", "inputs": ["uw01"], "params": {"translate": [0.0, 0.25, 0.0]}},
+{"id": "ar01", "op": "array", "inputs": ["tr01"], "params": {"count": 3, "step_translate": [0.9, 0.0, 0.0]}},
+{"id": "ar02", "op": "array", "inputs": ["ar01"], "params": {"count": 2, "step_translate": [0.0, 0.55, 0.0]}}
+],
+"outputs": {
+"crates": "ar02"
+}
+}

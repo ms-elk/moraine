@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Moraine Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #23252a; }
+  #app { width: 100%; height: 100%; display: block; }
+  #hud {
+    position: fixed; top: 8px; left: 10px; color: #9aa0aa;
+    font: 12px/1.4 ui-monospace, Consolas, monospace; pointer-events: none;
+    white-space: pre;
+  }
+  #picker-box, #panel, #pins, #timeline, #accepted {
+    display: none;
+    background: rgba(20, 22, 26, 0.88); border: 1px solid #3a3d44;
+    border-radius: 6px; color: #c8cdd6;
+  }
+  #timeline {
+    position: fixed; top: 76px; left: 10px; width: 300px;
+    padding: 8px 12px;
+    font: 12px/1.6 ui-monospace, Consolas, monospace;
+    max-height: calc(100vh - 220px); overflow-y: auto;
+  }
+  #timeline .hdr { cursor: pointer; }
+  #timeline .hdr:hover { color: #ffffff; }
+  #timeline .meta { color: #9aa0aa; }
+  #timeline .warn { color: #c8a24a; }
+  #timeline .round {
+    /* Wrap, never truncate; the hanging indent keeps the #N round
+       starts scannable. */
+    padding-left: 14px; text-indent: -14px;
+  }
+  #pins {
+    position: fixed; bottom: 8px; right: 10px; width: 240px;
+    padding: 8px 12px;
+    font: 12px/1.6 ui-monospace, Consolas, monospace;
+    max-height: 40vh; overflow-y: auto;
+  }
+  #pins .pin { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  #pins .pin:hover { color: #ffffff; }
+  #pins .pin .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pins .pin .stale { color: #c8a24a; }
+  #pins .pin .pid { color: #9aa0aa; }
+  #picker-box {
+    position: fixed; top: 44px; left: 10px; padding: 3px 8px;
+    font: 12px/1.4 ui-monospace, Consolas, monospace;
+    align-items: center; gap: 6px;
+  }
+  #picker-box label { color: #9aa0aa; font-size: 11px; letter-spacing: 0.04em; }
+  #picker {
+    background: transparent; color: #c8cdd6; border: none; font: inherit;
+    cursor: pointer;
+  }
+  #picker option { background: #16181c; }
+  /* Beside the closed control, not only inside its list: the marked
+     project is by definition not the selected one, so a mark that
+     lived in the options alone would show only after opening them. */
+  #picker-mark { color: #c8a24a; }
+  #panel {
+    position: fixed; top: 8px; right: 10px; width: 240px;
+    padding: 10px 12px;
+    font: 12px/1.5 ui-monospace, Consolas, monospace;
+    max-height: calc(100vh - 40px); overflow-y: auto;
+  }
+  #panel .param { margin-bottom: 8px; }
+  #panel label { display: flex; gap: 6px; color: #9aa0aa; margin-bottom: 2px; }
+  #panel label .range { order: 1; margin-left: auto; font-size: 11px; color: #6d7480; }
+  #panel .slider { display: flex; gap: 6px; align-items: center; }
+  #panel input[type=range] { flex: 1; min-width: 0; }
+  #panel .slider span { min-width: 44px; text-align: right; }
+  #panel input[type=text] { width: 100%; box-sizing: border-box; }
+  #panel .fields { display: flex; gap: 6px; }
+  #panel input[type=number] {
+    width: 100%; min-width: 0; box-sizing: border-box;
+    background: #2c2f36; color: #c8cdd6; border: 1px solid #3a3d44;
+    border-radius: 4px; padding: 1px 4px; font: inherit;
+  }
+  #panel .section { margin-bottom: 4px; }
+  #panel .section + .section {
+    border-top: 1px solid #3a3d44; padding-top: 6px; margin-top: 8px;
+  }
+  #panel .caption {
+    color: #9aa0aa; font-size: 11px; letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  #panel .subcaption {
+    color: #9aa0aa; font-size: 11px; margin: 6px 0 3px;
+    padding-left: 6px; border-left: 2px solid #3a3d44;
+  }
+  #panel .apply {
+    display: flex; align-items: center;
+    justify-content: flex-end; margin-top: 2px;
+  }
+  #panel .accept {
+    display: flex; flex-wrap: wrap; row-gap: 6px; align-items: center;
+    border-top: 1px solid #3a3d44; padding-top: 6px; margin-top: 8px;
+  }
+  /* Asymmetric on purpose: the control that reaches the file is the
+     one emphasized control at the footer's right (under Apply's edge);
+     the discarding control sits quiet at the far left, a text-weight
+     link rather than a second button of the same look - two alike
+     buttons side by side make the eye read labels every time. */
+  #panel .accept button.land { border-color: #5a80b0; margin-left: auto; }
+  /* The quiet pair takes a line of its own: the panel is too narrow
+     for three labels, and the landing keeps the right edge below. */
+  #panel .accept .quiet-group { flex: 1 1 100%; display: flex; gap: 12px; }
+  #panel .accept button.quiet {
+    background: transparent; border-color: transparent; padding-left: 0;
+    color: #9aa0aa; white-space: nowrap;
+  }
+  #panel .accept button.quiet:disabled { color: #6d7480; }
+  #panel .param .note { color: #9aa0aa; font-size: 11px; }
+  #panel .param .layer { color: #6d7480; font-size: 11px; }
+  #panel .param.outside label, #panel .param.outside .note { color: #d88a7f; }
+  #panel .param.staged label { color: #c8a24a; }
+  #panel .param.staged input[type=number],
+  #panel .param.staged input[type=text] { border-color: #c8a24a; }
+  /* In flight: the fields an Apply sent, until its reply. The signal is
+     an added, moving thing - a spinning glyph after the label - not a
+     color shift: a hue change on an 11px label in a translucent panel
+     is a change nobody's peripheral vision catches, while motion is.
+     The sent fields also go inert, so "sent, evaluating" is not read
+     as "still to send". The dice swaps to the same glyph while a pick
+     is awaited. */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #panel .param.inflight label { color: #7fa6d8; }
+  #panel .param.inflight label::after {
+    content: ' ⟳'; display: inline-block; animation: spin 1s linear infinite;
+  }
+  #panel .param.inflight input[type=number],
+  #panel .param.inflight input[type=text] {
+    border-color: #7fa6d8; opacity: 0.55; pointer-events: none;
+  }
+  #panel .seed button.busy { color: #7fa6d8; }
+  #panel .seed button.busy span { display: inline-block; animation: spin 1s linear infinite; }
+  #panel .seed { display: flex; gap: 6px; align-items: center; }
+  #panel .seed span { flex: 1; }
+  #panel button {
+    background: #2c2f36; color: #c8cdd6; border: 1px solid #3a3d44;
+    border-radius: 4px; padding: 1px 8px; cursor: pointer;
+    font: inherit;
+  }
+  #panel button:disabled { color: #6d7480; cursor: default; }
+  #panel button:hover:not(:disabled) { color: #ffffff; }
+  /* The accept warning (DESIGN 7.2): one line, kept up while the
+     accepted state fails validate. Bottom center, clear of the panel it
+     answers and of the asset, in the amber the other standing marks
+     use. */
+  #accepted {
+    position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+    width: 440px; max-width: calc(100vw - 540px); min-width: 300px;
+    padding: 8px 12px;
+    font: 12px/1.5 ui-monospace, Consolas, monospace;
+    max-height: 40vh; overflow-y: auto;
+  }
+  #accepted:has(.title) { border-color: #c8a24a; background: rgba(60, 48, 18, 0.92); }
+  #accepted .title { color: #e8c36a; font-weight: 600; }
+  #accepted .means { color: #9aa0aa; }
+  #images { position: fixed; bottom: 8px; left: 10px; display: flex; gap: 8px; }
+  #images figure { margin: 0; text-align: center; }
+  #images img {
+    width: 96px; height: 96px; display: block;
+    image-rendering: pixelated; border: 1px solid #3a3d44;
+  }
+  #images figcaption {
+    color: #9aa0aa; font: 11px/1.4 ui-monospace, Consolas, monospace;
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/viewer/vendor/three.module.js",
+    "three/addons/": "/viewer/vendor/addons/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="app"></canvas>
+<div id="hud">Moraine — connecting…</div>
+<div id="picker-box"><label for="picker">project</label><select id="picker" title="the project the viewer displays; ● = changed on disk since last displayed"></select><span id="picker-mark"></span></div>
+<div id="timeline"></div>
+<div id="panel"></div>
+<div id="pins"></div>
+<div id="accepted"></div>
+<div id="images"></div>
+<script type="module" src="/viewer/app.js"></script>
+</body>
+</html>

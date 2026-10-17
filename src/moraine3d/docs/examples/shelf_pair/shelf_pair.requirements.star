@@ -1,0 +1,7 @@
+mo.group("shelf_a", ["shelf_a_posts", "shelf_a_boards"])
+mo.group("shelf_b", ["shelf_b_posts", "shelf_b_boards"])
+mo.assert_clearance(id = "a_clear_of_rest", outputs = ["shelf_a"], others = True, min = 0.3)
+mo.assert_clearance(id = "shelves_apart", outputs = ["shelf_a", "shelf_b"], min = 0.4)
+mo.assert_mated(id = "board_butts_post", faces = [["shelf_a_posts", "inner", 0], ["shelf_a_boards", "end_left"]], every = ["shelf_a_boards"], mode = "contained")
+mo.assert_extent(id = "cap_height", faces = ["shelf_a_posts", "cap_top", 0], measure = "max_y", value = 0.82)
+mo.budget(materials = 2)

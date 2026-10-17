@@ -1,0 +1,43 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "ps01", "op": "box", "params": {"size": [0.04, 0.8, 0.3]}},
+{"id": "ps02", "op": "transform", "inputs": ["ps01"], "params": {"translate": [0.0, 0.4, 0.0]}},
+{"id": "cp01", "op": "box", "params": {"size": [0.06, 0.02, 0.34]}},
+{"id": "cp02", "op": "transform", "inputs": ["cp01"], "params": {"translate": [0.0, 0.81, 0.0]}},
+{"id": "ps03", "op": "boolean", "inputs": ["ps02", "cp02"], "params": {"mode": "union"}},
+{"id": "ps04", "op": "tag", "inputs": ["ps03"], "params": {"name": "cap_top", "select": {"normal_y": {"gt": 0.9}, "center_y": {"gt": 0.81}}}},
+{"id": "ps05", "op": "tag", "inputs": ["ps04"], "params": {"name": "inner", "select": {"normal_x": {"gt": 0.9}, "center_y": {"lt": 0.79}}}},
+{"id": "ps06", "op": "unwrap", "inputs": ["ps05"], "params": {"mode": "box", "uv_scale": 2.0}},
+{"id": "ps07", "op": "material", "inputs": ["ps06"], "params": {"name": "steel_grey", "base_color": [0.35, 0.36, 0.38, 1.0], "metallic": 0.9, "roughness": 0.45}},
+{"id": "ps08", "op": "transform", "inputs": ["ps07"], "params": {"translate": [-0.48, 0.0, 0.0]}},
+{"id": "ps09", "op": "array", "inputs": ["ps08"], "params": {"count": 2, "step_translate": [0.96, 0.0, 0.0]}},
+{"id": "bd01", "op": "box", "params": {"size": [0.92, 0.04, 0.3]}},
+{"id": "bd02", "op": "tag", "inputs": ["bd01"], "params": {"name": "end_left", "select": {"normal_x": {"lt": -0.9}}}},
+{"id": "bd03", "op": "unwrap", "inputs": ["bd02"], "params": {"mode": "box", "uv_scale": 2.0}},
+{"id": "bd04", "op": "material", "inputs": ["bd03"], "params": {"name": "oak", "base_color": [0.62, 0.45, 0.28, 1.0], "roughness": 0.7}},
+{"id": "bd05", "op": "transform", "inputs": ["bd04"], "params": {"translate": [0.0, 0.3, 0.0]}},
+{"id": "bd06", "op": "array", "inputs": ["bd05"], "params": {"count": 2, "step_translate": [0.0, 0.4, 0.0]}},
+{"id": "sb01", "op": "transform", "inputs": ["ps09"], "params": {"translate": [1.5, 0.0, 0.0]}},
+{"id": "sb02", "op": "transform", "inputs": ["bd06"], "params": {"translate": [1.5, 0.0, 0.0]}}
+],
+"outputs": {
+"shelf_a_posts": "ps09",
+"shelf_a_boards": "bd06",
+"shelf_b_posts": "sb01",
+"shelf_b_boards": "sb02"
+},
+"groups": {
+"shelf_a": ["shelf_a_posts", "shelf_a_boards"],
+"shelf_b": ["shelf_b_posts", "shelf_b_boards"]
+},
+"asserts": [
+{"id": "a_clear_of_rest", "kind": "clearance", "outputs": ["shelf_a"], "others": true, "min": 0.3, "owner": "human"},
+{"id": "shelves_apart", "kind": "clearance", "outputs": ["shelf_a", "shelf_b"], "min": 0.4, "owner": "human"},
+{"id": "boards_held", "kind": "contact", "outputs": ["shelf_a_boards", "shelf_a_posts"], "every": ["shelf_a_boards", "shelf_a_posts"], "owner": "agent"},
+{"id": "board_butts_post", "kind": "mated", "faces": [["shelf_a_posts", "inner", 0], ["shelf_a_boards", "end_left"]], "every": ["shelf_a_boards"], "mode": "contained", "owner": "human"},
+{"id": "cap_height", "kind": "extent", "faces": ["shelf_a_posts", "cap_top", 0], "measure": "max_y", "value": 0.82, "owner": "human"},
+{"id": "two_boards", "kind": "count", "outputs": ["shelf_a_boards"], "value": 2, "owner": "agent"}
+],
+"budgets": {"materials": 2}
+}

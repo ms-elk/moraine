@@ -1,0 +1,25 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "gr01", "op": "grid", "params": {"size": [8.1, 8.1], "segments": [40, 40]}},
+{"id": "gr02", "op": "transform", "inputs": ["gr01"], "params": {"translate": [0.0, 0.7, 0.0]}},
+{"id": "gr03", "op": "noise_displace", "inputs": ["gr02"], "params": {"amplitude": 0.15, "frequency": 0.4, "octaves": 3, "seed": 3}},
+{"id": "gr04", "op": "extrude", "inputs": ["gr03"], "params": {"distance": 1.0, "direction": [0.0, -1.0, 0.0]}},
+{"id": "gr05", "op": "box", "params": {"size": [8.0, 2.0, 8.0], "segments": [8, 1, 8]}},
+{"id": "gr06", "op": "transform", "inputs": ["gr05"], "params": {"translate": [0.0, 1.0, 0.0]}},
+{"id": "gr07", "op": "boolean", "inputs": ["gr04", "gr06"], "params": {"mode": "intersection"}},
+{"id": "rk01", "op": "sphere", "params": {"radius": 0.18, "segments": 16, "rings": 8}},
+{"id": "rk02", "op": "scatter", "inputs": ["gr03", "rk01"], "params": {"count": 40, "seed": 7, "align_normal": true, "rand_yaw": true, "scale_jitter": [0.5, 1.4]}}
+],
+"outputs": {
+"ground": "gr07",
+"rocks": "rk02"
+},
+"asserts": [
+{"id": "rocks_on_ground", "kind": "contact", "outputs": ["rocks", "ground"], "every": ["rocks"], "owner": "human"},
+{"id": "rocks_sunk", "kind": "embedded", "outputs": ["rocks", "ground"], "min": 0, "owner": "agent"},
+{"id": "rocks_may_touch", "kind": "embedded", "outputs": ["rocks"], "self": true, "owner": "agent"},
+{"id": "rock_count", "kind": "count", "outputs": ["rocks"], "value": 40, "owner": "human"},
+{"id": "ground_size", "kind": "extent", "outputs": ["ground"], "measure": "size_x", "value": 8.0, "owner": "human"}
+]
+}

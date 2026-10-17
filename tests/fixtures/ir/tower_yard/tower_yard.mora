@@ -1,0 +1,49 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "rf01", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "tank"}},
+{"id": "rf02", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "legs"}},
+{"id": "rf03", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "brace_low"}},
+{"id": "rf04", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "brace_high"}},
+{"id": "rf05", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "rails"}},
+{"id": "rf06", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "rungs"}},
+{"id": "rf07", "op": "asset_ref", "params": {"asset": "subassets/water_tower.mora", "output": "tank", "overrides": {"tank_radius": 1.3}}},
+{"id": "ta01", "op": "transform", "inputs": ["rf01"], "params": {"translate": [-2.5, 0.0, 0.0]}},
+{"id": "ta02", "op": "transform", "inputs": ["rf02"], "params": {"translate": [-2.5, 0.0, 0.0]}},
+{"id": "ta03", "op": "transform", "inputs": ["rf03"], "params": {"translate": [-2.5, 0.0, 0.0]}},
+{"id": "ta04", "op": "transform", "inputs": ["rf04"], "params": {"translate": [-2.5, 0.0, 0.0]}},
+{"id": "ta05", "op": "transform", "inputs": ["rf05"], "params": {"translate": [-2.5, 0.0, 0.0]}},
+{"id": "ta06", "op": "transform", "inputs": ["rf06"], "params": {"translate": [-2.5, 0.0, 0.0]}},
+{"id": "tb01", "op": "transform", "inputs": ["rf07"], "params": {"translate": [2.5, 0.0, 0.0], "rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "tb02", "op": "transform", "inputs": ["rf02"], "params": {"translate": [2.5, 0.0, 0.0], "rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "tb03", "op": "transform", "inputs": ["rf03"], "params": {"translate": [2.5, 0.0, 0.0], "rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "tb04", "op": "transform", "inputs": ["rf04"], "params": {"translate": [2.5, 0.0, 0.0], "rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "tb05", "op": "transform", "inputs": ["rf05"], "params": {"translate": [2.5, 0.0, 0.0], "rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "tb06", "op": "transform", "inputs": ["rf06"], "params": {"translate": [2.5, 0.0, 0.0], "rotate_deg": [0.0, 90.0, 0.0]}},
+{"id": "gd01", "op": "box", "params": {"size": [9.0, 0.1, 5.0]}},
+{"id": "gd02", "op": "transform", "inputs": ["gd01"], "params": {"translate": [0.0, -0.05, 0.0]}}
+],
+"outputs": {
+"a_tank": "ta01",
+"a_legs": "ta02",
+"a_brace_low": "ta03",
+"a_brace_high": "ta04",
+"a_rails": "ta05",
+"a_rungs": "ta06",
+"b_tank": "tb01",
+"b_legs": "tb02",
+"b_brace_low": "tb03",
+"b_brace_high": "tb04",
+"b_rails": "tb05",
+"b_rungs": "tb06",
+"ground": "gd02"
+},
+"checks": {
+"ground": {"not_sunk": false}
+},
+"asserts": [
+{"id": "b_legs_root_in_tank", "kind": "embedded", "outputs": ["b_legs", "b_tank"], "owner": "agent"},
+{"id": "b_rails_root_in_tank", "kind": "embedded", "outputs": ["b_rails", "b_tank"], "owner": "agent"},
+{"id": "b_top_rungs_reach_tank", "kind": "embedded", "outputs": ["b_rungs", "b_tank"], "owner": "agent"}
+]
+}

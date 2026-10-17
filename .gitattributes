@@ -1,0 +1,9 @@
+# Text files are LF in the index and in every checkout (the packaged
+# guide, templates, and example assets are copied and compared byte for
+# byte, so the wheel must not inherit a checkout's CRLF).
+* text=auto eol=lf
+# .mora IR files are JSON (DESIGN 4.1): declared text, never left to
+# the auto heuristic.
+*.mora text eol=lf linguist-language=JSON
+*.png binary
+*.glb binary

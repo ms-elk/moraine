@@ -1,0 +1,22 @@
+# profile outputs (DESIGN 4.2) — never commit
+exports/
+
+# local working area, never committed: working copies of the shipped
+# example assets (docs/examples.md) and whatever else is tried here
+/scratch/
+
+# Claude Code: machine-local files
+.claude/
+CLAUDE.local.md
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+build/
+dist/
+.pytest_cache/
+
+# editor settings: machine-local
+.vscode/

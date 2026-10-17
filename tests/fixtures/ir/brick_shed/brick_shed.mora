@@ -1,0 +1,36 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "sl01", "op": "box", "params": {"size": [2.4, 0.12, 1.8]}},
+{"id": "sl02", "op": "transform", "inputs": ["sl01"], "params": {"translate": [0.0, 0.06, 0.0]}},
+{"id": "sl04", "op": "tag", "inputs": ["sl02"], "params": {"name": "slab_top", "select": {"normal_y": {"gt": 0.9}}}},
+{"id": "sl03", "op": "unwrap", "inputs": ["sl04"], "params": {}},
+{"id": "cn01", "op": "noise_texture", "params": {"seed": 11, "size": 256, "scale": 6, "octaves": 5, "low": 0.35, "high": 0.75}},
+{"id": "cn02", "op": "colorize", "inputs": ["cn01"], "params": {"color_low": [0.28, 0.28, 0.27], "color_high": [0.52, 0.52, 0.5]}},
+{"id": "cn03", "op": "noise_texture", "params": {"seed": 12, "size": 256, "scale": 8, "octaves": 4, "low": 0.55, "high": 0.95}},
+{"id": "mt01", "op": "material", "inputs": ["sl03", "cn02", "cn03"], "params": {"name": "concrete", "slots": ["base_color", "roughness"]}},
+{"id": "wl01", "op": "box", "params": {"size": [2.0, 1.2, 1.4]}},
+{"id": "wl02", "op": "box", "params": {"size": [1.76, 1.2, 1.16]}},
+{"id": "wl03", "op": "transform", "inputs": ["wl02"], "params": {"translate": [0.0, 0.12, 0.0]}},
+{"id": "wl04", "op": "boolean", "inputs": ["wl01", "wl03"], "params": {"mode": "difference"}},
+{"id": "pl01", "op": "place", "inputs": ["sl04", "wl04"], "params": {"anchor": "slab_top"}},
+{"id": "sn01", "op": "smooth_normals", "inputs": ["pl01"], "params": {}},
+{"id": "wl06", "op": "unwrap", "inputs": ["sn01"], "params": {}},
+{"id": "bc01", "op": "brick_texture", "params": {"seed": 4, "size": 512, "rows": 8, "columns": 4, "variation": 0.25}},
+{"id": "bh01", "op": "brick_texture", "params": {"size": 512, "rows": 8, "columns": 4, "map": "height"}},
+{"id": "bn01", "op": "normal_map", "inputs": ["bh01"], "params": {"strength": 0.25}},
+{"id": "mt02", "op": "material", "inputs": ["wl06", "bc01", "bn01"], "params": {"name": "brick", "slots": ["base_color", "normal"], "roughness": 0.85}}
+],
+"params": [
+{"id": "brick_seed", "value": 4, "node": "bc01", "param": "seed", "label": "Brick variation seed", "min": 0, "max": 99, "step": 1},
+{"id": "brick_relief", "value": 0.25, "node": "bn01", "param": "strength", "label": "Brick relief", "min": 0.0, "max": 1.0, "step": 0.05},
+{"id": "wall_roughness", "value": 0.85, "node": "mt02", "param": "roughness", "label": "Wall roughness", "min": 0.0, "max": 1.0, "step": 0.05}
+],
+"outputs": {
+"base": "mt01",
+"walls": "mt02"
+},
+"asserts": [
+{"id": "walls_on_slab", "kind": "contact", "outputs": ["base", "walls"], "owner": "agent"}
+]
+}

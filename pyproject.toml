@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moraine3d"
+version = "0.2.1"
+description = "AI-native procedural modeling tool for real-time 3D assets"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0 AND MIT AND ISC AND BSD-3-Clause"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+authors = [{ name = "ms-elk" }]
+keywords = ["3d-assets", "ai-agents", "gltf", "procedural-modeling"]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+dependencies = [
+    "numpy>=1.26",
+    "trimesh>=4.4",
+    "manifold3d>=3.0",
+    "aiohttp>=3.9",
+    "watchfiles>=0.21",
+    "platformdirs>=4",
+    "starlark-pyo3==2026.1.2",
+    "mpmath>=1.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "mcp>=2.1"]
+
+[project.urls]
+Repository = "https://github.com/ms-elk/moraine"
+Issues = "https://github.com/ms-elk/moraine/issues"
+
+[project.scripts]
+moraine = "moraine3d.app.cli:main"
+
+[tool.pytest.ini_options]
+markers = [
+    "real_stamp: build under the real build_version, not the fixtures' stamp",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+moraine3d = [
+    "docs/*.md", "docs/reference/*.md", "docs/examples/*/*.star",
+    "docs/examples/*/subassets/*.star", "templates/*",
+]
+"moraine3d.app" = ["viewer/**/*"]

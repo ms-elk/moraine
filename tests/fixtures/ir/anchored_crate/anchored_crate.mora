@@ -1,0 +1,22 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "pl01", "op": "box", "params": {"size": [1.2, 0.14, 0.9]}},
+{"id": "pl02", "op": "transform", "inputs": ["pl01"], "params": {"translate": [0.0, 0.07, 0.0]}},
+{"id": "pl03", "op": "tag", "inputs": ["pl02"], "params": {"name": "deck", "select": {"normal_y": {"gt": 0.9}}}},
+{"id": "cr01", "op": "box", "params": {"size": [0.6, 0.5, 0.6]}},
+{"id": "cr02", "op": "place", "inputs": ["pl03", "cr01"], "params": {"anchor": "deck"}},
+{"id": "cr03", "op": "tag", "inputs": ["cr02"], "params": {"name": "lid", "select": {"normal_y": {"gt": 0.9}}}},
+{"id": "sm01", "op": "box", "params": {"size": [0.35, 0.3, 0.35]}},
+{"id": "sm02", "op": "place", "inputs": ["cr03", "sm01"], "params": {"anchor": "lid", "offset": [0.1, 0.0, 0.0]}}
+],
+"outputs": {
+"pallet": "pl03",
+"crate": "cr03",
+"crate_small": "sm02"
+},
+"asserts": [
+{"id": "crate_rests", "kind": "contact", "outputs": ["pallet", "crate"], "owner": "human"},
+{"id": "stack_rests", "kind": "contact", "outputs": ["crate", "crate_small"], "owner": "agent"}
+]
+}

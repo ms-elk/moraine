@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "moraine",
+  "description": "Moraine: AI-native procedural modeling for real-time 3D assets",
+  "owner": {
+    "name": "ms-elk",
+    "url": "https://github.com/ms-elk"
+  },
+  "plugins": [
+    {
+      "name": "moraine",
+      "source": "./",
+      "description": "Installs or upgrades Moraine, scaffolds a workspace, and hands off to the authoring guide Moraine ships."
+    }
+  ]
+}

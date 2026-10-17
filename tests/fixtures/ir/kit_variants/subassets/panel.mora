@@ -1,0 +1,18 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "pn01", "op": "box", "params": {"size": [1.2, 2.4, 0.08]}},
+{"id": "pn02", "op": "unwrap", "inputs": ["pn01"], "params": {}},
+{"id": "pn03", "op": "transform", "inputs": ["pn02"], "params": {"translate": [0.0, 1.2, 0.0]}},
+{"id": "nz01", "op": "noise_texture", "params": {"seed": 7, "size": 128, "scale": 4, "octaves": 3}},
+{"id": "rc01", "op": "ramp", "inputs": ["nz01"], "params": {"stops": [0.0, 0.5, 1.0], "values": [[0.42, 0.44, 0.4], [0.55, 0.56, 0.52], [0.47, 0.49, 0.45]]}},
+{"id": "mt01", "op": "material", "inputs": ["pn03", "rc01"], "params": {"name": "panel_paint", "slots": ["base_color"], "roughness": 0.6}}
+],
+"params": [
+{"id": "wear_seed", "value": 7, "node": "nz01", "param": "seed", "label": "Wear seed", "min": 0, "max": 99, "step": 1},
+{"id": "paint_roughness", "value": 0.6, "node": "mt01", "param": "roughness", "label": "Paint roughness", "min": 0.2, "max": 1.0}
+],
+"outputs": {
+"panel": "mt01"
+}
+}

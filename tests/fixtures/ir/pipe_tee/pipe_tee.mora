@@ -1,0 +1,14 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "cy01", "op": "cylinder", "params": {"radius": 0.12, "height": 0.8, "segments": 48}},
+{"id": "cy02", "op": "cylinder", "params": {"radius": 0.09, "height": 0.5, "segments": 48}},
+{"id": "tr01", "op": "transform", "inputs": ["cy02"], "params": {"translate": [0.0, 0.0, 0.25], "rotate_deg": [90.0, 0.0, 0.0]}},
+{"id": "bo01", "op": "boolean", "inputs": ["cy01", "tr01"], "params": {"mode": "union"}},
+{"id": "sm01", "op": "smooth_normals", "inputs": ["bo01"], "params": {"angle_max_deg": 30.0}},
+{"id": "tr02", "op": "transform", "inputs": ["sm01"], "params": {"translate": [0.0, 0.4, 0.0]}}
+],
+"outputs": {
+"tee": "tr02"
+}
+}

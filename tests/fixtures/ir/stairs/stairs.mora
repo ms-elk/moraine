@@ -1,0 +1,24 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "st01", "op": "box", "params": {"size": [1.0, 0.175, 0.28]}},
+{"id": "sp01", "op": "transform", "inputs": ["st01"], "params": {"translate": [0.0, 0.0875, -0.14]}},
+{"id": "sa01", "op": "array", "inputs": ["sp01"], "params": {"count": 12, "step_translate": [0.0, 0.175, -0.28]}},
+{"id": "sg01", "op": "box", "params": {"size": [0.06, 0.28, 3.9]}},
+{"id": "sr01", "op": "transform", "inputs": ["sg01"], "params": {"translate": [-0.53, 0.9, -1.68], "rotate_deg": [32.0, 0.0, 0.0]}},
+{"id": "gb01", "op": "box", "params": {"size": [0.2, 0.6, 4.6]}},
+{"id": "gt01", "op": "transform", "inputs": ["gb01"], "params": {"translate": [-0.53, -0.3, -1.68]}},
+{"id": "cs01", "op": "boolean", "inputs": ["sr01", "gt01"], "params": {"mode": "difference"}},
+{"id": "sb01", "op": "array", "inputs": ["cs01"], "params": {"count": 2, "step_translate": [1.06, 0.0, 0.0]}}
+],
+"outputs": {
+"steps": "sa01",
+"stringers": "sb01"
+},
+"asserts": [
+{"id": "rise", "kind": "extent", "outputs": ["steps"], "measure": "max_y", "value": 2.1, "owner": "human"},
+{"id": "width", "kind": "extent", "outputs": ["steps"], "measure": "size_x", "value": 1.0, "owner": "human"},
+{"id": "risers", "kind": "count", "outputs": ["steps"], "value": 12, "owner": "human"},
+{"id": "steps_on_stringers", "kind": "contact", "outputs": ["stringers", "steps"], "every": ["steps"], "min_area": 0.02, "owner": "human"}
+]
+}

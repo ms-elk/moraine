@@ -1,0 +1,10 @@
+{
+"build_version": "fixture",
+"nodes": [
+{"id": "bx01", "op": "box", "params": {"size": [1.0, 1.0, 1.0]}},
+{"id": "tr01", "op": "transform", "inputs": ["bx01"], "params": {"translate": [0.0, 0.5, 0.0]}}
+],
+"outputs": {
+"main": "tr01"
+}
+}
