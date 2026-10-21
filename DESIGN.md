@@ -3487,13 +3487,20 @@ dependency.
 ### 8.5 Onboarding
 
 Beside the CLI, Moraine ships an agent-side onboarding surface: a
-skill in the open Agent Skills format (`skills/moraine/SKILL.md`) and
-a plugin marketplace manifest under `.claude-plugin/`, so an agent
-harness installs the tool and reaches the shipped guide in one
-command. The repository root is the plugin. Only the delivery is
-harness-specific: competing harnesses read the same skill directory
-from their own locations, and a second, harness-shaped copy would be
-the drift the single shipped guide exists to prevent (§8.2).
+skill in the open Agent Skills format (`skills/moraine/SKILL.md`),
+so an agent harness installs the tool and reaches the shipped guide
+in one command. Only the delivery is harness-specific. Each harness
+has its own catalog and manifest:
+
+- Claude Code: `.claude-plugin/marketplace.json` and
+  `.claude-plugin/plugin.json`
+- Codex: `.agents/plugins/marketplace.json` and
+  `.codex-plugin/plugin.json`
+
+Every catalog names the repository root as the plugin, and all of
+them read the same skill directory. A second copy of the onboarding
+instructions would be the drift the single shipped guide exists to
+prevent (§8.2).
 
 **One install path, one version per machine.** Moraine is a tool run
 beside a workspace, never a dependency of it, so it installs once per
@@ -3524,9 +3531,10 @@ trigger survives a request that is not in English, and its
 description says so. The upgrade moment
 belongs to the skill because it arrives before any Moraine command
 has run, and the re-sync it owes the workspace is exactly `init`
-(§4.2). The onboarding files keep no copy of the version: the skill
-installs whatever the tool installer resolves, and `init` syncs the
-guide to it (§3).
+(§4.2). The Codex plugin manifest carries the package version
+because Codex requires one. The Claude Code manifest carries none,
+so that harness follows the repository instead. Neither pins the
+installed tool.
 
 ---
 

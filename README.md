@@ -165,9 +165,15 @@ Open the workspace in your agent, then follow the
 [tour](docs/tour.md) to build your first asset, from a short request
 to a glTF export.
 
-With Claude Code, the shipped [skill](skills/moraine/SKILL.md) can
-do this setup for you: run `/plugin marketplace add ms-elk/moraine`,
-then `/plugin install moraine@moraine`.
+The shipped [skill](skills/moraine/SKILL.md) can do this setup for you:
+
+- **Claude Code:** run `/plugin marketplace add ms-elk/moraine`,
+  then `/plugin install moraine@moraine`.
+- **Codex:** run `codex plugin marketplace add ms-elk/moraine`,
+  then `codex plugin add moraine@moraine`.
+
+In a new session, ask your agent to set up Moraine in the directory
+you want the workspace in.
 
 ## Sample workspace
 

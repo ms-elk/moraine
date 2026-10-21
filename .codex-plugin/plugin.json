@@ -1,0 +1,32 @@
+{
+  "name": "moraine",
+  "version": "0.2.1",
+  "description": "Moraine is an AI-native procedural modeling tool for real-time 3D assets. It lets you build, refine, and extend 3D assets together with an AI agent — the agent writes the recipe, tests verify your declared requirements, you decide what they become. This plugin installs or upgrades Moraine, scaffolds a workspace, and hands off to the authoring guide it ships.",
+  "author": {
+    "name": "ms-elk"
+  },
+  "homepage": "https://github.com/ms-elk/moraine",
+  "repository": "https://github.com/ms-elk/moraine",
+  "license": "Apache-2.0",
+  "keywords": ["3d-assets", "ai-agents", "gltf", "procedural-modeling"],
+  "skills": "./skills/",
+  "onboardingSkill": "./skills/moraine/SKILL.md",
+  "interface": {
+    "displayName": "Moraine",
+    "shortDescription": "Procedural 3D modeling with AI",
+    "longDescription": "Moraine is an AI-native procedural modeling tool for real-time 3D assets. It lets you build, refine, and extend 3D assets together with an AI agent — the agent writes the recipe, tests verify your declared requirements, you decide what they become.\n\nTell your agent what you want to build, not how to model it. Point at a part in the viewer and ask for a change, explore variations, or reuse the asset in something larger. Moraine handles the geometry and verifies your declared requirements as the asset evolves, so you can keep building on what you've made instead of starting over.\n\nThis plugin installs or upgrades Moraine, scaffolds a workspace, and hands off to the authoring guide it ships.",
+    "developerName": "ms-elk",
+    "category": "Creativity",
+    "capabilities": [
+      "Installs or upgrades the Moraine CLI as a uv tool",
+      "Scaffolds a Moraine workspace with moraine init",
+      "Hands off to the authoring guide Moraine ships"
+    ],
+    "websiteURL": "https://github.com/ms-elk/moraine",
+    "supportURL": "https://github.com/ms-elk/moraine/issues",
+    "defaultPrompt": [
+      "Set up a Moraine workspace here",
+      "Upgrade Moraine and update this workspace"
+    ]
+  }
+}
