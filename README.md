@@ -2,6 +2,8 @@
 
 English | [日本語](README.ja.md)
 
+<p><img src="docs/images/truss_bridge_plaza.png" width="24%" alt="truss footbridge over a sunken plaza"> <img src="docs/images/press.png" width="24%" alt="hydraulic press"> <img src="docs/images/pipe_organ.png" width="24%" alt="pipe organ"> <img src="docs/images/lake.png" width="24%" alt="lake diorama"></p>
+
 Moraine is an AI-native procedural modeling tool for real-time 3D
 assets. It lets you build, refine, and extend 3D assets together with
 an AI agent — the agent writes the recipe, tests verify your declared
@@ -14,7 +16,7 @@ geometry and verifies your declared requirements as the asset
 evolves, so you can keep building on what you've made instead of
 starting over.
 
-<p><img src="docs/images/truss_bridge_plaza.png" width="24%" alt="truss footbridge over a sunken plaza"> <img src="docs/images/press.png" width="24%" alt="hydraulic press"> <img src="docs/images/pipe_organ.png" width="24%" alt="pipe organ"> <img src="docs/images/lake.png" width="24%" alt="lake diorama"></p>
+<img src="docs/images/roles.svg" alt="the roles of the human, the AI agent, and Moraine, and what passes between them: requests and responses, recipes and reports, interactions and the 3D view">
 
 ## Build, Refine, Extend
 

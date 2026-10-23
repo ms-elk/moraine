@@ -2,11 +2,13 @@
 
 [English](README.md) | 日本語
 
+<p><img src="docs/images/truss_bridge_plaza.png" width="24%" alt="掘り下げた広場に架かるトラス歩道橋"> <img src="docs/images/press.png" width="24%" alt="油圧プレス"> <img src="docs/images/pipe_organ.png" width="24%" alt="パイプオルガン"> <img src="docs/images/lake.png" width="24%" alt="湖のジオラマ"></p>
+
 Moraine は、リアルタイム 3D アセット向けの AI ネイティブなプロシージャルモデリングツールです。AI エージェントとともに 3D アセットを組み立て、作り込み、拡張することができます。エージェントがレシピを書き、テストが要件を検証し、あなたがどんなアセットにするかを決めます。
 
 作りたいものをエージェントに伝えてください。モデリングの手順を指示する必要はありません。ビューアで部品を指して変更を頼んだり、バリエーションを試したり、作ったアセットをより大きなものに組み込んだりすることもできます。変更のたびに Moraine がジオメトリを処理し、宣言した要件を検証するので、一から作り直すのではなく、作ったアセットを育てていけます。
 
-<p><img src="docs/images/truss_bridge_plaza.png" width="24%" alt="掘り下げた広場に架かるトラス歩道橋"> <img src="docs/images/press.png" width="24%" alt="油圧プレス"> <img src="docs/images/pipe_organ.png" width="24%" alt="パイプオルガン"> <img src="docs/images/lake.png" width="24%" alt="湖のジオラマ"></p>
+<img src="docs/images/roles.svg" alt="人間、AI エージェント、Moraine の役割と、その間でやり取りされるもの: 要求と応答、レシピと報告、操作と 3D ビュー">
 
 ## 組み立て、作り込み、拡張
 
