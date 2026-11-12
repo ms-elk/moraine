@@ -24,6 +24,8 @@
     ],
     "websiteURL": "https://github.com/ms-elk/moraine",
     "supportURL": "https://github.com/ms-elk/moraine/issues",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
     "defaultPrompt": [
       "Set up a Moraine workspace here",
       "Upgrade Moraine and update this workspace"

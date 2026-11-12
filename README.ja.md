@@ -133,3 +133,5 @@ cd my-workspace
 ## ライセンス
 
 Apache-2.0。詳細は `LICENSE` を、同梱のサードパーティソフトウェアは `THIRD_PARTY_NOTICES.md` を参照してください。
+
+Moraine のロゴのライセンスは [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/deed.ja) です。

@@ -202,3 +202,6 @@ Moraine verifies the result against the declared requirements.
 
 Apache-2.0. See `LICENSE`. Bundled third-party software is listed in
 `THIRD_PARTY_NOTICES.md`.
+
+The Moraine logo is licensed under
+[CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/).
