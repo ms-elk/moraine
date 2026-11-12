@@ -8,5 +8,7 @@
   "repository": "https://github.com/ms-elk/moraine",
   "license": "Apache-2.0",
   "keywords": ["3d-assets", "ai-agents", "gltf", "procedural-modeling"],
-  "icon": "./assets/icon.png"
+  "icon": "./assets/icon.png",
+  "documentationUrl": "https://github.com/ms-elk/moraine#readme",
+  "supportUrl": "https://github.com/ms-elk/moraine/issues"
 }
