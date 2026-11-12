@@ -167,7 +167,7 @@ Open the workspace in your agent, then follow the
 [tour](docs/tour.md) to build your first asset, from a short request
 to a glTF export.
 
-The shipped [skill](skills/moraine/SKILL.md) can do this setup for you:
+The shipped [skill](plugin/skills/moraine/SKILL.md) can do this setup for you:
 
 - **Claude Code:** run `/plugin marketplace add ms-elk/moraine`,
   then `/plugin install moraine@moraine`.

@@ -36,7 +36,8 @@ FUTURE_WORK_CITE = re.compile(r"Future Work: (?!<)")
 def _shipped_docs():
     """Every non-Python surface that ships or fronts the product: the
     reference and guide (recursively), the workspace templates, the
-    viewer client, the README, the root tour docs, and the skill."""
+    viewer client, the README, the root tour docs, and the plugin's
+    README and skill."""
     yield from sorted((SRC_ROOT / "docs").rglob("*.md"))
     yield from sorted((SRC_ROOT / "templates").glob("*.md"))
     yield SRC_ROOT / "app" / "viewer" / "app.js"
@@ -44,7 +45,8 @@ def _shipped_docs():
     yield ROOT / "README.ja.md"
     yield ROOT / "docs" / "tour.md"
     yield ROOT / "docs" / "tour.ja.md"
-    yield ROOT / "skills" / "moraine" / "SKILL.md"
+    yield ROOT / "plugin" / "README.md"
+    yield ROOT / "plugin" / "skills" / "moraine" / "SKILL.md"
 
 
 def _scanned_files():

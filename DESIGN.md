@@ -3487,20 +3487,24 @@ dependency.
 ### 8.5 Onboarding
 
 Beside the CLI, Moraine ships an agent-side onboarding surface: a
-skill in the open Agent Skills format (`skills/moraine/SKILL.md`),
-so an agent harness installs the tool and reaches the shipped guide
-in one command. Only the delivery is harness-specific. Each harness
-has its own catalog and manifest:
+skill in the open Agent Skills format
+(`plugin/skills/moraine/SKILL.md`), so an agent harness installs the
+tool and reaches the shipped guide in one command. Only the delivery
+is harness-specific. Each harness has its own catalog and manifest:
 
 - Claude Code: `.claude-plugin/marketplace.json` and
-  `.claude-plugin/plugin.json`
+  `plugin/.claude-plugin/plugin.json`
 - Codex: `.agents/plugins/marketplace.json` and
-  `.codex-plugin/plugin.json`
+  `plugin/.codex-plugin/plugin.json`
 
-Every catalog names the repository root as the plugin, and all of
-them read the same skill directory. A second copy of the onboarding
-instructions would be the drift the single shipped guide exists to
-prevent (§8.2).
+Every catalog names `plugin/` as the plugin, and all of them read the
+same skill directory. A second copy of the onboarding instructions
+would be the drift the single shipped guide exists to prevent (§8.2).
+The plugin folder holds only what a harness installs: the manifests,
+the skill, and the listing's README and icon. A harness copies the
+whole plugin folder to the machine and a plugin directory reviews
+every file in it, so the tool's source stays outside it and reaches
+the machine only through the install the skill runs.
 
 **One install path, one version per machine.** Moraine is a tool run
 beside a workspace, never a dependency of it, so it installs once per

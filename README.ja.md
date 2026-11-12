@@ -107,7 +107,7 @@ cd my-workspace
 
 `init` は、自分のルールを書く `AGENTS.md` と、エージェント向けのオーサリングガイドを含むワークスペースを用意します。`AGENTS.md` は英語で用意されますが自分のファイルなので、エージェントに翻訳してもらい、ルールを日本語で書くこともできます。エージェント向けのオーサリングガイドは英語のままです。ワークスペースをエージェントで開いたら、[Tour](docs/tour.ja.md) に沿って最初のアセットを作ってみてください。短い依頼から glTF のエクスポートまでできます。
 
-同梱の [Skill](skills/moraine/SKILL.md) でこのセットアップを行うこともできます。
+同梱の [Skill](plugin/skills/moraine/SKILL.md) でこのセットアップを行うこともできます。
 
 - **Claude Code:** `/plugin marketplace add ms-elk/moraine`、`/plugin install moraine@moraine` の順で実行してください。
 - **Codex:** `codex plugin marketplace add ms-elk/moraine`、`codex plugin add moraine@moraine` の順で実行してください。
