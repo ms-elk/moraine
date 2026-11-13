@@ -16,6 +16,10 @@ geometry and verifies your declared requirements as the asset
 evolves, so you can keep building on what you've made instead of
 starting over.
 
+**▶ [Watch the 2-minute demo, with Claude Code as the agent](https://youtu.be/Ipo7rj93Ffs)**
+
+<a href="https://youtu.be/Ipo7rj93Ffs"><img src="https://i.ytimg.com/vi/Ipo7rj93Ffs/maxresdefault.jpg" width="60%" alt="demo video thumbnail: a small pier deck growing into a long pier with a roofed shelter"></a>
+
 <img src="docs/images/roles.svg" alt="the roles of the human, the AI agent, and Moraine, and what passes between them: requests and responses, recipes and reports, interactions and the 3D view">
 
 ## Build, Refine, Extend
