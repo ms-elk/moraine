@@ -13,7 +13,7 @@ shown under *recipe*, and it passes `validate`:
 
 ```json
 {
-"build_version": "5+starlark-pyo3.2026.1.2+e540e009",
+"build_version": "<build stamp>",
 "nodes": [
 {"id": "slab_box", "op": "box", "params": {"size": [2.0, 0.1, 2.0]}, "site": "dock.star:5"},
 {"id": "slab", "op": "transform", "inputs": ["slab_box"], "params": {"translate": [0.0, 0.05, 0.0]}, "site": "dock.star:4"},
