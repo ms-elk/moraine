@@ -116,16 +116,13 @@ from ..recipe import target as target_mod
 from ..ops import common as ops_common
 from . import camera as camera_mod
 from . import session
+from .channel import DEFAULT_PORT, ROOT_HEADER
 
 VIEWER_DIR = Path(__file__).resolve().parent / "viewer"
 # The wait covers the client fetching fresh file-state GLBs before it
 # renders (the evaluation finishes before the request is broadcast, so
 # /cache/ serving proceeds concurrently with this await).
 SCREENSHOT_TIMEOUT_S = 30.0
-DEFAULT_PORT = 8642
-# The request header a CLI channel names its root in (percent-encoded),
-# so a server of another root refuses the request.
-ROOT_HEADER = "X-Moraine-Root"
 # How long `serve` watches for a client before deciding nobody is
 # watching (DESIGN 7.1): sampled until it expires, so a tab left open
 # across a restart re-attaches first and no second tab is opened over

@@ -185,6 +185,30 @@ def test_an_ir_evaluates_where_the_interpreter_cannot_be_imported(tmp_path):
     assert done.returncode == 0, done.stderr
 
 
+def test_a_command_that_evaluates_nothing_loads_no_kernel():
+    """DESIGN 3: the entry points import what evaluates, the build,
+    and the server where a command first uses them, so ``--version``
+    and a ``docs`` section load none of them."""
+    script = (
+        "import sys\n"
+        "import moraine3d.app.mcp\n"
+        "from moraine3d.app.cli import main\n"
+        "try:\n"
+        "    main(['--version'])\n"
+        "except SystemExit:\n"
+        "    pass\n"
+        "for argv in (['docs'], ['docs', 'box'], ['docs', 'mated']):\n"
+        "    assert main(argv) == 0, argv\n"
+        "heavy = ('numpy', 'trimesh', 'manifold3d', 'aiohttp', sys.argv[1])\n"
+        "loaded = [m for m in heavy if m in sys.modules]\n"
+        "assert loaded == [], loaded\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", script, INTERPRETER], capture_output=True, text=True,
+    )
+    assert done.returncode == 0, done.stderr
+
+
 def test_ops_know_only_core_and_their_shared_helpers():
     """DESIGN 3: an operator knows only ``core`` and the ``ops`` package
     below its root (the shared helpers and its siblings) — never the

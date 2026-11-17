@@ -28,6 +28,7 @@ import math
 from ..core import mesh as mesh_mod
 from ..errors import MoraineError
 from ..ops import common
+from .channel import VIEWS
 
 FOV_DEG = 45.0
 
@@ -37,20 +38,6 @@ FOV_DEG = 45.0
 # usable working distance.
 _FIT_SLACK = 1.35
 _MIN_RADIUS = 0.1
-
-# Named views are presets over the free camera — the single source of
-# the view roster (CLI choices and server validation both read it).
-# iso's elevation is exactly the historical (1, 0.8, 1) direction.
-VIEWS: dict[str, tuple[float, float]] = {
-    "front": (0.0, 0.0),
-    "back": (180.0, 0.0),
-    "left": (-90.0, 0.0),
-    "right": (90.0, 0.0),
-    "top": (0.0, 90.0),
-    "bottom": (0.0, -90.0),
-    "iso": (45.0, math.degrees(math.atan(0.8 / math.sqrt(2.0)))),
-}
-
 
 # Finite only (is_num): inf reaches math.sin as a ValueError, NaN as a
 # NaN pose that no JSON output can carry; stat_num is the stats rounding

@@ -23,8 +23,7 @@ from pathlib import Path
 from typing import Callable
 
 from .. import dist_version
-from . import camera as camera_mod
-from .server import DEFAULT_PORT
+from .channel import DEFAULT_PORT, VIEWS
 
 Runner = Callable[..., tuple[int, dict]]
 
@@ -196,7 +195,7 @@ TOOLS: dict[str, tuple[str, dict, object]] = {
         _schema({
             "project": _str("project to shoot (default: the working directory's; "
                             "outside any project, the one the viewer displays)"),
-            "view": {"type": "string", "enum": list(camera_mod.VIEWS),
+            "view": {"type": "string", "enum": list(VIEWS),
                      "description": "named view preset (default: iso); "
                                     "exclusive with azimuth/elevation"},
             "azimuth": {"type": "number", "description":

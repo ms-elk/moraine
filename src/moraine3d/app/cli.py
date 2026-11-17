@@ -34,13 +34,9 @@ from ..cache import store as cache_mod
 from ..core import asset as asset_mod
 from ..core import sources as sources_mod
 from ..core import workspace as workspace_mod
-from ..engine.stats import asset_rollup
 from ..errors import MoraineError
-from ..recipe import build as build_mod
-from ..recipe import target as target_mod
-from . import camera as camera_mod
 from . import session
-from .server import DEFAULT_PORT, ROOT_HEADER, open_browser
+from .channel import DEFAULT_PORT, ROOT_HEADER, VIEWS
 
 # What the command wrote to stdout: the session log's ``out_bytes`` (the
 # agent-read volume — a token-cost proxy) and the error code, taken from
@@ -70,10 +66,18 @@ def _print_text(text: str) -> None:
         print(text)
 
 
-def _open(target: Path):
+def _open(target: Path, **kw):
     """The target, opened (DESIGN 6): a recipe is built with its
     closure, an IR handed over by path is read as given."""
-    return target_mod.open_target(target)
+    from ..recipe import target as target_mod
+
+    return target_mod.open_target(target, **kw)
+
+
+def open_browser(url: str) -> bool:
+    from .server import open_browser as launch
+
+    return launch(url)
 
 
 def _evaluation(opened, **kw):
@@ -244,6 +248,8 @@ def _target_root(target) -> Path:
 
 
 def _cmd_eval(args) -> int:
+    from ..engine.stats import asset_rollup
+
     opened = _open(_resolve_asset(args.project))
     sc = opened.asset
     # only=... evaluates just that output's subgraph — other outputs are
@@ -295,6 +301,8 @@ def _workspace_rollup(projects: dict[str, dict], failed: list[str]) -> dict:
 
 
 def _stats_report(asset_path: Path) -> dict:
+    from ..engine.stats import asset_rollup
+
     opened = _open(asset_path)
     sc = opened.asset
     # records(), not results(): stats come from cache metadata and must
@@ -369,7 +377,7 @@ def _offered_values(asset_path: Path, given: dict[str, str]) -> dict:
     default (an accepted value is the human's, not the declaration)."""
     declared = {
         d["id"]: d.get("default", d["value"])
-        for d in target_mod.open_target(asset_path, write=False).asset.params or []
+        for d in _open(asset_path, write=False).asset.params or []
     }
     offered: dict = {}
     for pid, raw in given.items():
@@ -410,7 +418,7 @@ def _validate_report(
         # the preview bucket, so a sweep evicts no record of the file
         # state (DESIGN 4.5).
         given = _offered_values(asset_path, given)
-        opened = target_mod.open_target(
+        opened = _open(
             asset_path, offered=given, write=False, ranged_offers=False,
         )
     else:
@@ -576,6 +584,8 @@ def _note_build(result) -> None:
 def _cmd_build(args) -> int:
     """Build the target's recipe and its reference closure into IR
     under each project's ``build/`` (DESIGN 4.8, 6)."""
+    from ..recipe import build as build_mod
+
     recipe = _resolve_asset(args.project)
     if asset_mod.is_ir_file(recipe):
         raise MoraineError(
@@ -1488,16 +1498,37 @@ def _cmd_docs(args) -> int:
 
 def _number_types(section: str) -> dict:
     """The number params of the operator a section documents, each
-    with its type; empty for any other section."""
-    from .. import ops
+    with its type; empty for any other section. The declaration is
+    read from the operator's source, where it is a literal: importing
+    the module would load its kernels to print one line."""
+    import ast
+    from importlib import resources
+
     from ..core import numbers
 
-    if section not in ops.names():
+    # By the directory's own spelling: a path lookup would match
+    # another case on a case-insensitive filesystem.
+    name = f"{section}.py"
+    source = next(
+        (f for f in (resources.files("moraine3d") / "ops").iterdir() if f.name == name),
+        None,
+    )
+    if source is None:
         return {}
-    return {
-        param: kind for param, kind in ops.get(section).PARAM_KINDS.items()
-        if kind != numbers.OTHER
-    }
+    for node in ast.parse(source.read_text(encoding="utf-8")).body:
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+        if any(isinstance(t, ast.Name) and t.id == "PARAM_KINDS" for t in targets):
+            held = {
+                key.value: getattr(numbers, kind.attr)
+                for key, kind in zip(node.value.keys, node.value.values)
+            }
+            return {p: k for p, k in held.items() if k != numbers.OTHER}
+    return {}
 
 
 def _cmd_cache_stats(args) -> int:
@@ -1781,7 +1812,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("project", nargs="?", default=None,
                    help="project to shoot (default: the current directory's; "
                         "outside any project, the one the viewer displays)")
-    p.add_argument("--view", default=None, choices=list(camera_mod.VIEWS),
+    p.add_argument("--view", default=None, choices=list(VIEWS),
                    help="named view preset (default: iso); exclusive with --azimuth/--elevation")
     p.add_argument("--azimuth", type=float, default=None,
                    help="free camera: degrees, 0 looks from +Z (front), 90 from +X (right)")

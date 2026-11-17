@@ -189,6 +189,21 @@ def test_the_reference_lists_each_number_params_type(capsys):
     assert "numbers: " not in capsys.readouterr().out
 
 
+def test_the_reference_reads_every_operators_declaration():
+    """DESIGN 4.8: the types `moraine docs <op>` lists are the
+    declaration the build reads, for every registered operator, though
+    the reference reads it without importing the operator (DESIGN 3)."""
+    from moraine3d.app.cli import _number_types
+
+    for name in ops.names():
+        declared = {
+            p: k for p, k in ops.get(name).PARAM_KINDS.items() if k != numbers.OTHER
+        }
+        assert _number_types(name) == declared, name
+    assert _number_types("common") == {}
+    assert _number_types("Box") == {}
+
+
 # -- the build -----------------------------------------------------------------
 
 

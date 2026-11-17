@@ -302,6 +302,11 @@ operator added.
   (`cache`, `ops`, `verify`, `engine`) import neither the recipe-file
   rules nor the workspace roster in `core`. So a change of recipe
   language stops at `recipe`, those rules, and the entry points.
+  The entry points import what evaluates (`ops`, `verify`, `engine`),
+  the build, and the server where a command first uses them.
+  `--version` and a `docs` section load none of them (the generated
+  `api` listing reads the registries, and so the operators), so a
+  command that evaluates nothing costs a process start alone.
   An operator imports only `errors`, `core`, and the `ops` package
   below its root: the shared helpers and, where one operator's mesh
   mapping is another's building block, a sibling operator. The
@@ -2610,8 +2615,10 @@ every requirements file, the sub-asset and `lib/` files reached,
 revision has one name (a sweep carries a `projects` map). A build
 looks at each file once and the hash is over what it found, so a file
 saved or created while a command runs is the next revision. A `command`
-event adds `cmd`, `ok`, the error `code`, `ms`, `out_bytes` (the stdout
-volume the agent read), `via` when another entry point ran the command
+event adds `cmd`, `ok`, the error `code`, `ms` (the command from its
+parsed arguments on, the imports it makes on the way included),
+`out_bytes` (the stdout volume the agent read), `via` when another
+entry point ran the command
 in-process (`mcp`, §8.4 — the same command, so the same event), and a
 compact `summary` of the verify outcome (`validate`: output count,
 failed outputs, red gating checks, failed asserts, budgets, and knobs,
@@ -3134,8 +3141,9 @@ flag.)
   answers does the failure report `stale_client`. The CLI guards the
   other direction: a 200 response that is not the `{meta, png}` envelope
   reports `stale_server` instead of writing a corrupt file. Camera
-  resolution (`camera.py`, the single view-roster source): named views
-  are presets over the free camera (azimuth/elevation/distance/target).
+  resolution (`camera.py`; the view roster has a single source): named
+  views are presets over the free camera
+  (azimuth/elevation/distance/target).
   Azimuth 0 looks from +Z (front), 90 from +X (right), elevation 0
   horizontal, +90 top — right-handed +Y-up per §4.3. Auto-fit frames the
   union AABB's bounding sphere (fov 45°, slack 1.35). The free camera
