@@ -510,6 +510,28 @@ def test_hash_less_events_before_any_revision_open_no_round():
     assert alone["eval_errors"] == 1
 
 
+def test_a_report_under_given_values_verifies_no_round():
+    """DESIGN 6: a ``validate`` or a ``screenshot`` under given values
+    (``--param``) showed no state of the files, so it is counted and
+    verifies no round, leaving the round's verdict and ``ended_by``
+    alone."""
+    root = Path("/ws")
+    red = {"failed_checks": [], "params_failed": 1}
+    events = [
+        _cmd("00:00", "validate", h="a"),
+        _cmd("00:10", "validate", h="a", ok=False, partial=True, summary=red),
+        _ev("00:15", "screenshot", project="p", asset_hash="a", ok=True, bytes=4000, partial=True),
+        _ev("00:20", "reload", project="p", asset_hash="b", ok=True, changed_lines=2),
+        _cmd("00:30", "validate", h="b", ok=False, partial=True, summary=red),
+        _ev("00:35", "screenshot", project="p", asset_hash="b", ok=True, bytes=4000, partial=True),
+    ]
+    p = session.summarize(events, root, last=None)["sessions"][0]["projects"]["p"]
+    (r,) = p["rounds_detail"]
+    assert r["hash"] == "a" and r["validate_ok"] is True and r["ended_by"] == "validate"
+    assert r["commands"] == {"validate": 2, "screenshot": 1} and r["shots"] == 1
+    assert p["shots"] == 2 and p["shot_bytes"] == 8000
+
+
 def test_failed_shots_count_as_errors(tmp_path):
     """DESIGN 6: per-project error accounting covers failed commands,
     reloads, and renders — a session of failing renders must not read

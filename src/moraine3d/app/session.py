@@ -441,10 +441,15 @@ def _project_summary(events: list[dict]) -> dict:
             cur["commands"][cmd] = cur["commands"].get(cmd, 0) + 1
             cur["ms"] += ev.get("ms") or 0
             summary = ev.get("summary") or {}
-            if cmd in VERIFY_COMMANDS:
+            # A validate under given values is flagged partial as a
+            # subgraph evaluation is, but what it judged is no state
+            # of the files (DESIGN 6): a command, and no verification.
+            # A shot under given values is counted the same way below.
+            probe = cmd == "validate" and bool(ev.get("partial"))
+            if cmd in VERIFY_COMMANDS and not probe:
                 cur["_verified"] = True
                 cur["ended_by"] = cmd
-            if cmd == "validate":
+            if cmd == "validate" and not probe:
                 cur["validate_ok"] = bool(ev.get("ok"))
                 cur["failed_checks"] = list(summary.get("failed_checks") or [])
             if cmd in ("stats", "eval") and isinstance(summary.get("nodes"), int):
@@ -478,8 +483,9 @@ def _project_summary(events: list[dict]) -> dict:
                 shots += 1
                 shot_bytes += ev.get("bytes") or 0
                 cur["shots"] += 1
-                cur["_verified"] = True
-                cur["ended_by"] = "screenshot"
+                if not ev.get("partial"):
+                    cur["_verified"] = True
+                    cur["ended_by"] = "screenshot"
             else:
                 eval_errors += 1
             cur["commands"]["screenshot"] = cur["commands"].get("screenshot", 0) + 1

@@ -3366,7 +3366,7 @@ def test_a_shot_under_given_knob_values_leaves_the_file_state_alone(tmp_path, mo
     given for its knobs, built as a consumer's offer and evaluated into
     the preview bucket; the report names them, a value the declaration
     refuses is the offer's error, and the next plain shot is the file
-    state's again."""
+    state's again. The log marks such a shot ``partial``."""
     from support.recipes import write_files
 
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
@@ -3397,3 +3397,7 @@ def test_a_shot_under_given_knob_values_leaves_the_file_state_alone(tmp_path, mo
     assert status == 400 and refused["error"]["code"] == "bad_params"
     again, status, _ = _shoot(server, {}, monkeypatch)
     assert again["glb_urls"] == req["glb_urls"]
+    # The log marks the shots that showed no state of the files.
+    shots = [e for e in session_mod.read_events(tmp_path / "log")
+             if e["event"] == "screenshot" and e["ok"]]
+    assert [e.get("partial") for e in shots] == [None, True, True, None]

@@ -2664,6 +2664,7 @@ class MoraineServer:
         shot.update(
             asset_hash=asset_hash, size=size, bytes=len(png_b64) * 3 // 4,
             **({"view": cam_args["view"]} if cam_args["view"] is not None else {}),
+            **({"partial": True} if params else {}),
         )
         return web.json_response({"meta": meta, "png": png_b64})
 

@@ -2667,7 +2667,11 @@ at least one verification (`validate`, `stats`, `screenshot`, `eval`,
 never verified fold into the next round, a subgraph evaluation
 (`--output`) is marked `partial` and opens no round, and hash-less
 events attach to the current round (events before the first revision
-fold into its round, and alone they open none). Each round reports its
+fold into its round, and alone they open none). A `validate` or a
+`screenshot` under given values (`--param`) is marked `partial` too
+and verifies no round: it showed no state of the files, so it is
+counted, as a command or a shot, and leaves the round's verdict and
+its `ended_by` alone. Each round reports its
 command counts, `validate_ok` and `failed_checks`, `ended_by` (the last
 verifier before the next edit — the mechanical "which tier caught it"),
 `changed_lines`, `shots`, and wall time. Each project reports its
