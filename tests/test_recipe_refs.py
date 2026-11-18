@@ -530,3 +530,41 @@ def test_the_build_names_a_requirements_file_not_yet_written(tmp_path):
         "asset.requirements.star", "asset.star", "params.json",
         "subassets/panel.requirements.star", "subassets/panel.star",
     ]
+
+
+def test_a_referenced_assets_warning_stays_in_its_own_report(tmp_path, monkeypatch, capsys):
+    """DESIGN 5.2: a warning names an edit site, so `contact_unquantified`
+    is raised by the asset's own report alone. A consumer's report keeps
+    the referenced entry and its `unchecked`, and carries no row."""
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    part = (
+        'pad = mo.transform(mo.box(id = "pb", size = [3, 0.1, 1]), id = "pt",'
+        ' translate = [1, 0.05, 0])\n'
+        'post = mo.transform(mo.box(id = "qb", size = [0.2, 1, 0.2]), id = "qt",'
+        ' translate = [0, 0.6, 0])\n'
+        'mo.output("pad", pad)\n'
+        'mo.output("posts", mo.array(post, id = "qa", count = 3,'
+        ' step_translate = [1, 0, 0]))\n'
+        'mo.assert_contact(id = "posts_on_pad", outputs = ["pad", "posts"])\n'
+    )
+    yard = (
+        'mo.output("pad", mo.asset_ref("subassets/part.star", "pad", id = "rp"))\n'
+        'mo.output("posts", mo.asset_ref("subassets/part.star", "posts", id = "rq"))\n'
+    )
+    project = write_files(tmp_path / "yard", {"yard.star": yard, "subassets/part.star": part})
+
+    def unquantified(target) -> tuple[list, list]:
+        main(["validate", str(target)])
+        report = json.loads(capsys.readouterr().out)
+        assert report["ok"] is True, report
+        rows = [w for w in report.get("warnings", []) if w["warning"] == "contact_unquantified"]
+        held = [e for e in report["asserts"] if "unchecked" in e]
+        return rows, held
+
+    rows, held = unquantified(project / "subassets" / "part.star")
+    assert [w["assert"] for w in rows] == ["posts_on_pad"]
+    rows, held = unquantified(project)
+    assert rows == []
+    assert [(e["assert"], e["asset"]) for e in held] == [("posts_on_pad", "subassets/part.star")]

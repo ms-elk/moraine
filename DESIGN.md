@@ -1914,7 +1914,10 @@ below adds only its measurement and judgment:
   (more than one copy, or a group's members) chose its quantifier,
   and the side it left existential stays in `unchecked` alone, since
   a warning its author cannot clear teaches reading past
-  warnings. `--failures-only` rolls the
+  warnings. For the same reason the row is raised by the asset's own
+  report alone: a consumer's report keeps the referenced entry and
+  its `unchecked` and carries no row, as `flat_shading` is kept to
+  root-asset nodes (§4.1). `--failures-only` rolls the
   roster up rather than folding it away (§6).
 - **Owner.** Every authored entry carries `owner: human|agent`
   in the IR, derived from the file that declared it (ownership,

@@ -636,7 +636,8 @@ def append_ref_asserts(report: dict, bundles: list[dict]) -> dict:
     entries and green ones naming an ``unchecked`` scope, a ``ceded``
     pair set, or a ``stronger`` mode stay as entries in ``asserts``. A referenced kit
     repeated under many identities costs one row per identity, not one
-    line per assert.
+    line per assert. A kept entry draws no warning row here (DESIGN
+    5.2): the row names an edit site, and the consumer has none.
 
     A bundle's knob range entries (``params``, DESIGN 6) gate the same
     way: a referenced asset's knob outside its declared range is a
@@ -657,9 +658,6 @@ def append_ref_asserts(report: dict, bundles: list[dict]) -> dict:
             if not e["ok"] or _actionable(e):
                 kept.append(e)
         report.setdefault("asserts", []).extend(kept)
-        notes = assert_warnings(entries)
-        if notes:
-            report.setdefault("warnings", []).extend(notes)
         row = dict(stamp)
         row["asserts_total"] = len(entries)
         row["asserts_ok"] = sum(1 for e in entries if e["ok"])

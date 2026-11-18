@@ -399,7 +399,10 @@ entry to "some copy touches" with no file diff, so the row is where
 the weakening shows. An entry whose `every` judges one side copy by
 copy and leaves the other existential ("every foot on some pad")
 draws no row; the other side stays under `unchecked`. An `every`
-over one plain output judges nothing more, and the row stays.
+over one plain output judges nothing more, and the row stays. The
+row is raised where the entry can be edited: a consumer's report
+keeps a referenced asset's entry and its `unchecked`, and carries
+no row for it.
 **`min_area`** (square meters, yours to state
 like clearance's `min`) is the bearing form: an edge or a corner on
 a face is distance 0 like a face on a face, so a part that must be
