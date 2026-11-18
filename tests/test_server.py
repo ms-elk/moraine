@@ -3332,6 +3332,22 @@ def test_viewer_renderers_share_the_calibrated_exposure():
     assert re.search(r"const RIG_EXPOSURE = 0\.\d+;", src)
 
 
+def test_viewer_ground_plate_is_diffuse_and_off_until_asked_for():
+    """DESIGN 7.1: the ground plate is diffuse-only, so it renders as
+    one tone, and the interactive view holds it behind a toggle that is
+    off unless the browser remembers it on."""
+    from pathlib import Path
+
+    import moraine3d
+
+    src = (Path(moraine3d.__file__).parent / "app" / "viewer" / "app.js").read_text(encoding="utf-8")
+    # The asset's materials come from the loader; the viewer's own
+    # surfaces carry no specular term.
+    assert "MeshStandardMaterial" not in src
+    assert "new THREE.MeshLambertMaterial(" in src
+    assert "mainRig.shown = localStorage.getItem(GROUND_PREF) === '1';" in src
+
+
 
 def test_channels_refuse_a_request_sent_for_another_root(tmp_path, monkeypatch):
     """A channel request names the root it speaks for, and a server of

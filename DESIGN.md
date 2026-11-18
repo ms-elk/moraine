@@ -2735,18 +2735,27 @@ event (`opened` / `connected` / `unavailable`) tells the agent at
 serve time whether a human can see anything.
 
 **Lighting and exposure.** One rig serves the interactive view and the
-screenshot scene alike: hemisphere, key and fill lights, a neutral
+screenshot scene alike: hemisphere, key and fill lights, and a neutral
 environment map so metallic and glossy surfaces read as material
-rather than silhouette, and a lit ground at y = 0 whose shadow gives
-every view its contact and scale cues, re-framed to the asset bounds
-on every load and hidden while the asset extends below ground. The rig
-renders through one fixed linear exposure, calibrated so a matte white
-surface facing the key sits just below clipping and mid-gray renders
-mid-gray, so a shot's tones can be read against the authored factors.
+rather than silhouette. The rig renders through one fixed linear
+exposure, calibrated so a matte white surface facing the key sits just
+below clipping and mid-gray renders mid-gray, so a shot's tones can be
+read against the authored factors.
 Rejected: a per-shot exposure control (evidence renders must stay
 comparable across sessions) and a filmic curve (its shoulder and black
-offset move the mid and dark tones). Viewer chrome never occludes file
-state.
+offset move the mid and dark tones).
+
+**Ground.** A screenshot stands the asset on a lit plate at y = 0: one
+still image needs the shadow the plate catches for its contact and
+scale cues. The plate is diffuse-only, so it renders as one tone,
+where a specular or environment term shades a flat plane by view
+direction and steps across an 8-bit frame in bands. The interactive
+view shows the grid alone, since the human orbits for what the shadow
+tells a shot, and holds the plate behind a toggle that is off by
+default and kept per browser. The plate lights nothing, so the asset's
+pixels are the same with it and without. It is re-framed to the asset
+bounds on every load and hidden while the asset extends below ground:
+viewer chrome never occludes file state.
 
 **Camera.** The orbit camera is undamped (every DCC trains the
 expectation that the camera stops when the hand stops) and keeps the

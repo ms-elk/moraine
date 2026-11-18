@@ -40,6 +40,7 @@ const pinsEl = document.getElementById('pins');
 const timelineEl = document.getElementById('timeline');
 const imagesEl = document.getElementById('images');
 const canvas = document.getElementById('app');
+const groundToggle = document.getElementById('ground');
 
 // The rig's one fixed exposure (DESIGN 7.1): the lights of `addLightRig`
 // sum to about 1.5x on a Lambert surface facing the key, so this scale
@@ -89,12 +90,14 @@ canvas.addEventListener('pointerdown', (e) => {
 // back quadrant — the fill kills the hard terminator band the single key
 // showed on smooth cylinders without flattening the form — plus a neutral
 // environment map, so metallic and glossy surfaces reflect something and
-// read as material rather than as silhouettes, and a ground shadow
-// catcher at y = 0: the key casts, the catcher receives, and a shot gains
-// the contact and scale cues a render with a ground plane has. One
-// constructor for both the interactive view and the screenshot scene:
-// the agent's evidence renders must be lit exactly as the human sees, by
-// construction. Returns the parts `fitRig` re-aims per load.
+// read as material rather than as silhouettes, and a ground plate at
+// y = 0: the key casts, the plate receives, and a shot gains the contact
+// and scale cues a render with a ground plane has. One constructor for
+// both the interactive view and the screenshot scene: the agent's
+// evidence renders must be lit exactly as the human sees, by
+// construction. The plate lights nothing, so showing it in one and not
+// the other (`shown`) leaves the asset's pixels the same. Returns the
+// parts `fitRig` re-aims per load.
 const KEY_DIR = new THREE.Vector3(3, 5, 2).normalize();
 
 function enableShadows(r) {
@@ -123,10 +126,11 @@ function addLightRig(target, r) {
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1),
     // Chrome, like the grid: lit, but outside the asset exposure, so it
-    // keeps the shade above the background it was tuned to.
-    new THREE.MeshStandardMaterial({
-      color: 0x33363c, roughness: 0.95, metalness: 0.0, toneMapped: false,
-    }),
+    // keeps the shade above the background it was tuned to. Diffuse
+    // only: a plane has one normal, so it renders as one tone, where a
+    // specular or environment term varies with the view direction and
+    // steps across an 8-bit frame in bands.
+    new THREE.MeshLambertMaterial({ color: 0x52545b, toneMapped: false }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -5e-4;
@@ -134,7 +138,13 @@ function addLightRig(target, r) {
   target.add(ground);
   target.environment = environmentFor(r);
   target.environmentIntensity = 0.8;
-  return { key, ground };
+  return { key, ground, shown: true, clear: true };
+}
+
+// The plate is drawn when its view shows it (`shown`) and the asset
+// leaves it clear (`clear`, set per load by `fitRig`).
+function showGround(rig) {
+  rig.ground.visible = rig.shown && rig.clear;
 }
 
 // The key's orthographic shadow frustum and the ground catcher follow
@@ -166,7 +176,8 @@ function fitRig(rig, box, r) {
   rig.ground.scale.set(radius * 12, radius * 12, 1);
   rig.ground.position.x = center.x;
   rig.ground.position.z = center.z;
-  rig.ground.visible = box.min.y >= -GROUND_TOL;
+  rig.clear = box.min.y >= -GROUND_TOL;
+  showGround(rig);
   r.shadowMap.needsUpdate = true;
 }
 
@@ -224,6 +235,25 @@ function environmentFor(r) {
 }
 
 const mainRig = addLightRig(scene, renderer);
+// The interactive view shows the grid alone (DESIGN 7.1): the plate is
+// the screenshot's, and here it waits behind a toggle the browser
+// remembers. Storage can be refused (a private window, blocked site
+// data); the toggle then lasts the tab.
+const GROUND_PREF = 'moraine.ground';
+try {
+  mainRig.shown = localStorage.getItem(GROUND_PREF) === '1';
+} catch {
+  mainRig.shown = false;
+}
+showGround(mainRig);
+groundToggle.checked = mainRig.shown;
+groundToggle.addEventListener('change', () => {
+  mainRig.shown = groundToggle.checked;
+  showGround(mainRig);
+  try {
+    localStorage.setItem(GROUND_PREF, mainRig.shown ? '1' : '0');
+  } catch { /* the tab keeps the choice */ }
+});
 const grid = new THREE.GridHelper(10, 10, 0x55585f, 0x3a3d44);
 grid.material.toneMapped = false;
 scene.add(grid);
@@ -1696,8 +1726,9 @@ async function takeScreenshot({ glb_urls, camera: pose, size }) {
   }
   const shot = new THREE.Scene();
   shot.background = new THREE.Color(0x23252a);
-  // Same lighting rig as the interactive view (environment and ground
-  // shadow included), chrome-free: no grid, no axes, no pins.
+  // Same lighting rig as the interactive view, with the ground plate a
+  // still image needs for its contact shadow, and chrome-free: no grid,
+  // no axes, no pins.
   const rig = addLightRig(shot, shotRenderer);
   const parts = new THREE.Group();
   shot.add(parts);
