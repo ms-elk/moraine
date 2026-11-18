@@ -141,6 +141,15 @@ function addLightRig(target, r) {
   return { key, ground, shown: true, clear: true };
 }
 
+// A checkbox in the viewer is toggled by its box, never by the label
+// around it: one rule for every checkbox, so a click on a name is
+// always safe.
+function boxAloneToggles(label, input) {
+  label.addEventListener('click', (e) => {
+    if (e.target !== input) e.preventDefault();
+  });
+}
+
 // The plate is drawn when its view shows it (`shown`) and the asset
 // leaves it clear (`clear`, set per load by `fitRig`).
 function showGround(rig) {
@@ -247,6 +256,7 @@ try {
 }
 showGround(mainRig);
 groundToggle.checked = mainRig.shown;
+boxAloneToggles(groundToggle.parentElement, groundToggle);
 groundToggle.addEventListener('change', () => {
   mainRig.shown = groundToggle.checked;
   showGround(mainRig);
@@ -1088,6 +1098,9 @@ function renderPanel(params) {
       input.type = 'checkbox';
       input.checked = stagedValue(p);
       input.addEventListener('change', () => stage(p, input.checked, row));
+      // The label runs the panel's width, and a click anywhere on it
+      // would stage a change nobody aimed at.
+      boxAloneToggles(label, input);
       label.prepend(input);
     } else {
       const input = document.createElement('input');
