@@ -732,28 +732,30 @@ def _tally(tally: dict, key: str, value) -> None:
         row[str(value)] = row.get(str(value), 0) + 1
 
 
-def compact(report: dict) -> dict:
-    """A report in its default form (DESIGN 6): counts and failures.
+GATING_SECTIONS = ("asset_checks", "asserts", "budgets", "params")
+
+
+def _shaped(report: dict, rows: bool) -> dict:
+    """A report with its counts and rollups (DESIGN 6), the green rows
+    kept (``rows``) or left to the counts. Both forms come from this one
+    pass, so every key the default form carries is in the full one with
+    the same value, and a key this pass does not know passes through
+    both.
 
     ``outputs_ok`` counts outputs whose gating ``ok`` is true — the same
     ``ok`` shown per output, so the numbers never contradict the
-    entries. An output is kept only if it has checks with ``ok: false``
-    — including advisory ``level: "warn"`` entries from profile checks,
-    which carry fixes and do not gate (such an output is kept *and*
-    counted ok) — and then keeps only those checks. ``ok`` and
-    ``warnings`` pass through unchanged, so gating and exit codes are
-    identical to the full report's.
+    entries. Without the rows an output is kept only if it has checks
+    with ``ok: false`` — including advisory ``level: "warn"`` entries
+    from profile checks, which carry fixes and do not gate (such an
+    output is kept *and* counted ok) — and then keeps only those checks,
+    under its own keys. A gating list keeps its failing entries.
 
-    The honesty machinery survives the compression as counts: a green
-    entry that carries an honesty key (``HONESTY_KEYS``) is counted
-    under that key, with what it holds counted by name, whether the
-    report is green or red. The rows are the full report's, and a
-    failing entry keeps its own keys whole. A waived check is green,
-    so the waivers are counted by check under ``waived``. The per-identity
-    ``ref_assets`` counts, the ``mates`` provenance rows, the
-    ``by_site`` rollup, the ``consumers`` of the project, and the
-    ``profile`` whose checks ran pass through. A report that says less still says that something was not
-    checked, and how much.
+    The honesty machinery is counted in both forms: a green entry that
+    carries an honesty key (``HONESTY_KEYS``) is counted under that key,
+    with what it holds counted by name, whether the report is green or
+    red. A waived check is green, so the waivers are counted by check
+    under ``waived``. A report that says less still says that something
+    was not checked, and how much.
     """
     kept: dict[str, dict] = {}
     ok_count = 0
@@ -780,15 +782,18 @@ def compact(report: dict) -> dict:
         "outputs_total": len(report["outputs"]),
         "outputs_ok": ok_count,
     }
-    if kept:
+    if rows:
+        out["outputs"] = report["outputs"]
+    elif kept:
         out["outputs"] = kept
-    # The gating lists: counts + failures.
-    for section in ("asset_checks", "asserts", "budgets", "params"):
+    for section in GATING_SECTIONS:
         if section in report:
             failed = [e for e in report[section] if not e["ok"]]
             out[f"{section}_total"] = len(report[section])
             out[f"{section}_ok"] = len(report[section]) - len(failed)
-            if failed:
+            if rows:
+                out[section] = report[section]
+            elif failed:
                 out[section] = failed
     # The knobs that hold an accepted value, by name (DESIGN 6): a
     # default the agent edits moves nothing while one stands, and the
@@ -808,9 +813,18 @@ def compact(report: dict) -> dict:
             out[key] = rollups[key]
     if waived:
         out["waived"] = waived
-    for section in ("ref_assets", "mates", "by_site", "consumers", "profile"):
-        if report.get(section):
-            out[section] = report[section]
-    if report.get("warnings"):
-        out["warnings"] = report["warnings"]
+    for key, value in report.items():
+        if key not in out and key != "outputs" and key not in GATING_SECTIONS:
+            out[key] = value
     return out
+
+
+def compact(report: dict) -> dict:
+    """A report in its default form (DESIGN 6): counts and failures."""
+    return _shaped(report, rows=False)
+
+
+def with_totals(report: dict) -> dict:
+    """A report in its full form (DESIGN 6): every row, under the
+    counts and rollups of the default form."""
+    return _shaped(report, rows=True)

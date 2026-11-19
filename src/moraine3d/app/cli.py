@@ -403,7 +403,7 @@ def _validate_report(
     asset_path: Path, profile, full, given: dict | None = None,
 ) -> tuple[dict, bool]:
     from ..engine import validation
-    from ..verify.validate import add_by_site, compact
+    from ..verify.validate import add_by_site, compact, with_totals
 
     if given:
         if asset_mod.is_ir_file(asset_path):
@@ -442,8 +442,7 @@ def _validate_report(
     # A report under offered values judges no revision of the files.
     _note_asset(opened, ev, partial=bool(given), **_validate_summary(report))
     add_by_site(report)
-    if not full:
-        report = compact(report)
+    report = with_totals(report) if full else compact(report)
     if given:
         report["params_given"] = given
     return report, ok

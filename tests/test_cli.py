@@ -1822,6 +1822,7 @@ def test_validate_reports_counts_and_lists_every_entry_under_full(tmp_path, caps
     full = json.loads(capsys.readouterr().out)
     assert list(full["outputs"]) == ["main"]
     assert [a["assert"] for a in full["asserts"]] == ["no_overlap"]
+    assert {k: v for k, v in full.items() if k in brief} == brief
     for flags in ([], ["--full"]):
         assert main(["validate", str(proj), "--profile", "gltf", *flags]) == 0
         assert json.loads(capsys.readouterr().out)["profile"] == "gltf", flags

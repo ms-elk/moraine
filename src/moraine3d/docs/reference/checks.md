@@ -105,7 +105,8 @@ in `"ceded": {"entries": 1, "pairs": 312}`. Waived checks are
 counted by check under `waived`, as in `{"not_sunk": 2}`. `--full`
 lists the asset's green entries too, and of a referenced asset's
 those that carry one of the three keys; its others stay counted in
-its `ref_assets` row. A
+its `ref_assets` row. The counts and rollups are in both forms under
+the same keys. A
 workspace sweep nests each project's report and adds `not_swept`: the
 asset files below the project level the sweep did not reach.
 Every entry that names an output, an assert, or a knob carries its

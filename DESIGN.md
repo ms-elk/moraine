@@ -2526,7 +2526,10 @@ check not made. A failing entry keeps its own keys whole. `ref_assets`
 something was not checked, and how much. `--full` lists every entry
 of the asset's own. Of a referenced asset's green entries it lists
 those that carry an `unchecked`, `ceded`, or `stronger` key, and the
-rest stay folded into `ref_assets` (§4.6).
+rest stay folded into `ref_assets` (§4.6). It changes no key: every
+count and rollup of the default report is in the full one under the
+same name with the same value, so a reader written for one reads the
+other.
 (The full report as the default was rejected: a green report of a
 large asset runs to tens of kilobytes, and its reader filters the
 counts out before reading it. Keeping the honesty rows in the
@@ -3413,7 +3416,8 @@ contract. Normative recipe: the guide's authoring-loop section.
   optimization.
 - A report's default is sized by what its reader acts on, not by
   the asset: `validate` answers with counts and the failing entries,
-  and the green rows are asked for (`--full`, §6).
+  and the green rows are asked for (`--full`, §6). The fuller form
+  adds rows and changes no key, so one reader serves both.
 - A finding about an asset the runtime can still evaluate is a
   failing entry beside every other entry, as a knob outside its
   declared range is (§6). An error in place of the report hides every

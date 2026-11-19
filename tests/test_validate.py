@@ -9,7 +9,9 @@ from moraine3d.core.mesh import Material
 from moraine3d.engine import evaluator
 from moraine3d.engine.evaluator import OpContext
 from moraine3d.ops import array, box, grid, scatter, transform, unwrap
-from moraine3d.verify.validate import compact, validate_outputs, validate_value
+from moraine3d.verify.validate import (
+    compact, validate_outputs, validate_value, with_totals,
+)
 from support.engine import Evaluation
 
 
@@ -440,6 +442,41 @@ def test_compact_keeps_failing_asset_checks():
     assert slim["asset_checks_ok"] == 0
     [g] = slim["asset_checks"]
     assert g["check"] == "grounded" and "fix" in g
+
+
+def test_the_full_report_carries_every_key_of_the_default_one():
+    """DESIGN 6: `--full` changes no key. Every count and rollup of the
+    default report is in the full one under the same name with the same
+    value, and what the default lists is among what the full one
+    lists."""
+    floating = transform.evaluate(
+        [box.evaluate([], {}, None)], {"translate": [0.0, 2.0, 0.0]}, None
+    )
+    reports = [
+        validate_outputs({"m": _grounded_box()}),
+        validate_outputs({"m": _grounded_box(), "sunk": box.evaluate([], {}, None)}),
+        validate_outputs(
+            {"lamp": floating, "pad": box.evaluate([], {}, None)},
+            checks_policy={"pad": {"not_sunk": False}},
+            asset_checks={"grounded": False},
+            budgets={"materials": 0},
+        ),
+    ]
+    reports[0]["profile"] = "gltf"
+    for report in reports:
+        slim, full = compact(report), with_totals(report)
+        assert set(slim) <= set(full)
+        assert set(report) <= set(full)
+        for key, value in slim.items():
+            if key == "outputs":
+                for name, out in value.items():
+                    rows = full["outputs"][name]["checks"]
+                    assert all(c in rows for c in out["checks"])
+            elif key in ("asset_checks", "asserts", "budgets", "params"):
+                assert all(e in full[key] for e in value)
+            else:
+                assert full[key] == value, key
+        assert full["outputs"] == report["outputs"]
 
 
 def test_compact_counts_the_waivers_by_check():
