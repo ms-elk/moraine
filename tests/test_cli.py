@@ -1677,7 +1677,7 @@ def test_validate_and_stats_carry_the_serving_watch(tmp_path, monkeypatch, capsy
     assert main(["validate", str(proj)]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["serve"] == {"port": 8642, "project": proj.name, "watch": "dead"}
-    assert main(["validate", str(proj), "--failures-only"]) == 0
+    assert main(["validate", str(proj), "--full"]) == 0
     assert json.loads(capsys.readouterr().out)["serve"]["watch"] == "dead"
     assert main(["stats", str(proj)]) == 0
     assert json.loads(capsys.readouterr().out)["serve"]["watch"] == "dead"
@@ -1753,7 +1753,7 @@ def test_every_evaluated_report_names_the_tool_version(tmp_path, monkeypatch, ca
     that produced it"), the key the export manifest and the screenshot
     report already carry, so a report can never be mistaken for another
     install's answer; a sweep stamps its `workspace` aggregate, and
-    `--failures-only` keeps the key."""
+    both forms of `validate` carry the key."""
     import json
 
     from moraine3d import dist_version
@@ -1766,7 +1766,7 @@ def test_every_evaluated_report_names_the_tool_version(tmp_path, monkeypatch, ca
         ["eval", str(proj)],
         ["stats", str(proj)],
         ["validate", str(proj)],
-        ["validate", str(proj), "--failures-only"],
+        ["validate", str(proj), "--full"],
         ["query", str(proj), "--select", '{"normal_y": {"gt": 0.9}}'],
     ):
         assert main(argv) == 0, argv
@@ -1805,6 +1805,28 @@ def test_a_number_that_overflows_is_the_builds_refusal(tmp_path, monkeypatch, ca
     assert err["detail"]["site"] == "asset.star:2"
 
 
+def test_validate_reports_counts_and_lists_every_entry_under_full(tmp_path, capsys):
+    """DESIGN 6: the default report states every gating list as counts
+    plus its failing entries, and `--full` lists every entry."""
+    import json
+
+    from moraine3d.app.cli import main
+
+    proj = _write_project(tmp_path)
+    _recipe(proj, GREEN_ASSET, "asset")
+    assert main(["validate", str(proj)]) == 0
+    brief = json.loads(capsys.readouterr().out)
+    assert (brief["outputs_total"], brief["outputs_ok"]) == (1, 1)
+    assert "outputs" not in brief and "asserts" not in brief
+    assert main(["validate", str(proj), "--full"]) == 0
+    full = json.loads(capsys.readouterr().out)
+    assert list(full["outputs"]) == ["main"]
+    assert [a["assert"] for a in full["asserts"]] == ["no_overlap"]
+    for flags in ([], ["--full"]):
+        assert main(["validate", str(proj), "--profile", "gltf", *flags]) == 0
+        assert json.loads(capsys.readouterr().out)["profile"] == "gltf", flags
+
+
 def test_validate_runs_on_a_sub_asset_path(tmp_path, capsys):
     """`moraine validate subassets/kit.star` keeps working for kit
     development (DESIGN 4.6): a sub-asset is a complete, individually
@@ -1825,7 +1847,7 @@ def test_validate_runs_on_a_sub_asset_path(tmp_path, capsys):
     _recipe(proj, root, "proj")
     _recipe(proj, GREEN_ASSET, "kit", sub=True)
 
-    assert main(["validate", str(proj / "subassets" / "kit.star")]) == 0
+    assert main(["validate", str(proj / "subassets" / "kit.star"), "--full"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["ok"] is True and list(out["outputs"]) == ["main"]
     assert main(["validate", str(proj)]) == 0  # and the consumer still validates

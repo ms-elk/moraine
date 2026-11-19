@@ -201,7 +201,7 @@ def _serve_lines(lines: list[str]) -> list[dict]:
 @pytest.mark.parametrize("arguments", [
     {"project": 1},
     {"profile": 5},
-    {"failures_only": "yes"},
+    {"full": "yes"},
 ])
 def test_wrong_argument_type_is_a_protocol_error_not_a_crash(arguments):
     """An argument whose JSON type contradicts the tool's inputSchema is

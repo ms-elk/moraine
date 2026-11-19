@@ -50,7 +50,7 @@ def test_the_shown_requirements_are_the_humans(tmp_path, monkeypatch, capsys):
     agent's."""
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
     project = write_files(tmp_path / "steps", _shown_recipes()["steps"])
-    _, report = _run(["validate", str(project)], capsys)
+    _, report = _run(["validate", str(project), "--full"], capsys)
     owners = {
         a["assert"]: a["owner"] for a in report["asserts"] if not a.get("builtin")
     }

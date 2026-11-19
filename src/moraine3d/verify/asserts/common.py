@@ -29,7 +29,7 @@ REQUIRED = object()
 # it did not quantify (``unchecked``), pairs it ceded to a declared
 # embed (``ceded``), a stronger mode that also holds (``stronger``).
 # One roster: the sub-asset fold keeps entries carrying any of them and
-# ``failures_only`` rolls each up by name, so a key added here is never
+# ``compact`` rolls each up by name, so a key added here is never
 # silently folded away by one consumer and kept by another.
 HONESTY_KEYS = ("unchecked", "ceded", "stronger")
 

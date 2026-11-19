@@ -14,7 +14,7 @@ from support import projects
 from support.engine import Evaluation, export_asset
 from moraine3d.verify.validate import (
     append_ref_asserts,
-    failures_only,
+    compact,
     validate_outputs,
 )
 
@@ -118,7 +118,7 @@ def test_validate_reports_every_entry_beside_the_failing_knob(cache, capsys):
     """DESIGN 6, 8.2: the knob's entry fails and gates, and the outputs,
     the asserts, and the asset checks are all still reported."""
     proj = _project(cache, _asset(2.0, 5.0))
-    assert main(["validate", str(proj)]) == 1
+    assert main(["validate", str(proj), "--full"]) == 1
     report = json.loads(capsys.readouterr().out)
     assert report["ok"] is False
     assert set(report["outputs"]) == {"body", "lid"}
@@ -132,7 +132,7 @@ def test_validate_reports_every_entry_beside_the_failing_knob(cache, capsys):
 def test_validate_is_green_with_the_knob_in_range(cache, capsys):
     """DESIGN 6: a knob inside its range passes its entry."""
     proj = _project(cache, _asset(0.5, 5.0))
-    assert main(["validate", str(proj)]) == 0
+    assert main(["validate", str(proj), "--full"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report["ok"] is True
     assert [(p["param"], p["ok"]) for p in report["params"]] == [("width", True)]
@@ -144,16 +144,16 @@ def test_a_asset_without_ranged_knobs_has_no_params_key():
     assert "params" not in report
 
 
-def test_failures_only_carries_params():
-    """DESIGN 6: `--failures-only` compresses the list to its counts and
+def test_compact_carries_params():
+    """DESIGN 6: the default report compresses the list to its counts and
     its failing entries, like every gating list."""
     sc = asset_mod.loads(_asset(2.0, 5.0))
     report = validate_outputs({}, params=params_mod.range_entries(sc))
-    slim = failures_only(report)
+    slim = compact(report)
     assert (slim["ok"], slim["params_total"], slim["params_ok"]) == (False, 1, 0)
     assert slim["params"] == report["params"]
     sc = asset_mod.loads(_asset(1.0, 5.0))
-    slim = failures_only(validate_outputs({}, params=params_mod.range_entries(sc)))
+    slim = compact(validate_outputs({}, params=params_mod.range_entries(sc)))
     assert (slim["ok"], slim["params_total"], slim["params_ok"]) == (True, 1, 1)
     assert "params" not in slim
 

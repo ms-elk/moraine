@@ -219,7 +219,8 @@ while failing ones and green ones carrying `unchecked`, `ceded`, or
 `mo.assert_<kind>(id = ..., <key> = ...)`, and each kind's section
 opens with its call and its keys (`contact`, `clearance`, `mated`,
 `embedded`, `extent`, `count`). The report names an entry by that id
-under the key `assert` (`"assert": "<id>"`). An output name in a call
+under the key `assert` (`"assert": "<id>"`), a failing one always and
+a green one under `validate --full`. An output name in a call
 may be a group's (see *groups*). The IR writes an entry as one
 JSON object per line under `"asserts"`, the same keys with `kind`
 and `owner` beside them (see *A complete minimal asset*). `tol`, `min`, `max`, and
@@ -268,8 +269,8 @@ bar takes none.
   Without the opt-in an entry names what it did not quantify under
   `unchecked` (`instanced_self_pairs` / `instanced_copies`); copy
   pairs policed by a declared embed appear under the guard's
-  `ceded`, not `unchecked`. `--failures-only` keeps the three keys as
-  counts (see *checks*).
+  `ceded`, not `unchecked`. The report keeps the three keys as
+  counts, and `--full` lists the asset's entries (see *checks*).
 - `owner`: `"human"` or `"agent"`, on every entry, written by the
   build from the file that declared it: the requirements file is the
   human's, an asset file the agent's (see *requirements*). Human-owned

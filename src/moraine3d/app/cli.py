@@ -400,10 +400,10 @@ def _offered_values(asset_path: Path, given: dict[str, str]) -> dict:
 
 
 def _validate_report(
-    asset_path: Path, profile, fails_only, given: dict | None = None,
+    asset_path: Path, profile, full, given: dict | None = None,
 ) -> tuple[dict, bool]:
     from ..engine import validation
-    from ..verify.validate import add_by_site
+    from ..verify.validate import add_by_site, compact
 
     if given:
         if asset_mod.is_ir_file(asset_path):
@@ -442,10 +442,8 @@ def _validate_report(
     # A report under offered values judges no revision of the files.
     _note_asset(opened, ev, partial=bool(given), **_validate_summary(report))
     add_by_site(report)
-    if fails_only:
-        from ..verify.validate import failures_only
-
-        report = failures_only(report)
+    if not full:
+        report = compact(report)
     if given:
         report["params_given"] = given
     return report, ok
@@ -454,7 +452,7 @@ def _validate_report(
 def _validate_summary(report: dict) -> dict:
     """The session log's compact verify outcome (DESIGN 6): which gating
     checks, asserts, budgets, and knob ranges went red — read from the full report,
-    before --failures-only reshapes it. Warn-level checks are advisory
+    before the default form reshapes it. Warn-level checks are advisory
     and stay out of ``failed_checks``."""
     outputs = report.get("outputs") or {}
     failed_checks: list[str] = []
@@ -496,7 +494,7 @@ def _cmd_validate(args) -> int:
     if isinstance(target, workspace_mod.Workspace):
         projects, failed = _sweep(
             target,
-            lambda p: _validate_report(p, args.profile, args.failures_only),
+            lambda p: _validate_report(p, args.profile, args.full),
         )
         roll = _sweep_rollup(
             target,
@@ -505,7 +503,7 @@ def _cmd_validate(args) -> int:
         )
         _print({"projects": projects, "workspace": _stamped(roll)})
         return 0 if not failed else 1
-    report, ok = _validate_report(target, args.profile, args.failures_only, given)
+    report, ok = _validate_report(target, args.profile, args.full, given)
     _print(_stamped(_with_serve(report, probe)))
     return 0 if ok else 1
 
@@ -1769,8 +1767,11 @@ def build_parser() -> argparse.ArgumentParser:
     # here silently strands any profile added there.
     p.add_argument("--profile", default=None,
                    help="also run export-profile checks")
-    p.add_argument("--failures-only", action="store_true",
-                   help="collapse healthy outputs to a count; detail only on failure")
+    p.add_argument("--full", action="store_true",
+                   help="also list the asset's green entries (of a referenced "
+                        "asset's, those carrying unchecked, ceded or stronger; "
+                        "its others stay counted under ref_assets); by default "
+                        "the report is counts and the failing entries")
     p.add_argument("--param", action="append", metavar="ID=VALUE",
                    help="judge the asset under this value of a declared knob, "
                         "over an accepted one, writing no file (repeatable; "

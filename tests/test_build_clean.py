@@ -290,12 +290,12 @@ def test_a_file_is_kept_under_any_spelling_of_its_name(tmp_path):
 def test_a_report_names_the_projects_that_reference_this_one(tmp_path, capsys):
     """DESIGN 6: `build` and `validate` name the other projects whose
     roots reach an asset of the target's project, so a change here is
-    followed by a check there. `--failures-only` passes the key
-    through."""
+    followed by a check there. Both forms of the report carry the
+    key."""
     ws = _ws(tmp_path)
     _run(["build", str(ws / "a")], capsys)
     for argv in (["build", str(ws / "c")], ["validate", str(ws / "c")],
-                 ["validate", str(ws / "c"), "--failures-only"],
+                 ["validate", str(ws / "c"), "--full"],
                  ["build", str(ws / "c"), "--check"]):
         out = _run(argv, capsys)
         assert out["consumers"]["projects"] == ["a"], argv

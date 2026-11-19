@@ -68,8 +68,8 @@ def _tool_validate(a: dict) -> list[str]:
     argv = ["validate", a.get("project", ".")]
     if a.get("profile") is not None:
         argv += ["--profile", a["profile"]]
-    if a.get("failures_only"):
-        argv.append("--failures-only")
+    if a.get("full"):
+        argv.append("--full")
     for pid, value in (a.get("params") or {}).items():
         argv += ["--param", f"{pid}={value if isinstance(value, str) else json.dumps(value)}"]
     return argv + _port(a)
@@ -143,8 +143,9 @@ TOOLS: dict[str, tuple[str, dict, object]] = {
         _schema({
             "project": _str(_SWEEP_HELP),
             "profile": _str("also run this export profile's checks (e.g. 'gltf')"),
-            "failures_only": {"type": "boolean", "description":
-                              "collapse healthy outputs to a count; detail only on failure"},
+            "full": {"type": "boolean", "description":
+                     "also list the asset's green entries; by default "
+                     "counts and the failing entries"},
             "params": {"type": "object", "description":
                        "judge one project under these values of its declared "
                        "knobs, over an accepted one, writing no file"},

@@ -36,7 +36,7 @@ from ..core.glb import build_glb, decompose_trs
 from ..core.mesh import Image, Instances, Value, proto_of
 from ..core.asset import Asset
 from ..errors import MoraineError
-from ..verify.validate import add_by_site
+from ..verify.validate import add_by_site, compact
 from . import validation
 from .evaluator import Evaluation, evaluate_op_value
 
@@ -267,7 +267,7 @@ def export_asset(
 
     report = profile_checks(profile, values, report, bake_instances=bake_instances)
     if not report["ok"]:
-        return {"ok": False, "validation": add_by_site(report)}
+        return {"ok": False, "validation": compact(add_by_site(report))}
 
     stem = sc.path.stem if sc.path is not None else "asset"
     out = Path(out_dir)

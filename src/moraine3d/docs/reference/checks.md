@@ -6,7 +6,7 @@ The contract of every check `validate` runs with no entry in the
 file. Per check: criterion, waivability, how an instanced output is
 quantified, and whether the entry appears when green. Asserts
 (`mo.assert_<kind>`, gating the same way) and budgets have their own
-sections. Per output, always listed, green or red:
+sections. Per output, an entry each under `--full`, green or red:
 
 - `finite`: no NaN/inf anywhere in the value: vertices, normals, UVs,
   extra attribute slots, instance transforms, material factors and
@@ -95,18 +95,22 @@ projects that reference this one (see *build*); `serve`, the running
 server's file-watch liveness (`watch: "alive" | "dead"`, with its
 `port` and `project`) when a `moraine serve` on `--port` serves this
 root.
-`--failures-only` keeps counts, failing entries, `warnings`, `mates`,
+By default the report states each gating list as counts
+(`outputs_total` / `outputs_ok`, `asserts_total` / `asserts_ok`, and
+so on) with its failing entries, keeps `warnings`, `mates`,
 `ref_assets`, `by_site`, `consumers`, and `serve`, and counts every
 green entry's honesty key (`unchecked`, `ceded`, `stronger`) at the
 top level under that key: `entries`, and by name what they hold, as
-in `"ceded": {"entries": 1, "pairs": 312}`. The rows are in the
-report without the flag. A
+in `"ceded": {"entries": 1, "pairs": 312}`. Waived checks are
+counted by check under `waived`, as in `{"not_sunk": 2}`. `--full`
+lists the asset's green entries too, and of a referenced asset's
+those that carry one of the three keys; its others stay counted in
+its `ref_assets` row. A
 workspace sweep nests each project's report and adds `not_swept`: the
 asset files below the project level the sweep did not reach.
 Every entry that names an output, an assert, or a knob carries its
 `site`, the recipe file and line to edit, with `via` where it was
-made inside a function (see *ids*), and `--failures-only` keeps both
-on each failing entry.
+made inside a function (see *ids*).
 `--param ID=VALUE`, repeatable, judges one project under the values
 given for its declared knobs, over an accepted value, and writes no
 file: neither `params.json` nor the IR, and the viewer does not move.
@@ -117,4 +121,5 @@ how to find where a range should end without editing it. VALUE is JSON
 (`2.4`, `true`, `[1,2,3]`), and for a string knob the text itself.
 An id given twice is refused.
 `--profile <name>` appends the export profile's own checks, whose
-`level: "warn"` entries are advisory.
+`level: "warn"` entries are advisory, and the report names it under
+`profile`.

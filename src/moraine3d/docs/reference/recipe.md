@@ -275,8 +275,8 @@ slider increment only.
   accepted in the viewer (`params.json`, beside the root asset),
   replaced by a consumer's override. So a default you edit moves
   nothing while an accepted value stands, and `validate` says which:
-  the knob's `params` entry carries `from: "accepted"`, and
-  `--failures-only` names the knob under `params_accepted`. The
+  the report names the knob under `params_accepted`, and its
+  `params` entry (`--full`) carries `from: "accepted"`. The
   viewer's Accept alone writes `params.json`, and the viewer alone
   removes its lines: an accepted knob shows your default beside it,
   and the panel's Reset to defaults previews every default, which

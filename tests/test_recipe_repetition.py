@@ -90,7 +90,7 @@ def test_the_warning_reaches_validate_and_never_gates(tmp_path, capsys, monkeypa
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
     project = write_files(tmp_path / "yard", {"yard.star": ROW % (4, "1.5 * i - 2")})
     for argv in (["build", str(project)], ["validate", str(project)],
-                 ["validate", str(project), "--failures-only"]):
+                 ["validate", str(project), "--full"]):
         capsys.readouterr()
         assert main(argv) == 0
         out = json.loads(capsys.readouterr().out)

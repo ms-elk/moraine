@@ -329,7 +329,7 @@ def test_the_file_is_named_before_it_exists_and_joins_the_revision(tmp_path):
 
 
 def test_the_report_names_the_knobs_that_hold_an_accepted_value(tmp_path, monkeypatch):
-    """DESIGN 6: `--failures-only` names the knobs that hold an
+    """DESIGN 6: the default report names the knobs that hold an
     accepted value (`params_accepted`), since a default the agent
     edits moves nothing while one stands. A knob without a range has
     an entry where `params.json` holds a value for it."""
@@ -346,15 +346,15 @@ def test_the_report_names_the_knobs_that_hold_an_accepted_value(tmp_path, monkey
         'mo.output("main", mo.material(body, id = "mt", name = t))\n'
     )
     project = write_files(tmp_path / "p", {"asset.star": asset})
-    plain, _ = cli._validate_report(project / "asset.star", None, True)
+    plain, _ = cli._validate_report(project / "asset.star", None, False)
     assert "params_accepted" not in plain and plain["params_total"] == 2
     write_files(project, {"params.json": '{\n"tag": "b",\n"w": 2.5\n}\n'})
-    full, ok = cli._validate_report(project / "asset.star", None, False)
+    full, ok = cli._validate_report(project / "asset.star", None, True)
     assert ok is True
     assert {e["param"]: e.get("from") for e in full["params"]} == {
         "w": "accepted", "d": None, "tag": "accepted",
     }
-    brief, _ = cli._validate_report(project / "asset.star", None, True)
+    brief, _ = cli._validate_report(project / "asset.star", None, False)
     assert brief["params_accepted"] == ["w", "tag"]
     assert (brief["params_total"], brief["params_ok"]) == (3, 3)
     assert "params" not in brief
@@ -382,12 +382,12 @@ def test_validate_takes_knob_values_without_writing_any_file(tmp_path, monkeypat
     accepted_bytes = (project / "params.json").read_bytes()
     built = (project / "build" / "asset.mora").read_bytes()
 
-    assert main(["validate", str(project), "--param", "w=1.5"]) == 0
+    assert main(["validate", str(project), "--full", "--param", "w=1.5"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report["params_given"] == {"w": 1.5}
     entry = next(e for e in report["params"] if e["param"] == "w")
     assert entry["value"] == 1.5 and entry["from"] == "override"
-    assert main(["validate", str(project), "--failures-only", "--param", "w=1.5"]) == 0
+    assert main(["validate", str(project), "--param", "w=1.5"]) == 0
     assert json.loads(capsys.readouterr().out)["params_given"] == {"w": 1.5}
     assert (project / "params.json").read_bytes() == accepted_bytes
     assert (project / "build" / "asset.mora").read_bytes() == built

@@ -52,7 +52,7 @@ def test_a_failing_assert_names_the_line_that_declared_it(project, capsys):
     """DESIGN 4.1: each assert entry carries the `site` of the recipe
     call that declared it; one written in a loop names the loop's line,
     one in the requirements file that file's."""
-    code, report = _run(["validate", str(project)], capsys)
+    code, report = _run(["validate", str(project), "--full"], capsys)
     assert code == 1
     sites = {a["assert"]: a.get("site") for a in report["asserts"]}
     assert sites == {
@@ -68,7 +68,7 @@ def test_an_output_names_the_line_that_made_its_node(project, capsys):
     """DESIGN 6: every entry that names a node carries its recipe site;
     a node made inside a helper carries the helper's line (DESIGN
     4.8)."""
-    _, report = _run(["validate", str(project)], capsys)
+    _, report = _run(["validate", str(project), "--full"], capsys)
     assert {n: o["site"] for n, o in report["outputs"].items()} == {
         "slab": "yard.star:3", "post_0": "lib/parts.star:3", "post_1": "lib/parts.star:3",
     }
@@ -82,12 +82,15 @@ def test_an_output_names_the_line_that_made_its_node(project, capsys):
         }, cmd
 
 
-def test_failures_only_keeps_the_sites(project, capsys):
-    """DESIGN 6: `--failures-only` compresses every gating list to
+def test_compact_keeps_the_sites(project, capsys):
+    """DESIGN 6: the default report compresses every gating list to
     counts plus failures; a failure keeps the line to edit."""
-    _, slim = _run(["validate", str(project), "--failures-only"], capsys)
+    _, slim = _run(["validate", str(project)], capsys)
     [red] = slim["asserts"]
     assert red["site"] == "yard.requirements.star:1"
+    write_files(project, {"yard.star": ASSET.replace('mo.waive("slab", "not_sunk")\n', "")})
+    _, slim = _run(["validate", str(project)], capsys)
+    assert slim["outputs"]["slab"]["site"] == "yard.star:3"
 
 
 def test_an_evaluation_error_names_the_node_and_its_line(project, capsys):
@@ -174,7 +177,7 @@ def test_an_entry_names_the_calls_on_the_way_to_its_line(project, capsys):
     reached through, so a line shared by many entries still leads to
     the call that asked for this one."""
     want = {"slab": None, "post_0": ["yard.star:10"], "post_1": ["yard.star:10"]}
-    for cmd in (["validate", str(project)], ["stats", str(project)],
+    for cmd in (["validate", str(project), "--full"], ["stats", str(project)],
                 ["query", str(project), "--select", '{"normal_y": {"gt": 0.9}}'],
                 ["eval", str(project)]):
         _, out = _run(cmd, capsys)
@@ -220,7 +223,7 @@ def test_failing_entries_that_share_a_line_are_counted_by_it(tmp_path, monkeypat
     expression in a loop reads as one line with a count rather than as
     its expansion. The entries stay."""
     project = _rollup_project(tmp_path, monkeypatch, "0.4", 'row("a", 3, 0)\nrow("b", 2, 0)\n')
-    code, report = _run(["validate", str(project)], capsys)
+    code, report = _run(["validate", str(project), "--full"], capsys)
     assert code == 1
     assert sum(not o["ok"] for o in report["outputs"].values()) == 5
     assert report["by_site"] == [{
@@ -230,7 +233,7 @@ def test_failing_entries_that_share_a_line_are_counted_by_it(tmp_path, monkeypat
             {"via": ["yard.star:3", "lib/parts.star:7"], "count": 2},
         ],
     }]
-    _, slim = _run(["validate", str(project), "--failures-only"], capsys)
+    _, slim = _run(["validate", str(project)], capsys)
     assert slim["by_site"] == report["by_site"]
     assert len(slim["outputs"]) == 5
 

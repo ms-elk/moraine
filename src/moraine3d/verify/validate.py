@@ -732,8 +732,8 @@ def _tally(tally: dict, key: str, value) -> None:
         row[str(value)] = row.get(str(value), 0) + 1
 
 
-def failures_only(report: dict) -> dict:
-    """Compress a report to its failures (token economy, DESIGN 8.2).
+def compact(report: dict) -> dict:
+    """A report in its default form (DESIGN 6): counts and failures.
 
     ``outputs_ok`` counts outputs whose gating ``ok`` is true — the same
     ``ok`` shown per output, so the numbers never contradict the
@@ -748,26 +748,30 @@ def failures_only(report: dict) -> dict:
     entry that carries an honesty key (``HONESTY_KEYS``) is counted
     under that key, with what it holds counted by name, whether the
     report is green or red. The rows are the full report's, and a
-    failing entry keeps its own keys whole. The per-identity
+    failing entry keeps its own keys whole. A waived check is green,
+    so the waivers are counted by check under ``waived``. The per-identity
     ``ref_assets`` counts, the ``mates`` provenance rows, the
-    ``by_site`` rollup, and the ``consumers`` of the project pass
-    through. A report that says less still says that something was not
+    ``by_site`` rollup, the ``consumers`` of the project, and the
+    ``profile`` whose checks ran pass through. A report that says less still says that something was not
     checked, and how much.
     """
     kept: dict[str, dict] = {}
     ok_count = 0
     rollups: dict[str, dict] = {}
+    waived: dict[str, int] = {}
 
     def roll_up(entry: dict) -> None:
         for key in HONESTY_KEYS:
             if key in entry:
                 _tally(rollups, key, entry[key])
+        if entry.get("waived"):
+            waived[entry["check"]] = waived.get(entry["check"], 0) + 1
 
     for name, entry in report["outputs"].items():
         ok_count += bool(entry["ok"])
         bad = [c for c in entry["checks"] if not c["ok"]]
         if bad:
-            kept[name] = {"ok": entry["ok"], "checks": bad}
+            kept[name] = {**entry, "checks": bad}
         for c in entry["checks"]:
             if c["ok"]:
                 roll_up(c)
@@ -795,13 +799,16 @@ def failures_only(report: dict) -> dict:
     ]
     if accepted:
         out["params_accepted"] = accepted
-    for e in report.get("asserts") or []:
-        if e["ok"]:
-            roll_up(e)
+    for section in ("asset_checks", "asserts"):
+        for e in report.get(section) or []:
+            if e["ok"]:
+                roll_up(e)
     for key in HONESTY_KEYS:
         if key in rollups:
             out[key] = rollups[key]
-    for section in ("ref_assets", "mates", "by_site", "consumers"):
+    if waived:
+        out["waived"] = waived
+    for section in ("ref_assets", "mates", "by_site", "consumers", "profile"):
         if report.get(section):
             out[section] = report[section]
     if report.get("warnings"):

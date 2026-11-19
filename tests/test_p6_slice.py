@@ -556,11 +556,11 @@ def test_overlap_guard_pass_and_fail(tmp_path, monkeypatch):
     assert pair[:2] == ["lower", "upper"] and abs(pair[2] - 0.2) < 1e-6
     assert "overlap" in entry["fix"] and "embedded" in entry["fix"]
 
-    from moraine3d.verify.validate import failures_only
+    from moraine3d.verify.validate import compact
 
-    compact = failures_only(report)
-    assert compact["asserts_total"] == 1 and compact["asserts_ok"] == 0
-    assert compact["asserts"][0]["assert"] == "no_overlap"
+    slim = compact(report)
+    assert slim["asserts_total"] == 1 and slim["asserts_ok"] == 0
+    assert slim["asserts"][0]["assert"] == "no_overlap"
 
 
 def _flush_wall_asset(embed: float) -> str:
@@ -1837,7 +1837,7 @@ def test_distance_asserts_deterministic(tmp_path, monkeypatch):
 
 def test_distance_failures_only_mixed_kinds(tmp_path, monkeypatch):
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
-    from moraine3d.verify.validate import failures_only
+    from moraine3d.verify.validate import compact
 
     entries = [
         {"id": "t", "kind": "contact", "outputs": ["lower", "upper"],
@@ -1845,10 +1845,10 @@ def test_distance_failures_only_mixed_kinds(tmp_path, monkeypatch):
         {"id": "g", "kind": "clearance", "outputs": ["lower", "upper"],
          "min": 0.2, "owner": "agent"},
     ]
-    compact = failures_only(_run_asserts(_dist_asset(1.5, entries)))
+    slim = compact(_run_asserts(_dist_asset(1.5, entries)))
     # The built-in guard rides every report: 3 entries, 1 failing.
-    assert compact["asserts_total"] == 3 and compact["asserts_ok"] == 2
-    assert compact["asserts"][0]["assert"] == "g"
+    assert slim["asserts_total"] == 3 and slim["asserts_ok"] == 2
+    assert slim["asserts"][0]["assert"] == "g"
 
 
 def test_distance_default_constants_pinned():
@@ -2320,19 +2320,19 @@ def test_dimension_asserts_image_unevaluatable(tmp_path, monkeypatch):
         assert e["ok"] is False and "image" in e["fix"] and "measured" not in e
 
 
-def test_dimension_asserts_failures_only(tmp_path, monkeypatch):
-    """--failures-only drops a green dimension entry and keeps a failing
+def test_dimension_asserts_compact(tmp_path, monkeypatch):
+    """The default report drops a green dimension entry and keeps a failing
     one with its `measured` (DESIGN 8.2 compression, 5.2 numbers first)."""
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
-    from moraine3d.verify.validate import failures_only
+    from moraine3d.verify.validate import compact
 
-    compact = failures_only(_dim([
+    slim = compact(_dim([
         {"id": "top", "kind": "extent", "outputs": ["upper"], "measure": "max_y",
          "value": 2.5, "owner": "human"},
         {"id": "n", "kind": "count", "outputs": ["upper"], "value": 2, "owner": "agent"},
     ]))
-    assert compact["asserts_total"] == 3 and compact["asserts_ok"] == 2
-    (entry,) = compact["asserts"]
+    assert slim["asserts_total"] == 3 and slim["asserts_ok"] == 2
+    (entry,) = slim["asserts"]
     assert entry["assert"] == "n" and entry["measured"] == 1
 
 

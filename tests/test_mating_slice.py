@@ -843,7 +843,7 @@ def test_mated_in_a_sub_asset_gates_the_consumer(tmp_path, monkeypatch):
 
     buf = io.StringIO()
     with redirect_stdout(buf):
-        rc = main(["validate", str(project)])
+        rc = main(["validate", str(project), "--full"])
     report = json.loads(buf.getvalue())
     assert rc == 0
     # Green sub-asset entries fold to the per-identity row (DESIGN 4.6):
@@ -919,8 +919,8 @@ def test_contact_unquantified_is_a_top_level_warning(tmp_path, monkeypatch):
     the report's warnings, not only inside its green entry (DESIGN 5.2):
     an output arrayed after the entry was written weakens the entry with
     no file diff, and the note names the `every` fix. Quantifying it
-    removes the row; `--failures-only` keeps warnings."""
-    from moraine3d.verify.validate import failures_only
+    removes the row; the default report keeps warnings."""
+    from moraine3d.verify.validate import compact
 
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
     plain = {"id": "c", "kind": "contact", "outputs": ["row", "probe"],
@@ -931,7 +931,7 @@ def test_contact_unquantified_is_a_top_level_warning(tmp_path, monkeypatch):
     assert rows[0]["assert"] == "c" and rows[0]["outputs"] == ["row"]
     assert '"every": ["row"]' in rows[0]["note"]
     assert report["ok"] is True  # advisory: the entry itself stays green
-    slim = failures_only(report)
+    slim = compact(report)
     assert any(w["warning"] == "contact_unquantified" for w in slim["warnings"])
 
     quantified = dict(plain, every=["row"])
@@ -1297,7 +1297,7 @@ def test_mate_report_carries_the_centroid_fallback_and_the_stronger_mode(tmp_pat
     so the word is the only place it shows. A green `contained` entry
     whose origins also register carries `stronger: "coincident"` (DESIGN
     5.2) — the entry under-claims and nothing else reports it — and both
-    survive `--failures-only`."""
+    survive the default report."""
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
     project = tmp_path / "proj"
     project.mkdir()
@@ -1306,7 +1306,7 @@ def test_mate_report_carries_the_centroid_fallback_and_the_stronger_mode(tmp_pat
         encoding="utf-8",
     )
     flatten.write_project(project, project)
-    report = _validate_project(project)
+    report = _validate_project(project, "--full")
     assert report["mates"] == [
         {"node": "pt03", "anchor": "centroid", "face": "centroid", "site": "proj.star:6"}
     ]
@@ -1315,7 +1315,7 @@ def test_mate_report_carries_the_centroid_fallback_and_the_stronger_mode(tmp_pat
     assert seat["stronger"] == "coincident"
     assert seat["detail"]["origin"] == ["centroid", "centroid"]
 
-    slim = _validate_project(project, "--failures-only")
+    slim = _validate_project(project)
     assert slim["stronger"] == {"entries": 1, "coincident": 1}
     assert slim["mates"] == report["mates"]
     assert "asserts" not in slim  # the green entry itself is still compressed

@@ -359,8 +359,8 @@ cheapest first.
 
 1. `moraine validate` — the built-in checks (contract: `moraine docs
    checks`) plus your asserts, which gate the same way; run it first.
-   `--failures-only` collapses healthy outputs and `unchecked` to
-   counts. After editing a project that other projects reference,
+   The report is counts and the failing entries; `--full` adds the
+   asset's green ones. After editing a project that other projects reference,
    validate the **workspace root** — the sweep is the only check that
    reaches the consumers (`not_swept` names assets it could not).
 2. `moraine stats` — verts/tris/bounds, for reading; a dimension

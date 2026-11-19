@@ -556,7 +556,7 @@ def test_a_referenced_assets_warning_stays_in_its_own_report(tmp_path, monkeypat
     project = write_files(tmp_path / "yard", {"yard.star": yard, "subassets/part.star": part})
 
     def unquantified(target) -> tuple[list, list]:
-        main(["validate", str(target)])
+        main(["validate", str(target), "--full"])
         report = json.loads(capsys.readouterr().out)
         assert report["ok"] is True, report
         rows = [w for w in report.get("warnings", []) if w["warning"] == "contact_unquantified"]

@@ -9,7 +9,7 @@ from moraine3d.core.mesh import Material
 from moraine3d.engine import evaluator
 from moraine3d.engine.evaluator import OpContext
 from moraine3d.ops import array, box, grid, scatter, transform, unwrap
-from moraine3d.verify.validate import failures_only, validate_outputs, validate_value
+from moraine3d.verify.validate import compact, validate_outputs, validate_value
 from support.engine import Evaluation
 
 
@@ -399,13 +399,13 @@ def test_open_inner_surface_is_skipped_not_false_failed():
     assert "not_enclosed" not in _by_name(report["outputs"]["sheet"]["checks"])
 
 
-# -- failures_only (token economy, DESIGN 8.2) --------------------------------
+# -- compact (token economy, DESIGN 8.2) --------------------------------
 
 
-def test_failures_only_collapses_green_report():
+def test_compact_collapses_green_report():
     apart = transform.evaluate([_grounded_box()], {"translate": [2.0, 0.0, 0.0]}, None)
     report = validate_outputs({"a": _grounded_box(), "b": apart})
-    slim = failures_only(report)
+    slim = compact(report)
     assert slim == {
         "ok": True, "outputs_total": 2, "outputs_ok": 2,
         "asset_checks_total": 1, "asset_checks_ok": 1,
@@ -413,11 +413,11 @@ def test_failures_only_collapses_green_report():
     }
 
 
-def test_failures_only_keeps_only_failing_checks():
+def test_compact_keeps_only_failing_checks():
     report = validate_outputs(
         {"good": _grounded_box(), "sunk": box.evaluate([], {}, None)}
     )
-    slim = failures_only(report)
+    slim = compact(report)
     assert slim["ok"] is False
     assert slim["outputs_total"] == 2
     assert slim["outputs_ok"] == 1
@@ -427,14 +427,14 @@ def test_failures_only_keeps_only_failing_checks():
     assert "fix" in kept[0]  # the actionable part survives
 
 
-def test_failures_only_keeps_failing_asset_checks():
+def test_compact_keeps_failing_asset_checks():
     """DESIGN 8.2 / 4.1: the asset_checks list is a gating section —
-    failures_only carries its counts and keeps only failing entries,
+    compact carries its counts and keeps only failing entries,
     like asserts and budgets."""
     floating = transform.evaluate(
         [box.evaluate([], {}, None)], {"translate": [0.0, 2.0, 0.0]}, None
     )
-    slim = failures_only(validate_outputs({"lamp": floating}))
+    slim = compact(validate_outputs({"lamp": floating}))
     assert slim["ok"] is False
     assert slim["asset_checks_total"] == 1
     assert slim["asset_checks_ok"] == 0
@@ -442,23 +442,41 @@ def test_failures_only_keeps_failing_asset_checks():
     assert g["check"] == "grounded" and "fix" in g
 
 
-def test_failures_only_keeps_advisory_warn_checks():
+def test_compact_counts_the_waivers_by_check():
+    """DESIGN 6: a waived check is green, and the default report counts
+    the waivers by check under `waived`, so an asset whose check was
+    waived does not read as one whose check was made."""
+    floating = transform.evaluate(
+        [box.evaluate([], {}, None)], {"translate": [0.0, 2.0, 0.0]}, None
+    )
+    report = validate_outputs(
+        {"lamp": floating, "pad": box.evaluate([], {}, None)},
+        checks_policy={"pad": {"not_sunk": False}},
+        asset_checks={"grounded": False},
+    )
+    slim = compact(report)
+    assert slim["ok"] is True and slim["asset_checks_ok"] == 1
+    assert slim["waived"] == {"not_sunk": 1, "grounded": 1}
+    assert "waived" not in compact(validate_outputs({"m": _grounded_box()}))
+
+
+def test_compact_keeps_advisory_warn_checks():
     # An output can be ok overall while carrying a non-gating level:"warn"
     # check (export profile advisories) — those carry fixes and must survive.
     report = validate_outputs({"m": _grounded_box()})
     report["outputs"]["m"]["checks"].append(
         {"check": "uv_present", "ok": False, "level": "warn", "fix": "unwrap before texturing"}
     )
-    slim = failures_only(report)
+    slim = compact(report)
     assert slim["ok"] is True
     assert slim["outputs_ok"] == 1  # advisory-only output still counts as ok
     assert slim["outputs"]["m"]["ok"] is True
     assert [c["check"] for c in slim["outputs"]["m"]["checks"]] == ["uv_present"]
 
 
-def test_failures_only_passes_warnings_through():
+def test_compact_passes_warnings_through():
     report = validate_outputs({"m": _grounded_box()}, warnings=[{"warning": "attr_drop"}])
-    slim = failures_only(report)
+    slim = compact(report)
     assert slim["warnings"] == [{"warning": "attr_drop"}]
 
 
@@ -727,10 +745,10 @@ def test_asset_budgets_rejections_are_actionable():
         assert e.value.code == code
 
 
-def test_failures_only_carries_budgets():
+def test_compact_carries_budgets():
     """DESIGN 8.2: a failing budget survives compression with its fix and
     identities; a passing one collapses to the counts."""
-    from moraine3d.verify.validate import failures_only
+    from moraine3d.verify.validate import compact
 
     report = {
         "ok": False,
@@ -740,12 +758,12 @@ def test_failures_only_carries_budgets():
              "identities": [], "fix": "share or raise"},
         ],
     }
-    out = failures_only(report)
+    out = compact(report)
     assert out["budgets_total"] == 1 and out["budgets_ok"] == 0
     assert out["budgets"] == report["budgets"]
     report["budgets"][0].update(ok=True, count=4)
     del report["budgets"][0]["fix"]
-    out = failures_only(report)
+    out = compact(report)
     assert out["budgets_total"] == 1 and out["budgets_ok"] == 1
     assert "budgets" not in out
 
@@ -891,7 +909,7 @@ def test_enclosed_copy_is_named_unchecked_not_passed_silently():
     (DESIGN 4.1): one copy swallowed by an opaque container passes, and
     the green entry names the output under unchecked.instanced_copies
     (the asserts convention); with no copy box inside any container box
-    nothing is named, and --failures-only keeps the count."""
+    nothing is named, and the default report keeps the count."""
     hull = transform.evaluate(
         [box.evaluate([], {"size": [3.0, 3.0, 3.0]}, None)], {"translate": [0.0, 1.5, 0.0]}, None
     )
@@ -904,17 +922,17 @@ def test_enclosed_copy_is_named_unchecked_not_passed_silently():
     assert entry == {
         "check": "not_enclosed", "ok": True, "unchecked": {"instanced_copies": ["bits"]},
     }
-    assert failures_only(report)["unchecked"] == {"entries": 1, "instanced_copies": 1}
+    assert compact(report)["unchecked"] == {"entries": 1, "instanced_copies": 1}
 
     clear = array.evaluate([bit], {"count": 2, "step_translate": [5.0, -0.9, 0.0]}, None)
     clear = transform.evaluate([clear], {"translate": [5.0, 0.0, 0.0]}, None)
     report = validate_outputs({"hull": hull, "bits": clear})
     assert "not_enclosed" not in _by_name(report["outputs"]["bits"]["checks"])
-    assert "unchecked" not in failures_only(report)
+    assert "unchecked" not in compact(report)
 
 
-def test_failures_only_rolls_up_green_unchecked_asserts():
-    """DESIGN 6: `--failures-only` keeps the honesty machinery as
+def test_compact_rolls_up_green_unchecked_asserts():
+    """DESIGN 6: the default report keeps the honesty machinery as
     counts. A green contact entry over an instanced output without
     `every` is counted under `unchecked`, with the outputs it did not
     quantify over counted by name; the row is the full report's."""
@@ -931,7 +949,7 @@ def test_failures_only_rolls_up_green_unchecked_asserts():
     )
     entry = next(e for e in report["asserts"] if e["assert"] == "rest")
     assert entry["ok"] is True and entry["unchecked"] == {"instanced_copies": ["bits"]}
-    slim = failures_only(report)
+    slim = compact(report)
     assert "asserts" not in slim
     assert slim["unchecked"] == {"entries": 1, "instanced_copies": 1}
 
@@ -956,7 +974,7 @@ def test_contact_every_entry_carries_the_union_distance():
     assert entry["distance"] <= entry["every_max"][1] <= 1e-5
 
 
-def test_failures_only_rolls_up_every_honesty_key():
+def test_compact_rolls_up_every_honesty_key():
     """The honesty keys are one roster (DESIGN 6): a green guard entry
     that ceded pairs to a declared embed is counted under `ceded` the
     way `unchecked` and `stronger` are — the compressed report still
@@ -970,7 +988,7 @@ def test_failures_only_rolls_up_every_honesty_key():
     )
     guard = next(e for e in report["asserts"] if e["assert"] == "no_overlap")
     assert guard["ok"] is True and guard["ceded"] == {"pairs": [["lower", "upper"]]}
-    slim = failures_only(report)
+    slim = compact(report)
     assert slim["ok"] is True and "asserts" not in slim
     assert slim["ceded"] == {"entries": 1, "pairs": 1}
 

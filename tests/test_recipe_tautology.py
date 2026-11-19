@@ -170,7 +170,7 @@ def test_the_warning_is_the_assets_own_and_reaches_validate(tmp_path, monkeypatc
     })
     assert _rows(build(project / "asset.star", write=False)) == []
     assert len(_rows(build(project / "subassets" / "part.star", write=False))) == 1
-    report, _ = cli._validate_report(project / "subassets" / "part.star", None, True)
+    report, _ = cli._validate_report(project / "subassets" / "part.star", None, False)
     rows = [w for w in report["warnings"] if w["warning"] == "threshold_tautology"]
     assert [r["constant"] for r in rows] == ["W"]
     assert report["asserts_ok"] == report["asserts_total"]

@@ -1917,7 +1917,7 @@ below adds only its measurement and judgment:
   warnings. For the same reason the row is raised by the asset's own
   report alone: a consumer's report keeps the referenced entry and
   its `unchecked` and carries no row, as `flat_shading` is kept to
-  root-asset nodes (§4.1). `--failures-only` rolls the
+  root-asset nodes (§4.1). The default report rolls the
   roster up rather than folding it away (§6).
 - **Owner.** Every authored entry carries `owner: human|agent`
   in the IR, derived from the file that declared it (ownership,
@@ -2313,7 +2313,7 @@ moraine init [DIR]                          # scaffold a workspace: AGENTS.md cr
 moraine build [PROJECT] [--check] [--diff [PATH]]   # recipe → IR under build/ (§4.8); --check compares against the IR on disk and writes nothing; --diff reports the graph change since the last build (or against the IR at PATH)
 moraine eval [PROJECT] [--output NAME] [--recompute]   # build, then evaluate and populate the cache; --recompute = the determinism check (§4.4)
 moraine stats [PROJECT]                     # part/tri/vert counts, bounds, materials — compact JSON
-moraine validate [PROJECT] [--profile gltf] [--param ID=VALUE]   # profile validation report + asserts — compact JSON; --param judges under a knob value and writes nothing
+moraine validate [PROJECT] [--profile gltf] [--full] [--param ID=VALUE]   # checks + asserts as counts and failing entries, the asset's green entries too under --full; --param judges under a knob value and writes nothing
 moraine query [PROJECT] [--output NAME] [--select '{...}'] [--tag NAME] [--instance I]   # face-predicate query over outputs (§5.1), or the faces a tag caught — compact JSON
 moraine export [PROJECT] [--profile gltf] [-o exports/] [--bake-instances] [--recompute]
 moraine serve [PROJECT] [--no-open]         # HTTP+WS server + viewer, watches recipe files and params (workspace root: all projects, viewer picker); opens the viewer unless a tab is already connected (§7.1)
@@ -2508,21 +2508,29 @@ value is a `mismatch` (§4.1). A referenced asset's knobs gate the
 consumer per override identity as its asserts do (§4.6). A failing
 one is listed with its `asset`, and the green ones fold into the
 `ref_assets` row as `params_total` / `params_ok`.
-`--failures-only` compresses every gating list to counts plus
-failures (`budgets_total` / `budgets_ok` and so on) and keeps the
-honesty machinery as counts. It names the knobs that hold an accepted
+The default report states every gating list as counts plus its
+failing entries (`outputs_total` / `outputs_ok`, `budgets_total` /
+`budgets_ok` and so on) and keeps the honesty machinery as counts.
+It names the knobs that hold an accepted
 value (`params_accepted`), since a default the agent edits moves
 nothing while one stands and the green entry that says so is counted
 away. A green entry carrying an `unchecked`,
 `ceded`, or `stronger` key (§5.2) is counted under that key at the top
 level, `entries` and, by name, what the entries hold
 (`"ceded": {"entries": 1, "pairs": 312}`), in a green report and a red
-one alike. The rows are the full report's, and a failing entry keeps
-its own keys whole. `ref_assets` (§4.6), `mates` (§5.1), `by_site`,
-`consumers`, `warnings`, and `serve` pass through. A report that says
-less still says that something was not checked, and how much.
-(Keeping the rows was rejected: a green report of a large asset then
-runs to tens of kilobytes, and its reader greps the counts out.)
+one alike. A waived check is green, and the default report counts the
+waivers by check under `waived` (`{"not_sunk": 2}`), a waiver being a
+check not made. A failing entry keeps its own keys whole. `ref_assets`
+(§4.6), `mates` (§5.1), `by_site`, `consumers`, `warnings`, and
+`serve` are listed whole. A report that says less still says that
+something was not checked, and how much. `--full` lists every entry
+of the asset's own. Of a referenced asset's green entries it lists
+those that carry an `unchecked`, `ceded`, or `stronger` key, and the
+rest stay folded into `ref_assets` (§4.6).
+(The full report as the default was rejected: a green report of a
+large asset runs to tens of kilobytes, and its reader filters the
+counts out before reading it. Keeping the honesty rows in the
+default was rejected on the same ground.)
 `stats` rolls the per-output
 entries up under `asset` in the budget's scope: `parts`, `tris`/`verts`
 as rendered totals with instance counts multiplied in, and
@@ -3403,6 +3411,9 @@ contract. Normative recipe: the guide's authoring-loop section.
   piece_a and piece_c can share one"), never a bare failure flag.
   Actionable errors shorten the agentic loop, which is itself token
   optimization.
+- A report's default is sized by what its reader acts on, not by
+  the asset: `validate` answers with counts and the failing entries,
+  and the green rows are asked for (`--full`, §6).
 - A finding about an asset the runtime can still evaluate is a
   failing entry beside every other entry, as a knob outside its
   declared range is (§6). An error in place of the report hides every
