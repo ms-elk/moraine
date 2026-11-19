@@ -8,6 +8,8 @@ validation (container conformance etc.) lives with the export profiles
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import trimesh
 
@@ -735,6 +737,27 @@ def _tally(tally: dict, key: str, value) -> None:
 GATING_SECTIONS = ("asset_checks", "asserts", "budgets", "params")
 
 
+def _advisory(check: dict) -> bool:
+    return not check["ok"] and check.get("level") == "warn"
+
+
+def advisory_rows(report: dict) -> list[dict]:
+    """The advisory checks of a report as ``warnings`` rows (DESIGN 6):
+    one row per check and fix, naming the ``outputs`` it failed on, so
+    a profile's note on every untextured output is one row."""
+    rows: dict[str, dict] = {}
+    for name, out in report["outputs"].items():
+        for check in out["checks"]:
+            if _advisory(check):
+                said = {k: v for k, v in check.items() if k not in ("ok", "check", "level")}
+                row = rows.setdefault(
+                    json.dumps([check["check"], said], sort_keys=True),
+                    {"check": check["check"], "level": "warn", "outputs": [], **said},
+                )
+                row["outputs"].append(name)
+    return list(rows.values())
+
+
 def _shaped(report: dict, rows: bool) -> dict:
     """A report with its counts and rollups (DESIGN 6), the green rows
     kept (``rows``) or left to the counts. Both forms come from this one
@@ -744,11 +767,11 @@ def _shaped(report: dict, rows: bool) -> dict:
 
     ``outputs_ok`` counts outputs whose gating ``ok`` is true — the same
     ``ok`` shown per output, so the numbers never contradict the
-    entries. Without the rows an output is kept only if it has checks
-    with ``ok: false`` — including advisory ``level: "warn"`` entries
-    from profile checks, which carry fixes and do not gate (such an
-    output is kept *and* counted ok) — and then keeps only those checks,
-    under its own keys. A gating list keeps its failing entries.
+    entries. Without the rows an output is kept only if a gating check
+    of it fails, and then keeps only those checks, under its own keys.
+    A gating list keeps its failing entries. An advisory check
+    (``level: "warn"``) gates nothing and carries a fix, so both forms
+    state it among ``warnings`` (``advisory_rows``).
 
     The honesty machinery is counted in both forms: a green entry that
     carries an honesty key (``HONESTY_KEYS``) is counted under that key,
@@ -771,7 +794,7 @@ def _shaped(report: dict, rows: bool) -> dict:
 
     for name, entry in report["outputs"].items():
         ok_count += bool(entry["ok"])
-        bad = [c for c in entry["checks"] if not c["ok"]]
+        bad = [c for c in entry["checks"] if not c["ok"] and not _advisory(c)]
         if bad:
             kept[name] = {**entry, "checks": bad}
         for c in entry["checks"]:
@@ -816,6 +839,9 @@ def _shaped(report: dict, rows: bool) -> dict:
     for key, value in report.items():
         if key not in out and key != "outputs" and key not in GATING_SECTIONS:
             out[key] = value
+    advisory = advisory_rows(report)
+    if advisory:
+        out["warnings"] = out.get("warnings", []) + advisory
     return out
 
 

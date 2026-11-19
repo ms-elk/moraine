@@ -121,6 +121,7 @@ red), and the other entries say what the shape does there, which is
 how to find where a range should end without editing it. VALUE is JSON
 (`2.4`, `true`, `[1,2,3]`), and for a string knob the text itself.
 An id given twice is refused.
-`--profile <name>` appends the export profile's own checks, whose
-`level: "warn"` entries are advisory, and the report names it under
-`profile`.
+`--profile <name>` appends the export profile's own checks and the
+report names it under `profile`. A `level: "warn"` check is advisory
+and is one `warnings` row per check and `fix`, naming the `outputs`
+it failed on.

@@ -36,7 +36,7 @@ from ..core.glb import build_glb, decompose_trs
 from ..core.mesh import Image, Instances, Value, proto_of
 from ..core.asset import Asset
 from ..errors import MoraineError
-from ..verify.validate import add_by_site, compact
+from ..verify.validate import add_by_site, advisory_rows, compact
 from . import validation
 from .evaluator import Evaluation, evaluate_op_value
 
@@ -325,11 +325,11 @@ def export_asset(
         "manifest": _report_path(manifest_path),
         "outputs": info,
     }
-    warns = [
+    warns = advisory_rows(report) + [
         {**c, "output": name}
         for name, o in report["outputs"].items()
         for c in o["checks"]
-        if c.get("level") == "warn" or c.get("waived")
+        if c.get("waived")
     ]
     # Asset-level waivers surface like per-output ones (no output to
     # name): an export must not be quieter than the validate it gates on.

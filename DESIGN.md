@@ -2520,10 +2520,14 @@ level, `entries` and, by name, what the entries hold
 (`"ceded": {"entries": 1, "pairs": 312}`), in a green report and a red
 one alike. A waived check is green, and the default report counts the
 waivers by check under `waived` (`{"not_sunk": 2}`), a waiver being a
-check not made. A failing entry keeps its own keys whole. `ref_assets`
-(§4.6), `mates` (§5.1), `by_site`, `consumers`, `warnings`, and
-`serve` are listed whole. A report that says less still says that
-something was not checked, and how much. `--full` lists every entry
+check not made. An advisory check (`level: "warn"`, §9.1) failing on
+several outputs is one `warnings` row in the default report, naming
+the check, its `outputs`, and the `fix`, where the full report holds
+a row per output as well. A failing entry keeps its own keys whole.
+`ref_assets` (§4.6), `mates` (§5.1), `by_site`, `consumers`,
+`warnings`, and `serve` are listed whole. A report that says less
+still says that something was not checked, and how much. `--full`
+lists every entry
 of the asset's own. Of a referenced asset's green entries it lists
 those that carry an `unchecked`, `ceded`, or `stronger` key, and the
 rest stay folded into `ref_assets` (§4.6). It changes no key: every

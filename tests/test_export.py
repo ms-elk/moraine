@@ -711,7 +711,7 @@ def test_export_gates_on_asserts(tmp_path, monkeypatch):
     assert result["ok"] is False
     report = result["validation"]
     assert report["ok"] is False
-    assert all(o["ok"] for o in report["outputs"].values())  # outputs green
+    assert report["outputs_ok"] == report["outputs_total"]  # outputs green
     guard = next(e for e in report["asserts"] if e.get("builtin"))
     assert not guard["ok"]  # the guard is what failed
     assert not (tmp_path / "exports" / "clash.glb").exists()

@@ -497,18 +497,26 @@ def test_compact_counts_the_waivers_by_check():
     assert "waived" not in compact(validate_outputs({"m": _grounded_box()}))
 
 
-def test_compact_keeps_advisory_warn_checks():
-    # An output can be ok overall while carrying a non-gating level:"warn"
-    # check (export profile advisories) — those carry fixes and must survive.
-    report = validate_outputs({"m": _grounded_box()})
-    report["outputs"]["m"]["checks"].append(
-        {"check": "uv_present", "ok": False, "level": "warn", "fix": "unwrap before texturing"}
-    )
-    slim = compact(report)
-    assert slim["ok"] is True
-    assert slim["outputs_ok"] == 1  # advisory-only output still counts as ok
-    assert slim["outputs"]["m"]["ok"] is True
-    assert [c["check"] for c in slim["outputs"]["m"]["checks"]] == ["uv_present"]
+def test_an_advisory_check_is_one_warnings_row_naming_its_outputs():
+    """DESIGN 6: an advisory check (`level: "warn"`) failing on several
+    outputs is one `warnings` row naming the check, its outputs, and
+    the fix, in both forms; the full report keeps a row per output
+    too. It gates nothing, so the outputs still count as ok."""
+    report = validate_outputs({
+        "m": _grounded_box(), "n": _box([1.0, 1.0, 1.0], [3.0, 0.5, 0.0]),
+    })
+    for name in ("m", "n"):
+        report["outputs"][name]["checks"].append(
+            {"check": "uv_present", "ok": False, "level": "warn", "fix": "unwrap before texturing"}
+        )
+    row = {"check": "uv_present", "level": "warn", "outputs": ["m", "n"],
+           "fix": "unwrap before texturing"}
+    slim, full = compact(report), with_totals(report)
+    assert slim["ok"] is True and slim["outputs_ok"] == 2
+    assert "outputs" not in slim
+    assert slim["warnings"] == full["warnings"] == [row]
+    assert "uv_present" in [c["check"] for c in full["outputs"]["m"]["checks"]]
+    assert "warnings" not in report  # the report handed in is left as it was
 
 
 def test_compact_passes_warnings_through():

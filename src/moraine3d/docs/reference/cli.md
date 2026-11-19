@@ -168,8 +168,8 @@ is a red report that writes nothing, so the last good export stays.
 
 Before an engine handoff, run `moraine validate --profile gltf` and
 read its report precisely: profile check failures gate the export,
-`level: "warn"` entries are advisory (missing UVs are fine on
-untextured materials). Verify the import with the unmodified GLB:
+`level: "warn"` rows under `warnings` are advisory (missing UVs are
+fine on untextured materials). Verify the import with the unmodified GLB:
 hierarchy (one root node per named output), materials, emissive
 parts, orientation, scale, instances.
 
