@@ -124,5 +124,6 @@ how to find where a range should end without editing it. VALUE is JSON
 An id given twice is refused.
 `--profile <name>` appends the export profile's own checks and the
 report names it under `profile`. A `level: "warn"` check is advisory
-and is one `warnings` row per check and `fix`, naming the `outputs`
-it failed on.
+and is one `warnings` row per check and `fix`: the check's name under
+`warning`, as on every row of the list, and the `outputs` it failed
+on.

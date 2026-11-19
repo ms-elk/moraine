@@ -509,7 +509,7 @@ def test_an_advisory_check_is_one_warnings_row_naming_its_outputs():
         report["outputs"][name]["checks"].append(
             {"check": "uv_present", "ok": False, "level": "warn", "fix": "unwrap before texturing"}
         )
-    row = {"check": "uv_present", "level": "warn", "outputs": ["m", "n"],
+    row = {"warning": "uv_present", "level": "warn", "outputs": ["m", "n"],
            "fix": "unwrap before texturing"}
     slim, full = compact(report), with_totals(report)
     assert slim["ok"] is True and slim["outputs_ok"] == 2

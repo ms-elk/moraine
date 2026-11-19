@@ -70,6 +70,16 @@ def test_command_event_names_the_revision_and_outcome(tmp_path, capsys):
     }
 
 
+def test_the_summary_counts_the_warnings_the_report_states(tmp_path, capsys):
+    """DESIGN 6: the verify outcome carries the warning count, and an
+    advisory check is a `warnings` row of the report in both forms."""
+    proj = _project(tmp_path)
+    for flags in ([], ["--full"]):
+        _, report = _run(["validate", str(proj), "--profile", "gltf", *flags], capsys)
+        assert [w["warning"] for w in report["warnings"]] == ["uv_present"]
+        assert _events(tmp_path)[-1]["summary"]["warnings"] == 1, flags
+
+
 def test_failed_validate_records_the_red_checks(tmp_path, capsys):
     """DESIGN 6: the verify outcome names the gating checks that went
     red, so the record can say what caught a defect."""

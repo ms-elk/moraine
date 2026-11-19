@@ -456,8 +456,11 @@ def _validate_report(
 def _validate_summary(report: dict) -> dict:
     """The session log's compact verify outcome (DESIGN 6): which gating
     checks, asserts, budgets, and knob ranges went red — read from the full report,
-    before the default form reshapes it. Warn-level checks are advisory
-    and stay out of ``failed_checks``."""
+    before the default form reshapes it. Warn-level checks are advisory:
+    they stay out of ``failed_checks`` and count among ``warnings`` as
+    the rows the report states them in."""
+    from ..verify.validate import advisory_rows
+
     outputs = report.get("outputs") or {}
     failed_checks: list[str] = []
     failed_outputs = 0
@@ -480,7 +483,7 @@ def _validate_summary(report: dict) -> dict:
         "asserts_failed": sum(1 for a in report.get("asserts") or [] if not a.get("ok")),
         "budgets_failed": sum(1 for b in report.get("budgets") or [] if not b.get("ok")),
         "params_failed": sum(1 for p in report.get("params") or [] if not p.get("ok")),
-        "warnings": len(report.get("warnings") or []),
+        "warnings": len(report.get("warnings") or []) + len(advisory_rows(report)),
     }
 
 

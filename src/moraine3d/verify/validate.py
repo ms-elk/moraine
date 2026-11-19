@@ -744,7 +744,9 @@ def _advisory(check: dict) -> bool:
 def advisory_rows(report: dict) -> list[dict]:
     """The advisory checks of a report as ``warnings`` rows (DESIGN 6):
     one row per check and fix, naming the ``outputs`` it failed on, so
-    a profile's note on every untextured output is one row."""
+    a profile's note on every untextured output is one row. The check
+    is named under ``warning``, as every row of the list names its
+    kind."""
     rows: dict[str, dict] = {}
     for name, out in report["outputs"].items():
         for check in out["checks"]:
@@ -752,7 +754,7 @@ def advisory_rows(report: dict) -> list[dict]:
                 said = {k: v for k, v in check.items() if k not in ("ok", "check", "level")}
                 row = rows.setdefault(
                     json.dumps([check["check"], said], sort_keys=True),
-                    {"check": check["check"], "level": "warn", "outputs": [], **said},
+                    {"warning": check["check"], "level": "warn", "outputs": [], **said},
                 )
                 row["outputs"].append(name)
     return list(rows.values())
