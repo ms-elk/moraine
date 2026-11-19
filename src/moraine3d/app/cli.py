@@ -1268,6 +1268,10 @@ REFERENCE_FILES = (
     "recipe.md", "asset.md", "ops.md", "textures.md", "checks.md",
     "assertions.md", "cli.md", "journal.md", "examples.md",
 )
+# The commands the reference holds a section for (cli.md).
+DOCUMENTED_COMMANDS = (
+    "build", "query", "screenshot", "export", "pins", "mcp", "cache", "sessions",
+)
 # The one section no file holds: the `mo` namespace, generated from
 # the registries (recipe/api.py) so it cannot lag the build.
 API_DOC = "api"
@@ -1477,15 +1481,23 @@ def _cmd_docs(args) -> int:
             tail.append("examples: " + ", ".join(cited) + "  (moraine docs examples/<name>)")
         _print_text(text + ("\n\n" + "\n".join(tail) if tail else ""))
         return 0
-    # A prefix or substring of a section name or title is the common miss
+    # A command the reference holds no section for answers with its own
+    # help (DESIGN 6): the flags are stated once, in the parser.
+    command = _command_parsers().get(q)
+    if command is not None:
+        _print_text(command.format_help().rstrip())
+        return 0
+    # The start of a word in a section name or title is the common miss
     # (`checker` for `checker_texture`, `assertions` for `Asset
     # assertions`): name the candidates instead of sending the reader back
     # to the full listing — the first token when it carries the query,
-    # else the full title (both resolve as a section argument).
+    # else the full title (both resolve as a section argument). Inside a
+    # word the query is another word's letters (`init` in `definitions`).
+    starts = re.compile(r"(?<![a-z0-9])" + re.escape(q))
     near = sorted({
-        names[n] if q in names[n].lower() else title
+        names[n] if starts.search(names[n].lower()) else title
         for n, (_f, _i, _l, title) in enumerate(headings)
-        if q in names[n].lower() or q in title.lower()
+        if starts.search(names[n].lower()) or starts.search(title.lower())
     })
     hint = f"; did you mean: {', '.join(near)}" if near else ""
     raise MoraineError(
@@ -1494,6 +1506,14 @@ def _cmd_docs(args) -> int:
         f"run 'moraine docs' to list sections",
         **({"did_you_mean": near} if near else {}),
     )
+
+
+def _command_parsers() -> dict[str, argparse.ArgumentParser]:
+    """Each command's parser, by the command's name."""
+    for action in build_parser()._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return dict(action.choices)
+    return {}
 
 
 def _number_types(section: str) -> dict:
@@ -1734,7 +1754,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--port", type=int, default=DEFAULT_PORT, help=status_port_help)
     p.set_defaults(fn=_cmd_stats)
 
-    p = sub.add_parser("validate", help="deterministic geometry checks - compact JSON")
+    p = sub.add_parser(
+        "validate", help="deterministic geometry checks - compact JSON",
+        epilog="What it judges: 'moraine docs checks' (the built-in checks, "
+               "--param) and 'moraine docs \"Asset assertions\"'.",
+    )
     p.add_argument("project", nargs="?", default=".", help=sweep_help)
     # No argparse choices: export.PROFILES is the roster's single source,
     # and its unknown_profile error already lists it — a hardcoded copy
@@ -1923,6 +1947,13 @@ def build_parser() -> argparse.ArgumentParser:
     pc.set_defaults(fn=_cmd_cache_clear)
     pc = pcs.add_parser("evict", help="run LRU eviction down to the size cap now")
     pc.set_defaults(fn=_cmd_cache_evict)
+    # Help says how a command is called and the reference what it
+    # reports (DESIGN 6), so the help of a command with a section names
+    # the section.
+    for name in DOCUMENTED_COMMANDS:
+        p = sub.choices[name]
+        pointer = f"What it reports and how it is used: 'moraine docs {name}'."
+        p.epilog = f"{p.epilog}\n\n{pointer}" if p.epilog else pointer
     return parser
 
 

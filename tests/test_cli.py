@@ -426,6 +426,40 @@ def test_docs_resolves_full_title_prefix_and_hints_on_titles(capsys):
     assert any(c.startswith("Asset assertions") for c in err["detail"]["did_you_mean"])
     # A partial first token stays a near miss, never a silent prefix hit.
     assert main(["docs", "sca"]) == 1
+    capsys.readouterr()
+    # A near miss starts a word: `texture` names the texture operators,
+    # and letters from inside another word name nothing.
+    assert main(["docs", "texture"]) == 1
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert "checker_texture" in err["detail"]["did_you_mean"]
+    assert main(["docs", "initions"]) == 1
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert "did_you_mean" not in err.get("detail", {})
+
+
+def test_docs_answers_every_command_by_name(capsys):
+    """DESIGN 6: `moraine docs <command>` answers for every command,
+    with its section where the reference holds one and with the
+    command's own help where it does not, and the help of a command
+    with a section names the section."""
+    from moraine3d.app.cli import DOCUMENTED_COMMANDS, _command_parsers, main
+
+    commands = _command_parsers()
+    assert "query" in DOCUMENTED_COMMANDS and "validate" not in DOCUMENTED_COMMANDS
+    for name, parser in commands.items():
+        assert main(["docs", name]) == 0, name
+        out = capsys.readouterr().out
+        help_text = " ".join(parser.format_help().split())
+        if name in DOCUMENTED_COMMANDS:
+            assert out.startswith(f"### {name} (CLI, "), name
+            assert f"'moraine docs {name}'" in help_text, name
+        else:
+            assert out.rstrip() == parser.format_help().rstrip(), name
+            assert f"'moraine docs {name}'" not in help_text, name
+    # The help of a command whose contract is a section elsewhere names
+    # that section.
+    assert main(["docs", "validate"]) == 0
+    assert "moraine docs checks" in " ".join(capsys.readouterr().out.split())
 
 
 _SHOT_META = {

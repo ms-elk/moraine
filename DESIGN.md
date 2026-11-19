@@ -2331,6 +2331,12 @@ exception is a page of the shipped reference: `docs SECTION` prints
 the section's own text, which a reader would otherwise need a second
 process to take out of the JSON. The reference is ASCII, so it prints
 on every console. The `docs` listing and every error stay JSON.
+A command's help states how it is called, and the reference what it
+reports and how it is used. Each leads to the other: the help of a
+command with a section names it, and `docs <command>` answers for
+every command, with its section where the reference holds one and
+otherwise with the command's own help, generated from the parser so
+the flags are stated once.
 Every evaluated
 report (`build`, `eval`, `stats`, `validate`, `query`; a sweep's
 `workspace` aggregate) leads with `moraine_version`, the key the
@@ -3407,8 +3413,9 @@ contract. Normative recipe: the guide's authoring-loop section.
   line is mostly the reference, so a reply carrying its neighbors or
   its examples whole would be paid by every reader of one contract.
 - Guide residency: know-how consumed only during a specific working
-  phase lives in the on-demand channels — `moraine docs`, actionable
-  errors, `validate` reports — never in the resident authoring guide.
+  phase lives in the on-demand channels — `moraine docs`, a command's
+  help, actionable errors, `validate` reports — never in the resident
+  authoring guide.
   Resident lines are reserved for rules that must shape behavior
   before the tool can speak. Every resident sentence is a standing
   token cost in every session.
