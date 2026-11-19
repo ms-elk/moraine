@@ -39,7 +39,7 @@ from ..core import asset as asset_mod
 from ..core import sources as sources_mod
 from ..core import workspace as workspace_mod
 from ..core.paths import is_redirect
-from ..core.asset import BUILD_DIR, ASSET_EXT, SUBASSETS_DIR
+from ..core.asset import BUILD_DIR, IR_EXT, SUBASSETS_DIR
 from ..errors import MoraineError
 from ..ops import asset_ref as ref_op
 
@@ -87,7 +87,7 @@ def _named_by_the_writer(path: Path) -> bool:
     """The name grammar of the two directories: ``<name>.mora``, a
     variant ``<name>.<24 hex>.mora``."""
     name = path.name
-    return name.endswith(ASSET_EXT) and name != ASSET_EXT
+    return name.endswith(IR_EXT) and name != IR_EXT
 
 
 def unlink_stale_ir(path: Path, project: Path) -> bool:
@@ -183,7 +183,7 @@ def root_ir(project: Path) -> Path | None:
     if len(found) != 1:
         return None
     stem = found[0].name[: -len(sources_mod.RECIPE_EXT)]
-    return project / BUILD_DIR / f"{stem}{ASSET_EXT}"
+    return project / BUILD_DIR / f"{stem}{IR_EXT}"
 
 
 def walk(project: Path) -> Reach:
@@ -306,7 +306,7 @@ def sweep(project: Path, written: set[Path], *, remove: bool) -> Swept:
                     continue
                 out.unrecognized.append(path)
                 continue
-            if (atomic.in_flight_to(path.name) or "").endswith(ASSET_EXT):
+            if (atomic.in_flight_to(path.name) or "").endswith(IR_EXT):
                 continue  # a writer's own temp, its to rename or remove
             if not _named_by_the_writer(path) or not is_ir(path):
                 out.unrecognized.append(path)

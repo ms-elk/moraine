@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ..errors import AssetError
 from .asset import (
-    BUILD_DIR, LIB_DIR, ASSET_EXT, SUBASSETS_DIR, VARIANT_STEM,
+    BUILD_DIR, LIB_DIR, IR_EXT, SUBASSETS_DIR, VARIANT_STEM,
     ir_home,
 )
 
@@ -95,7 +95,7 @@ def recipe_of(ir_path: Path) -> Path | None:
     if home.name.lower() != BUILD_DIR:
         return None
     sub = path.parent.name.lower() == SUBASSETS_DIR
-    stem = path.name[: -len(ASSET_EXT)]
+    stem = path.name[: -len(IR_EXT)]
     if VARIANT_STEM.search(stem):
         stem = stem.rsplit(".", 1)[0]
     where = home.parent / SUBASSETS_DIR if sub else home.parent

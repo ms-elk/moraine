@@ -292,11 +292,10 @@ surface of the `target` mesh: where, then what, as `place` and `mate`
 take theirs. `count`
 (default 10, 1..1000000; raising it appends copies and leaves the
 earlier ones where they were); `seed` (default 0, 0..2^63-1); `align_normal`
-(JSON bool, default false): instance +Y aligns to the surface normal,
+(boolean, default `False`): instance +Y aligns to the surface normal,
 and a level target leaves the copy's yaw unchanged (the prototype keeps
 its +Z front);
-`rand_yaw` (JSON
-bool, default false),
+`rand_yaw` (boolean, default `False`),
 uniform random rotation about the instance's up axis; `scale_jitter`
 `[lo, hi]` uniform random uniform-scale range (default `[1, 1]`);
 the jitter scales the prototype as authored, so a transform applied

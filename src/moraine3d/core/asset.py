@@ -841,7 +841,7 @@ def loads(text: str) -> Asset:
     )
 
 
-ASSET_EXT = ".mora"
+IR_EXT = ".mora"
 # The directory that marks a workspace root (DESIGN 4.2).
 MORAINE_DIR = ".moraine"
 # Where the build writes (DESIGN 4): a project's IR directly under it
@@ -868,7 +868,7 @@ VARIANT_STEM = re.compile(r"\.[0-9a-f]{24}$")
 
 
 def is_ir_file(path: str | Path) -> bool:
-    return Path(path).name.lower().endswith(ASSET_EXT)
+    return Path(path).name.lower().endswith(IR_EXT)
 
 
 def check_stamp(sc: Asset, expected: str, where: str, *,

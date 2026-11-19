@@ -26,7 +26,7 @@ from ..core import sources as sources_mod
 from ..core import workspace as workspace_mod
 from ..core.brief import LISTED
 from ..core.asset import (
-    BUILD_DIR, LIB_DIR, RESERVED_DIRS, ASSET_EXT, SUBASSETS_DIR,
+    BUILD_DIR, LIB_DIR, RESERVED_DIRS, IR_EXT, SUBASSETS_DIR,
 )
 from ..core.sources import RECIPE_EXT, REQUIREMENTS_EXT
 from ..errors import BuildError, MoraineError
@@ -578,7 +578,7 @@ class _Build:
         if recipe.parent != project:
             where = where / SUBASSETS_DIR
         name = f"{stem}.{identity}" if identity else stem
-        return where / f"{name}{ASSET_EXT}"
+        return where / f"{name}{IR_EXT}"
 
     # -- references -----------------------------------------------
 
@@ -612,7 +612,7 @@ class _Build:
             )
         if isinstance(ref.asset, str):
             target = self._sub_asset(session, ref, project)
-            params["asset"] = ref.asset[: -len(RECIPE_EXT)] + ASSET_EXT
+            params["asset"] = ref.asset[: -len(RECIPE_EXT)] + IR_EXT
         try:
             spec = ref_op.ref_params(params)
         except MoraineError as e:

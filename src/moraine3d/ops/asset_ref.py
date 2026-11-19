@@ -51,7 +51,7 @@ from typing import NamedTuple
 from ..core import numbers
 from ..core.mesh import Image, Value, bind_material, proto_of
 from ..core.asset import (
-    BUILD_DIR, MORAINE_DIR, RESERVED_DIRS, ASSET_EXT, SUBASSETS_DIR,
+    BUILD_DIR, MORAINE_DIR, RESERVED_DIRS, IR_EXT, SUBASSETS_DIR,
     ir_home, project_root,
 )
 from ..errors import OpError, AssetError
@@ -119,7 +119,9 @@ def ref_params(params: dict) -> RefSpec:
         if not isinstance(asset, str) or not asset:
             raise OpError(
                 "bad_param",
-                "asset_ref 'asset' must be a project-relative path like 'subassets/part.mora'",
+                f"asset_ref 'asset' is the project-relative path of the "
+                f"referenced IR, '{SUBASSETS_DIR}/<name>{IR_EXT}', which the "
+                f"build writes",
                 param="asset",
             )
         if "\\" in asset:
@@ -128,10 +130,10 @@ def ref_params(params: dict) -> RefSpec:
                 "asset_ref 'asset' must use forward slashes (portable across platforms)",
                 param="asset",
             )
-        if not asset.endswith(ASSET_EXT):
+        if not asset.endswith(IR_EXT):
             raise OpError(
                 "bad_param",
-                f"asset_ref 'asset' must point at a {ASSET_EXT} file",
+                f"asset_ref 'asset' must point at a {IR_EXT} file",
                 param="asset",
             )
     else:
@@ -152,12 +154,12 @@ def ref_params(params: dict) -> RefSpec:
             )
         if asset is not None and (
             not isinstance(asset, str) or "/" in asset or "\\" in asset
-            or not asset.endswith(ASSET_EXT) or asset == ASSET_EXT
+            or not asset.endswith(IR_EXT) or asset == IR_EXT
         ):
             raise OpError(
                 "bad_param",
                 f"{ONE_LOCATION}; beside 'project' the IR carries the file "
-                f"name of that project's root IR, '<name>{ASSET_EXT}', "
+                f"name of that project's root IR, '<name>{IR_EXT}', "
                 f"which the build writes",
                 param="asset",
             )
@@ -336,7 +338,7 @@ def _variant_name(asset: str, overrides: dict) -> str:
     identity = override_identity(overrides)
     if not identity:
         return asset
-    return f"{asset[: -len(ASSET_EXT)]}.{identity}{ASSET_EXT}"
+    return f"{asset[: -len(IR_EXT)]}.{identity}{IR_EXT}"
 
 
 def resolve_ref(asset_path: Path, spec: RefSpec) -> Path:
@@ -376,7 +378,7 @@ def resolve_ref(asset_path: Path, spec: RefSpec) -> Path:
     if len(parts) != 2 or parts[0] != SUBASSETS_DIR or parts[1] in ("", ".", ".."):
         raise AssetError(
             "ref_layout",
-            f"asset_ref path '{rel}' must be '{SUBASSETS_DIR}/<name>{ASSET_EXT}': "
+            f"asset_ref path '{rel}' must be '{SUBASSETS_DIR}/<name>{IR_EXT}': "
             f"sub-assets live directly under {SUBASSETS_DIR}/, one level deep "
             f"(DESIGN 4.2) - move the asset there",
             path=rel,

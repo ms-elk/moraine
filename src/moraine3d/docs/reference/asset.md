@@ -1,8 +1,8 @@
 # Asset format
 
 The shipped reference: `moraine docs` lists it by file and section,
-`moraine docs <section>` prints one section's contract together with
-the example asset its `Example:` line cites (the index: *Examples*).
+`moraine docs <section>` prints one section's contract and names the
+example assets it cites (the index: *Examples*).
 
 ## A complete minimal asset
 

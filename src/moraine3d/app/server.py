@@ -2049,7 +2049,7 @@ class MoraineServer:
             # itself.
             if any(
                 (
-                    p.lower().endswith((sources_mod.RECIPE_EXT, asset_mod.ASSET_EXT))
+                    p.lower().endswith((sources_mod.RECIPE_EXT, asset_mod.IR_EXT))
                     or Path(p).name.lower() == accepted_mod.PARAMS_FILE
                 )
                 and Path(p).resolve() in self.watched
