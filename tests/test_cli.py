@@ -462,6 +462,37 @@ def test_docs_answers_every_command_by_name(capsys):
     assert "moraine docs checks" in " ".join(capsys.readouterr().out.split())
 
 
+def test_a_command_section_states_every_flag_its_parser_takes(capsys):
+    """DESIGN 6: a section's usage names every flag its command takes,
+    so the reference cannot fall behind the parser unseen."""
+    import argparse
+    import re
+
+    from moraine3d.app.cli import DOCUMENTED_COMMANDS, _command_parsers, main
+
+    def flags(parser):
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                for sub in action.choices.values():
+                    yield from flags(sub)
+            elif action.option_strings and "--help" not in action.option_strings:
+                yield action.option_strings
+
+    commands = _command_parsers()
+    for name in DOCUMENTED_COMMANDS:
+        assert main(["docs", name]) == 0
+        text = " ".join(capsys.readouterr().out.split())
+        # The usage is what the section writes as `moraine <name> ...`.
+        usage = " ".join(re.findall(rf"`(moraine {name}\b[^`]*)`", text))
+        missing = sorted({
+            spellings[-1] for spellings in flags(commands[name])
+            if not any(
+                re.search(rf"(?<![\w-]){re.escape(s)}(?![\w-])", usage) for s in spellings
+            )
+        })
+        assert missing == [], (name, missing)
+
+
 _SHOT_META = {
     "project": "kit",
     "asset": "kit/kit.mora",

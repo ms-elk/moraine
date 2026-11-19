@@ -97,9 +97,10 @@ query read into prose: declare it as an `extent` / `count` assert (see
 ### screenshot (CLI, the pixel tier)
 
 `moraine screenshot [PROJECT] [--view front|iso|... | --azimuth DEG
---elevation DEG] [--distance M] [--target X,Y,Z] [--size WxH] -o
-shot.png` renders pixels through the running server's viewer (it
-opens a tab if none is connected; `no_viewer` names the URL to open).
+--elevation DEG] [--distance M] [--target X,Y,Z] [--size WxH]
+[--param ID=VALUE] [--port N] -o shot.png` renders pixels through the
+running server's viewer (it opens a tab if none is connected;
+`no_viewer` names the URL to open).
 Pixels are tier 3: your diagnostic for what no number covers, never
 the acceptance gate. That is the human's, deciding on your report.
 
@@ -174,9 +175,9 @@ parts, orientation, scale, instances.
 
 ### pins (CLI, the pointing channel)
 
-`moraine pins list | add --output NAME (--select '{...}' | --face N)
-[--instance I] | clear [--id N]` on the running server. A pin is the
-human clicking geometry in the
+`moraine pins (list | add --output NAME (--select '{...}' | --face N)
+[--instance I] | clear [--id N]) [--port N]` on the running server. A
+pin is the human clicking geometry in the
 viewer; `pins list` returns each one resolved into your vocabulary
 (`output`, `instance`, `face`, its `groups`, face fields, and the
 click's world `position`) so you act on structure, never on a guess
@@ -233,10 +234,11 @@ under the OS log directory (`MORAINE_LOG_DIR` overrides; set it empty
 to turn logging off), never inside a workspace, kept 30 days
 (`MORAINE_LOG_KEEP_DAYS`; `0` keeps everything), and read by `moraine
 sessions` and the viewer's timeline alone: nothing leaves the machine.
-`moraine sessions [PATH]`
+`moraine sessions [PATH] [--gap MIN] [--last N | --all]`
 summarizes the events under a workspace root, a project, or any
 directory above them (default the cwd) as sessions (runs of events
-closer than `--gap` minutes, default 30; `--last N` newest, `--all`)
+closer than `--gap` minutes, default 30; the newest one, or `--last N`,
+or `--all`)
 and, per project, rounds: one asset revision carrying at least one
 verification, with its command counts, `validate_ok`, `failed_checks`,
 `ended_by`, `changed_lines`, and wall time. Nothing under the path is

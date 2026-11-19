@@ -2336,7 +2336,8 @@ reports and how it is used. Each leads to the other: the help of a
 command with a section names it, and `docs <command>` answers for
 every command, with its section where the reference holds one and
 otherwise with the command's own help, generated from the parser so
-the flags are stated once.
+the flags are stated once. A section's usage names every flag its
+command takes.
 Every evaluated
 report (`build`, `eval`, `stats`, `validate`, `query`; a sweep's
 `workspace` aggregate) leads with `moraine_version`, the key the
