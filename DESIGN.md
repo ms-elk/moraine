@@ -2448,7 +2448,9 @@ the sweep of the workspace root as the `fix`. Where no project is
 known to reference this one, the `fix` says how to find out, not
 what to check. The list is what the IR on disk says, so a project is
 named until its own build says otherwise. The key is absent where
-every list is empty, and it never gates.
+every list is empty, and it never gates. A sweep's project reports
+leave the key out, since the sweep runs every consumer's checks
+itself.
 
 **`query --select`** evaluates one face predicate (§5.1) over
 evaluated outputs and reports match count, total area,

@@ -107,8 +107,9 @@ lists the asset's green entries too, and of a referenced asset's
 those that carry one of the three keys; its others stay counted in
 its `ref_assets` row. The counts and rollups are in both forms under
 the same keys. A
-workspace sweep nests each project's report and adds `not_swept`: the
-asset files below the project level the sweep did not reach.
+workspace sweep nests each project's report, without `consumers`
+since it checks them itself, and adds `not_swept`: the asset files
+below the project level the sweep did not reach.
 Every entry that names an output, an assert, or a knob carries its
 `site`, the recipe file and line to edit, with `via` where it was
 made inside a function (see *ids*).

@@ -291,7 +291,8 @@ def test_a_report_names_the_projects_that_reference_this_one(tmp_path, capsys):
     """DESIGN 6: `build` and `validate` name the other projects whose
     roots reach an asset of the target's project, so a change here is
     followed by a check there. Both forms of the report carry the
-    key."""
+    key, and a sweep's project reports leave it out, since the sweep
+    runs every consumer's checks itself."""
     ws = _ws(tmp_path)
     _run(["build", str(ws / "a")], capsys)
     for argv in (["build", str(ws / "c")], ["validate", str(ws / "c")],
@@ -302,6 +303,9 @@ def test_a_report_names_the_projects_that_reference_this_one(tmp_path, capsys):
         assert "workspace root" in out["consumers"]["fix"]
     assert _run(["validate", str(ws / "d")], capsys)["consumers"]["projects"] == ["a", "c"]
     assert "consumers" not in _run(["validate", str(ws / "a")], capsys)
+    swept = _run(["validate", str(ws)], capsys)["projects"]
+    assert set(swept) >= {"a", "c", "d"}
+    assert not [name for name, report in swept.items() if "consumers" in report]
 
 
 def test_a_project_that_stopped_referencing_is_named_no_more(tmp_path, capsys):

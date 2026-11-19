@@ -401,6 +401,7 @@ def _offered_values(asset_path: Path, given: dict[str, str]) -> dict:
 
 def _validate_report(
     asset_path: Path, profile, full, given: dict | None = None,
+    swept: bool = False,
 ) -> tuple[dict, bool]:
     from ..engine import validation
     from ..verify.validate import add_by_site, compact, with_totals
@@ -430,9 +431,13 @@ def _validate_report(
         report["mates"] = mates
     if opened.build is not None and opened.build.warnings:
         report["warnings"] = report.get("warnings", []) + opened.build.warnings
-    if opened.build is not None and opened.build.swept.readers is not None:
+    if (
+        not swept and opened.build is not None
+        and opened.build.swept.readers is not None
+    ):
         # The projects that reference this one (DESIGN 6): its own
         # checks do not run theirs, so the report says who to check.
+        # A sweep runs them, and says nothing.
         report["consumers"] = opened.build.swept.readers
     if profile is not None:
         from ..engine.export import profile_checks
@@ -493,7 +498,7 @@ def _cmd_validate(args) -> int:
     if isinstance(target, workspace_mod.Workspace):
         projects, failed = _sweep(
             target,
-            lambda p: _validate_report(p, args.profile, args.full),
+            lambda p: _validate_report(p, args.profile, args.full, swept=True),
         )
         roll = _sweep_rollup(
             target,
