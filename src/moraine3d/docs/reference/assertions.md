@@ -690,11 +690,13 @@ Examples: `examples/stairs`, `examples/scatter_field`.
 
 Optional, declared as `mo.budget(materials = 4)`
 in the asset's requirements file. A declared budget gates `validate` like
-an assertion. The report gains a top-level `budgets` list with one
-entry per declared budget (`budget`, `ok`, `count`, `limit`, and for
-`materials` the `identities`, each `{name, outputs, transparent,
-emissive}`, plus a `fix` on failure) and `ok` is false above the
-limit; an undeclared budget is not checked at all (there is no built-in
+an assertion. The report counts the declared budgets (`budgets_total`
+/ `budgets_ok`) and lists a failing one under a top-level `budgets`;
+`validate --full` lists one entry per declared budget, so a green
+one's `count` and `limit` are read there (`budget`, `ok`, `count`,
+`limit`, and for `materials` the `identities`, each `{name, outputs,
+transparent, emissive}`, plus a `fix` on failure). `ok` is false above
+the limit; an undeclared budget is not checked at all (there is no built-in
 default; `moraine stats` always reports `asset.materials`, the
 identities this asset ships, by name, the same scope the budget
 counts, so headroom is visible before declaring one; the two counts
