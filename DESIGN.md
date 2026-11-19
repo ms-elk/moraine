@@ -2474,7 +2474,9 @@ dumps one line per node. The touch-on-hit that feeds the counters is
 the §4.5 LRU signal. Under `--recompute` (§4.4) `eval` and `export`
 add `recompute` — `nodes`, `matched`, `unrecorded`, and on a mismatch
 `mismatched_total` with the first few `mismatched` nodes and a `fix`
-naming the op — and exit 1 with the report intact. A mismatched
+naming the op — and exit 1 with the report intact. `export` counts
+the nodes its validate evaluates as well, a referenced asset's
+outputs that no root output consumes (§4.6). A mismatched
 output carries `mismatched: true` in place of its artifact, and
 `export` then reports `ok: false` and writes nothing (a GLB from
 values the cache disagrees with is not an export to trust; the last

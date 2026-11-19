@@ -155,3 +155,41 @@ def test_export_recompute_writes_identical_bytes(tmp_path, monkeypatch, capsys):
     assert main(["export", str(d), "-o", "third", "--recompute"]) == 1
     out = json.loads(capsys.readouterr().out)
     assert out["ok"] is False and out["recompute"]["mismatched"][0]["node"] == "b1"
+
+
+def test_export_recompute_covers_what_its_validate_evaluates(tmp_path, monkeypatch, capsys):
+    """DESIGN 4.4, 6: `export --recompute` recomputes every node, and its
+    verdict covers the ones its validate evaluates: a referenced asset's
+    output that no root output consumes is counted, and a mismatch there
+    writes nothing."""
+    from moraine3d.engine.evaluator import Evaluation as Evaluated
+    from moraine3d.recipe import target as target_mod
+    from support.recipes import write_files
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    part = (
+        'mo.output("a", mo.transform(mo.box(id = "ab", size = [1, 1, 1]), id = "at",'
+        ' translate = [0, 0.5, 0]))\n'
+        # Another size than `ab`: equal boxes are one record under one key.
+        'mo.output("b", mo.transform(mo.box(id = "bb", size = [2, 1, 1]), id = "bt",'
+        ' translate = [3, 0.5, 0]))\n'
+    )
+    yard = 'mo.output("a", mo.asset_ref("subassets/part.star", "a", id = "r"))\n'
+    d = write_files(tmp_path / "yard", {"yard.star": yard, "subassets/part.star": part})
+    assert main(["validate", str(d)]) == 0  # the records, `b`'s included
+    capsys.readouterr()
+
+    assert main(["export", str(d), "-o", "exports", "--recompute"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["recompute"] == {"nodes": 4, "matched": 4, "unrecorded": 0}
+    before = {p.name: p.read_bytes() for p in (d / "exports").iterdir()}
+
+    opened = target_mod.open_target(d / "subassets" / "part.star")
+    ev = Evaluated(opened.asset, **opened.inputs)
+    ev.records()
+    _tamper(tmp_path, ev._eval_node(opened.asset, "bb").key)
+    assert main(["export", str(d), "-o", "exports", "--recompute"]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["ok"] is False
+    assert [m["node"] for m in out["recompute"]["mismatched"]] == ["bb"]
+    assert {p.name: p.read_bytes() for p in (d / "exports").iterdir()} == before

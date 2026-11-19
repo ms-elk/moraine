@@ -706,8 +706,12 @@ def _cmd_export(args) -> int:
         # cached records means the recomputed bytes are not the ones a
         # warm cache would have exported - not an export to trust, so
         # nothing is written and the last good export stays in place
-        # (the same rule as a validation failure, DESIGN 8.2).
+        # (the same rule as a validation failure, DESIGN 8.2). The
+        # export's validate also evaluates what no root output consumes
+        # (a referenced asset's other outputs, DESIGN 4.6): evaluated
+        # here, so the verdict covers every node the command recomputes.
         ev.records()
+        ev.ref_asserts()
         recompute = ev.recompute_report()
         summary["recompute_mismatched"] = recompute.get("mismatched_total", 0)
     if recompute is not None and summary["recompute_mismatched"]:
