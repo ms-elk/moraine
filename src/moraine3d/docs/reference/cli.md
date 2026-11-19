@@ -166,6 +166,17 @@ directory (`screenshot -o` stays cwd-relative). `--recompute` proves
 byte-identical re-export, never overwriting a cache record; a mismatch
 is a red report that writes nothing, so the last good export stays.
 
+The report says what the export proved beside what it wrote:
+`validation`, the gate's counts as `validate --profile` states them
+(with the failing entries when red); `recompute` under the flag
+(`nodes`, `matched`, `unrecorded`); `glb` and `manifest`, the files;
+and `warnings`, the advisory rows. `PROJECT` may be the workspace
+root: every project is exported, each gated by its own validation,
+and `workspace.recompute` sums the verdicts. So one `moraine export
+<workspace root> --recompute` is the sweep, the export, and the
+determinism check of a handoff. A red project writes nothing and is
+named under `workspace.failed`, and its siblings export.
+
 Before an engine handoff, run `moraine validate --profile gltf` and
 read its report precisely: profile check failures gate the export,
 `level: "warn"` rows under `warnings` are advisory (missing UVs are

@@ -171,10 +171,12 @@ TOOLS: dict[str, tuple[str, dict, object]] = {
     ),
     "export": (
         "Write glTF (GLB) + manifest for an export profile; requires a green "
-        "validate (waivers included). Returns the export report with the "
-        "written paths.",
+        "validate (waivers included). Returns the export report: the gate's "
+        "validation counts, the recompute verdict when asked for, and the "
+        "written paths. A workspace root exports every project.",
         _schema({
-            "project": _str(_PROJECT_HELP),
+            "project": _str(_PROJECT_HELP + "; a workspace root exports every "
+                            "project, each gated by its own validate"),
             "profile": _str("export profile (default: gltf)"),
             "out": _str("output directory; a relative path resolves against "
                         "the project (default: exports)"),

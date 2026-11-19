@@ -1363,11 +1363,10 @@ def test_validate_sweep_with_broken_sibling_fails_both_slots(tmp_path, monkeypat
     assert out["workspace"]["failed"] == ["alpha", "beta"]
 
 
-def test_write_commands_reject_workspace_target(tmp_path, monkeypatch, capsys):
-    """eval/query/export take one project per invocation (DESIGN 6):
+def test_one_project_commands_reject_workspace_target(tmp_path, monkeypatch, capsys):
+    """`eval` and `query` take one project per invocation (DESIGN 6):
     a workspace target is the actionable workspace_target error listing
-    the discovered projects, not a bare asset_not_found. (serve accepts
-    a workspace root since multi-asset serve, DESIGN 7.2.)"""
+    the discovered projects, not a bare asset_not_found."""
     import json
 
     from moraine3d.app.cli import main
@@ -1376,12 +1375,158 @@ def test_write_commands_reject_workspace_target(tmp_path, monkeypatch, capsys):
     ws = _write_workspace(tmp_path)
 
     for argv in (["eval", str(ws)],
-                 ["query", str(ws), "--select", '{"normal_y": {"gt": 0.9}}'],
-                 ["export", str(ws)]):
+                 ["query", str(ws), "--select", '{"normal_y": {"gt": 0.9}}']):
         assert main(argv) == 1
         err = json.loads(capsys.readouterr().out)["error"]
         assert err["code"] == "workspace_target"
         assert err["detail"]["projects"] == ["alpha", "beta"]
+
+
+def test_export_sweeps_a_workspace_and_says_what_it_proved(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: a workspace root exports every project, and each
+    report says what the export proved beside what it wrote: the gate's
+    `validation`, the determinism verdict under `--recompute`, and the
+    files. The `workspace` aggregate sums the verdicts."""
+    import json
+    from pathlib import Path
+
+    from moraine3d import dist_version
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    monkeypatch.chdir(ws)
+
+    assert main(["export", ".", "--recompute"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert list(out["projects"]) == ["alpha", "beta"]
+    for name, report in out["projects"].items():
+        proved = report["validation"]
+        assert report["ok"] is True and proved["ok"] is True
+        assert proved["profile"] == "gltf"
+        assert (proved["outputs_total"], proved["outputs_ok"]) == (1, 1)
+        assert "warnings" not in proved  # the report's own list carries them
+        assert report["recompute"]["nodes"] == 1
+        assert report["glb"] == str(Path(name) / "exports" / f"{name}.glb")
+        assert (ws / name / "exports" / f"{name}.manifest.json").is_file()
+    # Each project recomputed its one node: unrecorded on a cold cache,
+    # matched once a record is there to compare with.
+    assert out["workspace"] == {
+        "moraine_version": dist_version(),
+        "ok": True, "projects": 2, "failed": [],
+        "recompute": {"nodes": 2, "matched": 1, "unrecorded": 1},
+        "not_swept": [],
+    }
+
+
+def test_export_sweep_gates_each_project_on_its_own_validation(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: in a sweep a red project writes nothing and its
+    siblings export, and the sweep exits 1 naming it."""
+    import json
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    _recipe(ws / "beta", ASSET, "beta")  # no waiver: the box is sunk
+
+    assert main(["export", str(ws)]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["workspace"]["failed"] == ["beta"]
+    assert out["projects"]["alpha"]["ok"] is True
+    assert (ws / "alpha" / "exports" / "alpha.glb").is_file()
+    red = out["projects"]["beta"]
+    assert red["ok"] is False and "glb" not in red
+    [check] = red["validation"]["outputs"]["main"]["checks"]
+    assert check["check"] == "not_sunk"
+    assert not (ws / "beta" / "exports").exists()
+
+
+def test_export_sweep_refuses_two_projects_writing_one_file(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: two projects whose files would land on one path are
+    refused before anything is evaluated."""
+    import json
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = tmp_path / "ws"
+    (ws / ".moraine").mkdir(parents=True)
+    for name in ("alpha", "beta"):
+        _recipe(ws / name, GREEN_ASSET, "asset")
+
+    assert main(["export", str(ws), "-o", "../exports"]) == 1
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert err["code"] == "export_stem_collision"
+    assert err["detail"]["projects"] == ["alpha", "beta"]
+    assert not (ws / "exports").exists()
+    assert not list((tmp_path / "cache").rglob("*"))  # nothing evaluated
+
+    assert main(["export", str(ws)]) == 0  # each project's own directory
+    out = json.loads(capsys.readouterr().out)
+    assert (ws / "alpha" / "exports" / "asset.glb").is_file()
+    assert (ws / "beta" / "exports" / "asset.glb").is_file()
+    assert out["workspace"]["ok"] is True
+
+
+def test_export_sweep_compares_the_paths_as_a_folding_volume_would(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: the paths two projects would write are compared with
+    their case folded, since the volume may fold it: stems apart by
+    case alone are one file there, and the later would overwrite the
+    earlier."""
+    import json
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = tmp_path / "ws"
+    (ws / ".moraine").mkdir(parents=True)
+    _recipe(ws / "alpha", GREEN_ASSET, "Chair")
+    _recipe(ws / "beta", GREEN_ASSET, "chair")
+
+    assert main(["export", str(ws), "-o", str(tmp_path / "out")]) == 1
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert err["code"] == "export_stem_collision"
+    assert not (tmp_path / "out").exists()
+
+
+def test_export_sweep_goes_on_past_a_directory_it_cannot_make(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: a project that fails to export fails in its own slot
+    and its siblings export. Here a file stands where the first
+    project's export directory would be made."""
+    import json
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    (ws / "alpha" / "exports").write_text("not a directory", encoding="utf-8")
+
+    assert main(["export", str(ws)]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["projects"]["alpha"]["error"]["code"] == "export_unwritable"
+    assert out["projects"]["beta"]["ok"] is True
+    assert (ws / "beta" / "exports" / "beta.glb").is_file()
+    assert out["workspace"]["failed"] == ["alpha"]
+
+
+def test_export_reports_the_path_it_wrote(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: `export`'s paths are cwd-relative when the target is
+    inside cwd, so an `-o` that climbs out of the project is reported
+    as the path written, not as the climb."""
+    import json
+    from pathlib import Path
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    monkeypatch.chdir(ws)
+
+    assert main(["export", "alpha", "-o", "../exports"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["glb"] == str(Path("exports") / "alpha.glb")
+    assert (ws / "exports" / "alpha.glb").is_file()
 
 
 def test_export_out_resolves_against_project(tmp_path, monkeypatch, capsys):

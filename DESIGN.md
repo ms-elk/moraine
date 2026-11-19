@@ -2315,7 +2315,7 @@ moraine eval [PROJECT] [--output NAME] [--recompute]   # build, then evaluate an
 moraine stats [PROJECT]                     # part/tri/vert counts, bounds, materials — compact JSON
 moraine validate [PROJECT] [--profile gltf] [--full] [--param ID=VALUE]   # checks + asserts as counts and failing entries, the asset's green entries too under --full; --param judges under a knob value and writes nothing
 moraine query [PROJECT] [--output NAME] [--select '{...}'] [--tag NAME] [--instance I]   # face-predicate query over outputs (§5.1), or the faces a tag caught — compact JSON
-moraine export [PROJECT] [--profile gltf] [-o exports/] [--bake-instances] [--recompute]
+moraine export [PROJECT] [--profile gltf] [-o exports/] [--bake-instances] [--recompute]   # validate, then write GLB + manifest; a workspace root exports every project
 moraine serve [PROJECT] [--no-open]         # HTTP+WS server + viewer, watches recipe files and params (workspace root: all projects, viewer picker); opens the viewer unless a tab is already connected (§7.1)
 moraine screenshot [PROJECT] [--view front|iso|... | --azimuth DEG --elevation DEG] [--distance M] [--target X,Y,Z] [--size WxH] [--param ID=VALUE] -o shot.png   # via running server; shoots PROJECT (default: cwd's); --param shoots it under a knob value and writes nothing
 moraine docs [SECTION]                      # shipped reference: recipe API, asset format, op contracts, textures, checks, assertions, CLI, journal, examples, and the generated `mo` namespace; a section prints alone, as text, naming the sections under it and the examples it cites; SECTION = examples/<name> prints one
@@ -2351,19 +2351,20 @@ under `subassets/`, §4.6). Every evaluating command builds first, the
 closure included (§4.6), and a build failure is the command's failure,
 reported with the recipe site. A `.mora` path is accepted as an escape
 hatch for the runtime's own debugging (it evaluates that IR as given)
-and never classifies a project (§4.2). Read-side commands (`validate`,
-`stats`) also accept a workspace directory (§4.2) and sweep its projects
+and never classifies a project (§4.2). `validate`, `stats`, and
+`export` also accept a workspace directory (§4.2) and sweep its projects
 into one rollup: `{"projects": {<name>: <report>}, "workspace":
 <aggregate>}`, the per-project shape identical to the single-project
 command so same-named outputs never collide. The sweep exits 0 only when
-every project passes, 1 when any fails to load, evaluate, or validate. A
+every project passes, 1 when any fails to load, evaluate, validate, or
+export. A
 workspace with no projects is an error (`empty_workspace`), never an
 empty green sweep. The aggregate carries `not_swept` (§4.2) and stays a
 plain per-project sum under cross-project references. Every project's
 GLB is self-contained, so the sum reads as shipped-per-project content,
 not a deduplicated source count. `serve` accepts a workspace root and
 serves all its projects, starting on the lexicographically first (§7.2).
-Write-side commands (`eval`, `export`) take one project or asset per
+`eval` and `query` take one project or asset per
 invocation. Pointed at a workspace, they fail with an actionable
 `workspace_target` error listing its projects.
 
@@ -2476,13 +2477,30 @@ dumps one line per node. The touch-on-hit that feeds the counters is
 the §4.5 LRU signal. Under `--recompute` (§4.4) `eval` and `export`
 add `recompute` — `nodes`, `matched`, `unrecorded`, and on a mismatch
 `mismatched_total` with the first few `mismatched` nodes and a `fix`
-naming the op — and exit 1 with the report intact. `export` counts
-the nodes its validate evaluates as well, a referenced asset's
-outputs that no root output consumes (§4.6). A mismatched
-output carries `mismatched: true` in place of its artifact, and
-`export` then reports `ok: false` and writes nothing (a GLB from
-values the cache disagrees with is not an export to trust; the last
-good export stays).
+naming the op — and exit 1 with the report intact. A mismatched
+output of `eval` carries `mismatched: true` in place of its artifact.
+
+**`export`** runs the `validate` of its profile as a gate and reports
+what it proved beside what it wrote. `validation` is the gate's
+report in the default form (below). `recompute` is taken after the
+gate has run and before the first write, so it covers every node the
+command evaluated, a referenced asset's outputs that no root output
+consumes among them (§4.6). `outputs` is the per-output record the
+manifest holds. `ok` is true only when the gate is green, no node
+mismatched, and both files are written. A red gate or a mismatched
+node writes nothing, and the last good export stays: a GLB from
+values the cache disagrees with is not an export to trust. A write
+that fails between the two files leaves the interrupted pair of §9.
+A green export lists the gate's advisory rows (a `warn`-level profile
+check, a waiver, a build warning) under its own `warnings`, so it is
+no quieter than its gate.
+In a sweep each project is gated by its own validation: a red
+project writes nothing and its siblings export, every GLB being
+self-contained. The `workspace` aggregate sums `recompute` over the
+projects. Two projects whose files would land on one path are refused
+before anything is evaluated (`export_stem_collision`). The paths are
+compared with their links resolved and their case folded, since the
+volume may fold it.
 
 **`validate` report keys beyond the checks.** Every entry that names a
 node or an assert carries its recipe `site` (§4.1), and one made
@@ -2512,30 +2530,25 @@ one is listed with its `asset`, and the green ones fold into the
 `ref_assets` row as `params_total` / `params_ok`.
 The default report states every gating list as counts plus its
 failing entries (`outputs_total` / `outputs_ok`, `budgets_total` /
-`budgets_ok` and so on) and keeps the honesty machinery as counts.
-It names the knobs that hold an accepted
+`budgets_ok` and so on). It names the knobs that hold an accepted
 value (`params_accepted`), since a default the agent edits moves
 nothing while one stands and the green entry that says so is counted
 away. A green entry carrying an `unchecked`,
 `ceded`, or `stronger` key (§5.2) is counted under that key at the top
 level, `entries` and, by name, what the entries hold
 (`"ceded": {"entries": 1, "pairs": 312}`), in a green report and a red
-one alike. A waived check is green, and the default report counts the
-waivers by check under `waived` (`{"not_sunk": 2}`), a waiver being a
-check not made. An advisory check (`level: "warn"`, §9.1) failing on
-several outputs is one `warnings` row in the default report, naming
-the check, its `outputs`, and the `fix`, where the full report holds
-a row per output as well. A failing entry keeps its own keys whole.
-`ref_assets` (§4.6), `mates` (§5.1), `by_site`, `consumers`,
-`warnings`, and `serve` are listed whole. A report that says less
-still says that something was not checked, and how much. `--full`
-lists every entry
-of the asset's own. Of a referenced asset's green entries it lists
-those that carry an `unchecked`, `ceded`, or `stronger` key, and the
-rest stay folded into `ref_assets` (§4.6). It changes no key: every
-count and rollup of the default report is in the full one under the
-same name with the same value, so a reader written for one reads the
-other.
+one alike. A waived check is green, so the waivers are counted by
+check under `waived` (`{"not_sunk": 2}`). An advisory check
+(`level: "warn"`, §9.1) is stated once, as a `warnings` row naming
+the check, the `outputs` it failed on, and the `fix`, and the full
+report holds its row per output as well. A failing entry keeps its
+own keys whole. `ref_assets` (§4.6), `mates` (§5.1), `by_site`,
+`consumers`, `warnings`, and `serve` are listed whole. A report that
+says less still says that something was not checked, and how much.
+`--full` adds the asset's green rows, a referenced asset's staying
+folded as §4.6 folds them, and changes no key: every count and rollup
+of the default report is in the full one under the same name with the
+same value, so a reader written for one reads the other.
 (The full report as the default was rejected: a green report of a
 large asset runs to tens of kilobytes, and its reader filters the
 counts out before reading it. Keeping the honesty rows in the
@@ -3422,8 +3435,11 @@ contract. Normative recipe: the guide's authoring-loop section.
   optimization.
 - A report's default is sized by what its reader acts on, not by
   the asset: `validate` answers with counts and the failing entries,
-  and the green rows are asked for (`--full`, §6). The fuller form
-  adds rows and changes no key, so one reader serves both.
+  and the green rows are asked for (`--full`, §6).
+- A proof is one command's report, never a script over several:
+  `export` on a workspace root is the sweep, the export, and the
+  determinism check of a handoff (§6). Every call is a round trip,
+  whatever it returns.
 - A finding about an asset the runtime can still evaluate is a
   failing entry beside every other entry, as a knob outside its
   declared range is (§6). An error in place of the report hides every

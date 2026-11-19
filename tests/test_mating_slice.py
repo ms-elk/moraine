@@ -1320,6 +1320,16 @@ def test_mate_report_carries_the_centroid_fallback_and_the_stronger_mode(tmp_pat
     assert slim["mates"] == report["mates"]
     assert "asserts" not in slim  # the green entry itself is still compressed
 
+    # DESIGN 6: an export's `validation` is the gate's report, the rows
+    # of its mates among it.
+    import io
+    from contextlib import redirect_stdout
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        main(["export", str(project)])
+    assert json.loads(buf.getvalue())["validation"]["mates"] == report["mates"]
+
     # The duct joint registers on openings: the words say so.
     duct = tmp_path / "duct"
     duct.mkdir()

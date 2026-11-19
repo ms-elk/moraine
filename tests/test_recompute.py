@@ -114,7 +114,8 @@ def test_export_recompute_mismatch_writes_nothing(tmp_path, monkeypatch, capsys)
     assert main(["export", str(d), "-o", "exports", "--recompute"]) == 1
     out = json.loads(capsys.readouterr().out)
     assert out["ok"] is False and out["recompute"]["mismatched_total"] == 1
-    assert "fix" in out and out["outputs"] == {}
+    assert "fix" in out and "glb" not in out
+    assert out["validation"]["ok"] is True  # the gate ran, and was green
     assert {p.name: p.read_bytes() for p in (d / "exports").iterdir()} == before
 
 

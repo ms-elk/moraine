@@ -165,7 +165,7 @@ def _no_projects_error(ws: workspace_mod.Workspace) -> MoraineError:
 
 
 def _resolve_asset(path_arg) -> Path:
-    """Single-asset resolution (eval, query, export): a workspace
+    """Single-asset resolution (eval, query): a workspace
     target is an actionable error, never a fall-through to the bare
     asset_not_found (DESIGN 6: these commands take one project per
     invocation; serve routes workspaces through _resolve_target)."""
@@ -426,9 +426,6 @@ def _validate_report(
         opened = _open(asset_path)
     ev = _evaluation(opened, preview=bool(given))
     report, values = validation.report(opened.asset, ev)
-    mates = ev.mate_frames()
-    if mates:
-        report["mates"] = mates
     if opened.build is not None and opened.build.warnings:
         report["warnings"] = report.get("warnings", []) + opened.build.warnings
     if (
@@ -664,10 +661,35 @@ def _build_diff(result, base: str) -> dict:
     return diff_mod.report(diffs, shown, base or "disk")
 
 
-def _cmd_export(args) -> int:
+def _export_out_dir(out: str, project_dir: Path) -> Path:
+    """Where an export of this project lands (DESIGN 6). A relative -o
+    anchors to the project, not the shell cwd: an export is a project
+    artifact, so the guide's `-o exports/` idiom lands inside the
+    project from any invocation directory. screenshot -o stays
+    cwd-relative by design - a screenshot is a session artifact."""
+    import os
+
+    out_dir = Path(out)
+    if not out_dir.is_absolute():
+        # Windows drive-relative ('D:exports') and rooted ('\\exports')
+        # spellings are not absolute, yet joining would discard the
+        # project anchor - refuse rather than write somewhere silent.
+        if out_dir.drive or out_dir.root:
+            raise MoraineError(
+                "bad_out_dir",
+                f"-o '{out}' is drive-relative or rooted; pass a "
+                "plain relative path (resolved against the project) or "
+                "a fully absolute path",
+            )
+        out_dir = project_dir / out_dir
+    # Folded, so `-o ../exports` reports the path it wrote and two
+    # projects sharing a directory are seen to.
+    return Path(os.path.normpath(out_dir))
+
+
+def _export_report(asset_path: Path, args) -> tuple[dict, bool]:
     from ..engine.export import export_asset
 
-    asset_path = _resolve_asset(args.project)
     opened = _open(asset_path)
     sc = opened.asset
     project_dir = asset_mod.project_root(asset_path)
@@ -679,69 +701,86 @@ def _cmd_export(args) -> int:
         and sources_mod.asset_files(project_dir)
     ):
         root_asset = sources_mod.resolve(project_dir)
-        if root_asset.stem == asset_path.stem:
+        if root_asset.stem.casefold() == asset_path.stem.casefold():
             raise MoraineError(
                 "export_stem_collision",
                 f"sub-asset '{asset_path.name}' shares its stem with the "
                 f"project's root asset, so its export would overwrite "
                 f"'{root_asset.stem}.glb' - rename the sub-asset file",
             )
-    # A relative -o anchors to the project, not the shell cwd: an export
-    # is a project artifact, so the guide's `-o exports/` idiom lands
-    # inside the project from any invocation directory. screenshot -o
-    # stays cwd-relative by design - a screenshot is a session artifact.
-    out_dir = Path(args.out)
-    if not out_dir.is_absolute():
-        # Windows drive-relative ('D:exports') and rooted ('\\exports')
-        # spellings are not absolute, yet joining would discard the
-        # project anchor - refuse rather than write somewhere silent.
-        if out_dir.drive or out_dir.root:
-            raise MoraineError(
-                "bad_out_dir",
-                f"-o '{args.out}' is drive-relative or rooted; pass a "
-                "plain relative path (resolved against the project) or "
-                "a fully absolute path",
-            )
-        out_dir = project_dir / out_dir
+    out_dir = _export_out_dir(args.out, project_dir)
     ev = _evaluation(opened, recompute=args.recompute)
+    result = export_asset(
+        sc, profile=args.profile, out_dir=out_dir,
+        bake_instances=args.bake_instances, evaluation=ev,
+    )
+    if opened.build is not None and opened.build.warnings:
+        # An export is no quieter than the validate it gates on:
+        # what the build warned of, the export's report carries.
+        carrier = result if result["ok"] else result["validation"]
+        carrier["warnings"] = carrier.get("warnings", []) + opened.build.warnings
     summary: dict = {}
-    recompute: dict | None = None
-    if args.recompute:
-        # The determinism verdict comes first: a mismatch against the
-        # cached records means the recomputed bytes are not the ones a
-        # warm cache would have exported - not an export to trust, so
-        # nothing is written and the last good export stays in place
-        # (the same rule as a validation failure, DESIGN 8.2). The
-        # export's validate also evaluates what no root output consumes
-        # (a referenced asset's other outputs, DESIGN 4.6): evaluated
-        # here, so the verdict covers every node the command recomputes.
-        ev.records()
-        ev.ref_asserts()
-        recompute = ev.recompute_report()
-        summary["recompute_mismatched"] = recompute.get("mismatched_total", 0)
-    if recompute is not None and summary["recompute_mismatched"]:
-        result = {
-            "ok": False, "profile": args.profile, "outputs": {},
-            "recompute": recompute, "fix": recompute["fix"],
-        }
-    else:
-        result = export_asset(
-            sc, profile=args.profile, out_dir=out_dir,
-            bake_instances=args.bake_instances, evaluation=ev,
-        )
-        if recompute is not None:
-            result["recompute"] = recompute
-        if opened.build is not None and opened.build.warnings:
-            # An export is no quieter than the validate it gates on:
-            # what the build warned of, the export's report carries.
-            carrier = result if result["ok"] else result["validation"]
-            carrier["warnings"] = carrier.get("warnings", []) + opened.build.warnings
+    if "recompute" in result:
+        summary["recompute_mismatched"] = result["recompute"].get("mismatched_total", 0)
     _note_asset(
         opened, ev, profile=args.profile, ok=result["ok"],
         outputs=len(result.get("outputs") or {}), **summary,
     )
-    _print(result)
-    return 0 if result["ok"] else 1
+    return result, result["ok"]
+
+
+def _refuse_shared_export_paths(ws: workspace_mod.Workspace, out: str) -> None:
+    """A sweep writes one GLB per project (DESIGN 6): two projects whose
+    files would land on one path are refused before anything is
+    evaluated, since the later would overwrite the earlier unseen."""
+    import os
+
+    writers: dict[str, list[str]] = {}
+    for name in ws.projects:
+        try:
+            asset = ws.resolve_asset(name)
+        except MoraineError:
+            continue  # the sweep reports this project's own error
+        glb = _export_out_dir(out, asset_mod.project_root(asset)) / f"{asset.stem}.glb"
+        # One file by its links resolved and its case folded: the
+        # default volumes of Windows and macOS fold case, and whether
+        # this one does is not asked. On a volume that does not, two
+        # names apart by case alone are refused all the same.
+        writers.setdefault(os.path.realpath(glb).casefold(), []).append(name)
+    shared = [names for names in writers.values() if len(names) > 1]
+    if shared:
+        raise MoraineError(
+            "export_stem_collision",
+            f"projects {' and '.join(repr(n) for n in shared[0])} would write "
+            f"the same GLB under -o '{out}'; give each project its own "
+            f"directory (a relative -o resolves against each project) or "
+            f"rename one root asset",
+            projects=shared[0],
+        )
+
+
+def _cmd_export(args) -> int:
+    target = _resolve_target(args.project)
+    if not isinstance(target, workspace_mod.Workspace):
+        result, ok = _export_report(target, args)
+        _print(result)
+        return 0 if ok else 1
+    if not target.projects:
+        raise _no_projects_error(target)
+    _refuse_shared_export_paths(target, args.out)
+    projects, failed = _sweep(target, lambda p: _export_report(p, args))
+    roll: dict = {"ok": not failed, "projects": len(projects), "failed": failed}
+    if args.recompute:
+        # What the sweep proved (DESIGN 6): the verdicts, summed.
+        verdicts = [r["recompute"] for r in projects.values() if "recompute" in r]
+        roll["recompute"] = {
+            key: sum(v.get(key, 0) for v in verdicts)
+            for key in ("nodes", "matched", "unrecorded", "mismatched_total")
+            if key != "mismatched_total" or any(key in v for v in verdicts)
+        }
+    roll["not_swept"] = workspace_mod.unswept_assets(target)
+    _print({"projects": projects, "workspace": _stamped(roll)})
+    return 0 if not failed else 1
 
 
 def _check_port(port: int) -> None:
@@ -1811,7 +1850,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="write glTF (GLB) + manifest for an export profile; "
         "requires a green validate (waivers included)",
     )
-    p.add_argument("project", nargs="?", default=".", help=project_help)
+    p.add_argument("project", nargs="?", default=".",
+                   help=project_help + "; a workspace root exports every "
+                        "project, each gated by its own validate")
     # Roster deliberately not copied into help (as for validate --profile):
     # the unknown_profile error is its single source of truth.
     p.add_argument("--profile", default="gltf",

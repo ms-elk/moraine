@@ -233,9 +233,12 @@ def export_asset(
 ) -> dict:
     """Validate against the profile, then write ``<stem>.glb`` + manifest.
 
-    Validation failure writes nothing and returns the failing report
-    (``ok: false``) — the error channel is the report, the last exported
-    files stay good (DESIGN 8.2).
+    The report says what the export proved beside what it wrote (DESIGN
+    6): ``validation``, the gate's report in the default form, and under
+    a recomputing ``evaluation`` the determinism verdict ``recompute``.
+    A red gate or a mismatched node writes nothing and returns the
+    failing report (``ok: false``) — the error channel is the report,
+    the last exported files stay good (DESIGN 8.2).
 
     ``bake_instances`` (DESIGN 9) projects every Instances output to a
     plain mesh at the export edge — tiled per the ``bake_instances`` op's
@@ -266,12 +269,30 @@ def export_asset(
     )
 
     report = profile_checks(profile, values, report, bake_instances=bake_instances)
-    if not report["ok"]:
-        return {"ok": False, "validation": compact(add_by_site(report))}
+    gate = compact(add_by_site(report))
+    # The determinism verdict is taken after the gate has run and before
+    # anything is written, so it covers every node this export
+    # evaluated (DESIGN 6).
+    verdict = ev.recompute_report() if ev.recompute else None
+    mismatched = bool(verdict and verdict.get("mismatched_total"))
+    if not report["ok"] or mismatched:
+        red: dict = {"ok": False, "validation": gate}
+        if verdict is not None:
+            red["recompute"] = verdict
+        if mismatched:
+            red["fix"] = verdict["fix"]
+        return red
 
     stem = sc.path.stem if sc.path is not None else "asset"
     out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
+    try:
+        out.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise MoraineError(
+            "export_unwritable",
+            f"cannot create the export directory '{_report_path(out)}' "
+            f"({e.__class__.__name__}); pass -o <a writable directory>",
+        ) from e
 
     if baked:
         for name in baked:
@@ -319,12 +340,19 @@ def export_asset(
             **e.detail,
         ) from e
 
+    # What the export proved beside what it wrote (DESIGN 6): the gate's
+    # counts, with its advisory rows under ``warnings`` below.
     result: dict = {
         "ok": True,
-        "glb": _report_path(glb_path),
-        "manifest": _report_path(manifest_path),
-        "outputs": info,
+        "validation": {k: v for k, v in gate.items() if k != "warnings"},
     }
+    if verdict is not None:
+        result["recompute"] = verdict
+    result.update(
+        glb=_report_path(glb_path),
+        manifest=_report_path(manifest_path),
+        outputs=info,
+    )
     warns = advisory_rows(report) + [
         {**c, "output": name}
         for name, o in report["outputs"].items()

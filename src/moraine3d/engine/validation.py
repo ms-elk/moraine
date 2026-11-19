@@ -29,7 +29,11 @@ def report(sc: Asset, ev) -> tuple[dict, dict]:
         params=params_mod.range_entries(sc),
         sites=ev.output_sites(),
     )
-    return append_ref_asserts(out, ev.ref_asserts()), values
+    out = append_ref_asserts(out, ev.ref_asserts())
+    mates = ev.mate_frames()
+    if mates:
+        out["mates"] = mates
+    return out, values
 
 
 def moves_no_entry(knob: dict) -> bool:
