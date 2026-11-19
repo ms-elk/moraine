@@ -1490,6 +1490,131 @@ def test_export_sweep_compares_the_paths_as_a_folding_volume_would(tmp_path, mon
     assert not (tmp_path / "out").exists()
 
 
+def test_the_file_an_export_replaces_is_named_as_a_folding_volume_would(tmp_path):
+    """DESIGN 6: two projects' paths are compared with the directory's
+    links resolved and the name without its case or the difference
+    between a composed character and its parts. A link standing where
+    the GLB goes is not followed, since the write replaces it."""
+    import pytest
+
+    from moraine3d.app.cli import _export_file_key as key
+
+    assert key(tmp_path, "caf\u00e9") == key(tmp_path, "cafe\u0301")
+    assert key(tmp_path, "Chair") == key(tmp_path, "chair")
+    assert key(tmp_path, "chair") != key(tmp_path, "stool")
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir()
+    b.mkdir()
+    (tmp_path / "one.glb").write_bytes(b"")
+    try:
+        for d in (a, b):
+            (d / "chair.glb").symlink_to(tmp_path / "one.glb")
+    except OSError as e:
+        pytest.skip(f"cannot create a file link here: {e}")
+    assert key(a, "chair") != key(b, "chair")
+
+
+def test_export_sweep_goes_on_past_an_output_link_that_leads_to_itself(
+    tmp_path, monkeypatch, capsys,
+):
+    """DESIGN 6: a project that fails to export fails in its own slot
+    and its siblings export. Here the first project's `exports` is a
+    link that leads to itself: the directory cannot be made, and this
+    Python raises on resolving the path for the error's text."""
+    import errno
+    import json
+    from pathlib import Path
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    resolve, mkdir = Path.resolve, Path.mkdir
+
+    def looped(self) -> bool:
+        return self.name == "exports" and self.parent.name == "alpha"
+
+    def resolve_looped(self, *args, **kw):
+        if looped(self):
+            raise RuntimeError(f"Symlink loop from {self}")
+        return resolve(self, *args, **kw)
+
+    def mkdir_looped(self, *args, **kw):
+        if looped(self):
+            raise OSError(errno.ELOOP, "Too many levels of symbolic links")
+        return mkdir(self, *args, **kw)
+
+    monkeypatch.setattr(Path, "resolve", resolve_looped)
+    monkeypatch.setattr(Path, "mkdir", mkdir_looped)
+    assert main(["export", str(ws)]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["projects"]["alpha"]["error"]["code"] == "export_unwritable"
+    assert out["projects"]["beta"]["ok"] is True
+    assert out["workspace"]["failed"] == ["alpha"]
+
+
+def test_export_writes_to_the_path_as_the_filesystem_reads_it(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: a relative `export -o` is joined to the project and
+    written as given. A path that steps up out of a regular file is
+    one POSIX refuses and Windows folds, and the export does as the
+    filesystem does with it, never writing where the path does not
+    lead."""
+    import json
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    (ws / "alpha" / "occupied").write_text("a file", encoding="utf-8")
+    try:
+        (ws / "alpha" / "occupied" / ".." / "probe").write_text("", encoding="utf-8")
+        refused = False
+    except OSError:
+        refused = True
+
+    code = main(["export", str(ws / "alpha"), "-o", "occupied/../exports"])
+    out = json.loads(capsys.readouterr().out)
+    if refused:
+        assert code == 1 and out["error"]["code"] == "export_unwritable"
+        assert not (ws / "alpha" / "exports").exists()
+    else:
+        assert code == 0
+        assert (ws / "alpha" / "exports" / "alpha.glb").is_file()
+
+
+def test_export_sweep_goes_on_past_a_write_whose_cleanup_is_refused(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: a project that fails to export fails in its own slot
+    and its siblings export. Here the first project's directory refuses
+    the write and then the removal of the file the write left."""
+    import json
+
+    from moraine3d.app.cli import main
+    from moraine3d.core import atomic as atomic_mod
+    from moraine3d.engine import export as export_mod
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    real = export_mod.atomic_replace
+
+    class Refused:
+        def unlink(self, missing_ok=False):
+            raise PermissionError("no search permission")
+
+    def refuse_alpha(path, data):
+        if path.parent.parent.name == "alpha":
+            raise atomic_mod.ReplaceError("write", Refused(), PermissionError("denied"))
+        real(path, data)
+
+    monkeypatch.setattr(export_mod, "atomic_replace", refuse_alpha)
+    assert main(["export", str(ws), "--recompute"]) == 1
+    out = json.loads(capsys.readouterr().out)
+    error = out["projects"]["alpha"]["error"]
+    assert error["code"] == "export_unwritable"
+    assert error["detail"]["recompute"]["nodes"] == 1
+    assert out["projects"]["beta"]["ok"] is True
+    assert out["workspace"]["failed"] == ["alpha"]
+
+
 def test_export_sweep_goes_on_past_a_directory_it_cannot_make(tmp_path, monkeypatch, capsys):
     """DESIGN 6: a project that fails to export fails in its own slot
     and its siblings export. Here a file stands where the first
@@ -1502,12 +1627,71 @@ def test_export_sweep_goes_on_past_a_directory_it_cannot_make(tmp_path, monkeypa
     ws = _write_workspace(tmp_path)
     (ws / "alpha" / "exports").write_text("not a directory", encoding="utf-8")
 
-    assert main(["export", str(ws)]) == 1
+    assert main(["export", str(ws), "--recompute"]) == 1
     out = json.loads(capsys.readouterr().out)
-    assert out["projects"]["alpha"]["error"]["code"] == "export_unwritable"
+    error = out["projects"]["alpha"]["error"]
+    assert error["code"] == "export_unwritable"
     assert out["projects"]["beta"]["ok"] is True
     assert (ws / "beta" / "exports" / "beta.glb").is_file()
     assert out["workspace"]["failed"] == ["alpha"]
+    # The verdict was reached before the write failed: the error
+    # carries it, and the aggregate counts both projects' nodes.
+    assert error["detail"]["recompute"]["nodes"] == 1
+    assert out["workspace"]["recompute"]["nodes"] == 2
+
+
+def test_export_out_follows_a_link_before_the_step_up_after_it(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: a relative `export -o` resolves against the project as
+    the filesystem resolves it, so `link/..` is the parent of the
+    link's target, never of the link."""
+    import pytest
+
+    from moraine3d.app.cli import main
+    from support.links import link_dir
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = _write_workspace(tmp_path)
+    shared = tmp_path / "shared" / "models"
+    shared.mkdir(parents=True)
+    try:
+        link_dir(shared, ws / "alpha" / "link")
+    except OSError as e:
+        pytest.skip(f"cannot create a directory link here: {e}")
+
+    # Where the filesystem takes `link/..`: POSIX follows the link
+    # first, Windows folds the step up before it looks.
+    (ws / "alpha" / "link" / ".." / "probe").write_text("", encoding="utf-8")
+    [base] = [d for d in (tmp_path / "shared", ws / "alpha") if (d / "probe").exists()]
+
+    assert main(["export", str(ws / "alpha"), "-o", "link/../exports"]) == 0
+    capsys.readouterr()
+    assert (base / "exports" / "alpha.glb").is_file()
+
+
+def test_export_sweep_names_a_linked_recipe_by_its_target(tmp_path, monkeypatch, capsys):
+    """DESIGN 6: the paths two projects would write are those the
+    export writes. A linked recipe exports under its target's name, so
+    it shares a file with a project whose recipe has that name."""
+    import json
+
+    import pytest
+
+    from moraine3d.app.cli import main
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    ws = tmp_path / "ws"
+    (ws / ".moraine").mkdir(parents=True)
+    _recipe(ws / "beta", GREEN_ASSET, "chair")
+    (ws / "alpha").mkdir()
+    try:
+        (ws / "alpha" / "alias.star").symlink_to(ws / "beta" / "chair.star")
+    except OSError as e:
+        pytest.skip(f"cannot create a file link here: {e}")
+
+    assert main(["export", str(ws), "-o", str(tmp_path / "out")]) == 1
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert err["code"] == "export_stem_collision"
+    assert not (tmp_path / "out").exists()
 
 
 def test_export_reports_the_path_it_wrote(tmp_path, monkeypatch, capsys):
@@ -1639,6 +1823,14 @@ def test_export_subasset_stem_collision_refused(tmp_path, monkeypatch, capsys):
     assert err["code"] == "export_stem_collision"
     assert "rename" in err["message"]
     assert not (ws / "alpha" / "exports").exists()
+
+    # A stem apart from the root's by case alone is the same file on a
+    # volume that folds names.
+    _recipe(ws / "beta", GREEN_ASSET, "Beta", sub=True)
+    assert main(["export", str(ws / "beta" / "subassets" / "Beta.star")]) == 1
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert err["code"] == "export_stem_collision"
+    assert not (ws / "beta" / "exports").exists()
 
     assert main(["export", str(sub / "lid.star")]) == 0
     capsys.readouterr()

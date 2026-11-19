@@ -673,9 +673,9 @@ def test_assembly_authored_materials_still_count(tmp_path, monkeypatch):
 
 def test_instanced_output_with_waiver_exports(tmp_path, monkeypatch):
     """DESIGN 4.1: a waiver (``checks: {output: {kind: false}}``) turns a
-    failing builtin check into a reported warning, so a deliberately
-    below-ground instanced output (its base copy centered) still
-    exports."""
+    failing builtin check green, so a deliberately below-ground
+    instanced output (its base copy centered) still exports. DESIGN 6:
+    the export's `validation` counts the waiver by check."""
     text = """{
 "build_version": "fixture",
 "nodes": [
@@ -687,7 +687,7 @@ def test_instanced_output_with_waiver_exports(tmp_path, monkeypatch):
 }"""
     result = _export(tmp_path, monkeypatch, text, name="waived")
     assert result["ok"] is True
-    assert any(c.get("waived") for c in result.get("warnings", []))
+    assert result["validation"]["waived"] == {"not_sunk": 1}
 
 
 _CLASHING_ASSERT = """{
@@ -773,9 +773,10 @@ def test_alpha_mode_follows_the_factor_only():
 
 
 def test_export_surfaces_the_asset_level_waiver(tmp_path, monkeypatch):
-    """Export warnings carry waived asset checks like waived per-output
-    ones (DESIGN 9: export gates on validate and must not be quieter
-    than it): an `asset_checks` grounded waiver rides `warnings`."""
+    """DESIGN 6: an export is no quieter than the validate it gates on.
+    A waived asset check is counted in its `validation` as a waived
+    per-output check is, and every row of its `warnings` names its
+    kind under `warning`."""
     import json
 
     from moraine3d.core import asset as asset_mod
@@ -796,8 +797,8 @@ def test_export_surfaces_the_asset_level_waiver(tmp_path, monkeypatch):
     }), encoding="utf-8")
     result = export_asset(asset_mod.load(proj / "proj.mora"), "gltf", tmp_path / "out")
     assert result["ok"] is True
-    waived = [w for w in result["warnings"] if w.get("waived")]
-    assert waived == [{"check": "grounded", "ok": True, "waived": True}]
+    assert result["validation"]["waived"] == {"grounded": 1}
+    assert [w["warning"] for w in result["warnings"]] == ["uv_present"]
 
 
 _TAGGED = """{

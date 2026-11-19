@@ -2491,16 +2491,17 @@ mismatched, and both files are written. A red gate or a mismatched
 node writes nothing, and the last good export stays: a GLB from
 values the cache disagrees with is not an export to trust. A write
 that fails between the two files leaves the interrupted pair of §9.
-A green export lists the gate's advisory rows (a `warn`-level profile
-check, a waiver, a build warning) under its own `warnings`, so it is
-no quieter than its gate.
+A green export lists the gate's `warnings` under its own key, so it
+is no quieter than its gate.
 In a sweep each project is gated by its own validation: a red
 project writes nothing and its siblings export, every GLB being
 self-contained. The `workspace` aggregate sums `recompute` over the
-projects. Two projects whose files would land on one path are refused
+projects, and a project whose write failed carries its verdict in its
+error. Two projects whose files would land on one path are refused
 before anything is evaluated (`export_stem_collision`). The paths are
-compared with their links resolved and their case folded, since the
-volume may fold it.
+compared as a volume that folds names would: the directory's links
+resolved, and the name without its case or the difference between a
+composed character and its parts.
 
 **`validate` report keys beyond the checks.** Every entry that names a
 node or an assert carries its recipe `site` (§4.1), and one made

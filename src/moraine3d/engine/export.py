@@ -36,7 +36,7 @@ from ..core.glb import build_glb, decompose_trs
 from ..core.mesh import Image, Instances, Value, proto_of
 from ..core.asset import Asset
 from ..errors import MoraineError
-from ..verify.validate import add_by_site, advisory_rows, compact
+from ..verify.validate import add_by_site, compact
 from . import validation
 from .evaluator import Evaluation, evaluate_op_value
 
@@ -190,7 +190,12 @@ def _write_out(path: Path, data: bytes) -> None:
     try:
         atomic_replace(path, data)
     except ReplaceError as err:
-        err.tmp.unlink(missing_ok=True)
+        try:
+            err.tmp.unlink(missing_ok=True)
+        except OSError:
+            # A directory that refused the write can refuse the cleanup
+            # too; the failure to report is the write's.
+            pass
         e = err.cause
         if err.step == "write":
             raise MoraineError(
@@ -219,12 +224,83 @@ def _report_path(p: Path) -> str:
     """Report paths cwd-relative when the target is inside cwd - the
     in-project and workspace-root flows then quote journal-safely
     (DESIGN 6); a target outside cwd is echoed as resolved (the author
-    pointed there). Both sides are resolved before comparing - the
-    target comes resolved via project_root, and a logical cwd (subst
-    drive, junction) would otherwise never match it (the workspace
-    discovery precedent)."""
+    pointed there). Both sides are resolved before comparing - a
+    logical cwd (subst drive, junction) would otherwise never match
+    the target (the workspace discovery precedent), and an `-o` that
+    climbs out of the project reads as the place it reached. The path
+    is resolved for the report alone: the write takes it as given, so
+    one the filesystem refuses is refused."""
+    try:
+        p = p.resolve()
+    except (OSError, RuntimeError):  # a link that leads to itself
+        pass
     cwd = Path.cwd().resolve()
     return str(p.relative_to(cwd)) if p.is_relative_to(cwd) else str(p)
+
+
+def _write_pair(
+    sc: Asset, ev: Evaluation, values: dict, records: dict, baked: set,
+    profile: str, out_dir: str | Path, bake_instances: bool,
+) -> tuple[Path, Path, dict]:
+    """Write the GLB and its manifest for values the gate passed, and
+    return the two paths with the per-output record."""
+    stem = sc.path.stem if sc.path is not None else "asset"
+    out = Path(out_dir)
+    try:
+        out.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise MoraineError(
+            "export_unwritable",
+            f"cannot create the export directory '{_report_path(out)}' "
+            f"({e.__class__.__name__}); pass -o <a writable directory>",
+        ) from e
+
+    if baked:
+        for name in baked:
+            # The same evaluate-and-carry step the in-graph bake_instances
+            # node runs (material re-bound per its preserved policy), so
+            # the export edge can never drift from the op's semantics.
+            values[name] = evaluate_op_value(
+                ops.bake_instances, [values[name]], {}, sc.outputs[name]
+            )
+
+    generator = f"moraine {dist_version('moraine3d')}"
+    glb, info = build_glb(in_export_order(values), generator)
+    for name, rec in records.items():
+        stats = rec.stats
+        if name in baked:
+            # Report what ships: the cached record keeps instanced stats
+            # (baking never touches the cache), but the GLB holds the
+            # merged mesh — its own stats, plus the flag.
+            stats = {**values[name].stats(), "baked": True}
+        info[name] = {**stats, **info[name], "node_id": sc.outputs[name]}
+    # The artifact-pair contract (DESIGN 9): both payloads are built
+    # before either write (a build failure writes nothing); each write is
+    # atomic but the pair is not — the filesystem has no two-file
+    # transaction — so the GLB goes first and the manifest last as the
+    # pair's commit marker, with glb_hash binding it to the exact GLB
+    # bytes. An export interrupted between the writes leaves a
+    # detectably stale pair (hash mismatch), never a silent one.
+    glb_path = out / f"{stem}.glb"
+    manifest = build_manifest(
+        ev, profile, glb_path.name,
+        hashlib.sha256(glb).hexdigest()[:24], info,
+        bake_instances=bake_instances,
+    )
+    manifest_bytes = (json.dumps(manifest, indent=1, sort_keys=True) + "\n").encode("utf-8")
+    _write_out(glb_path, glb)
+    manifest_path = out / f"{stem}.manifest.json"
+    try:
+        _write_out(manifest_path, manifest_bytes)
+    except MoraineError as e:
+        raise MoraineError(
+            e.code,
+            f"{e.message}; the GLB was already replaced, so the manifest "
+            f"on disk is stale (its glb_hash will not match) until a "
+            f"re-run lands both files",
+            **e.detail,
+        ) from e
+    return glb_path, manifest_path, info
 
 
 def export_asset(
@@ -283,62 +359,16 @@ def export_asset(
             red["fix"] = verdict["fix"]
         return red
 
-    stem = sc.path.stem if sc.path is not None else "asset"
-    out = Path(out_dir)
     try:
-        out.mkdir(parents=True, exist_ok=True)
-    except OSError as e:
-        raise MoraineError(
-            "export_unwritable",
-            f"cannot create the export directory '{_report_path(out)}' "
-            f"({e.__class__.__name__}); pass -o <a writable directory>",
-        ) from e
-
-    if baked:
-        for name in baked:
-            # The same evaluate-and-carry step the in-graph bake_instances
-            # node runs (material re-bound per its preserved policy), so
-            # the export edge can never drift from the op's semantics.
-            values[name] = evaluate_op_value(
-                ops.bake_instances, [values[name]], {}, sc.outputs[name]
-            )
-
-    generator = f"moraine {dist_version('moraine3d')}"
-    glb, info = build_glb(in_export_order(values), generator)
-    for name, rec in records.items():
-        stats = rec.stats
-        if name in baked:
-            # Report what ships: the cached record keeps instanced stats
-            # (baking never touches the cache), but the GLB holds the
-            # merged mesh — its own stats, plus the flag.
-            stats = {**values[name].stats(), "baked": True}
-        info[name] = {**stats, **info[name], "node_id": sc.outputs[name]}
-    # The artifact-pair contract (DESIGN 9): both payloads are built
-    # before either write (a build failure writes nothing); each write is
-    # atomic but the pair is not — the filesystem has no two-file
-    # transaction — so the GLB goes first and the manifest last as the
-    # pair's commit marker, with glb_hash binding it to the exact GLB
-    # bytes. An export interrupted between the writes leaves a
-    # detectably stale pair (hash mismatch), never a silent one.
-    glb_path = out / f"{stem}.glb"
-    manifest = build_manifest(
-        ev, profile, glb_path.name,
-        hashlib.sha256(glb).hexdigest()[:24], info,
-        bake_instances=bake_instances,
-    )
-    manifest_bytes = (json.dumps(manifest, indent=1, sort_keys=True) + "\n").encode("utf-8")
-    _write_out(glb_path, glb)
-    manifest_path = out / f"{stem}.manifest.json"
-    try:
-        _write_out(manifest_path, manifest_bytes)
+        glb_path, manifest_path, info = _write_pair(
+            sc, ev, values, records, baked, profile, out_dir, bake_instances,
+        )
     except MoraineError as e:
-        raise MoraineError(
-            e.code,
-            f"{e.message}; the GLB was already replaced, so the manifest "
-            f"on disk is stale (its glb_hash will not match) until a "
-            f"re-run lands both files",
-            **e.detail,
-        ) from e
+        if verdict is not None:
+            # The verdict was reached before the write failed, and the
+            # error carries it (DESIGN 6).
+            e.detail["recompute"] = verdict
+        raise
 
     # What the export proved beside what it wrote (DESIGN 6): the gate's
     # counts, with its advisory rows under ``warnings`` below.
@@ -353,17 +383,10 @@ def export_asset(
         manifest=_report_path(manifest_path),
         outputs=info,
     )
-    warns = advisory_rows(report) + [
-        {**c, "output": name}
-        for name, o in report["outputs"].items()
-        for c in o["checks"]
-        if c.get("waived")
-    ]
-    # Asset-level waivers surface like per-output ones (no output to
-    # name): an export must not be quieter than the validate it gates on.
-    warns += [c for c in report.get("asset_checks") or [] if c.get("waived")]
-    if report.get("warnings"):
-        warns += report["warnings"]
+    # An export is no quieter than the validate it gates on: the gate's
+    # ``warnings`` are the export's, and its waivers are counted in
+    # ``validation`` as the gate counts them.
+    warns = gate.get("warnings")
     if warns:
         result["warnings"] = warns
     return result

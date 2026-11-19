@@ -667,8 +667,6 @@ def _export_out_dir(out: str, project_dir: Path) -> Path:
     artifact, so the guide's `-o exports/` idiom lands inside the
     project from any invocation directory. screenshot -o stays
     cwd-relative by design - a screenshot is a session artifact."""
-    import os
-
     out_dir = Path(out)
     if not out_dir.is_absolute():
         # Windows drive-relative ('D:exports') and rooted ('\\exports')
@@ -681,10 +679,26 @@ def _export_out_dir(out: str, project_dir: Path) -> Path:
                 "plain relative path (resolved against the project) or "
                 "a fully absolute path",
             )
+        # Joined and left as given: the filesystem reads the path when
+        # the export writes, so one it refuses is refused.
         out_dir = project_dir / out_dir
-    # Folded, so `-o ../exports` reports the path it wrote and two
-    # projects sharing a directory are seen to.
-    return Path(os.path.normpath(out_dir))
+    return out_dir
+
+
+def _export_file_key(out_dir: Path, stem: str) -> str:
+    """The file an export replaces, as a volume that folds names would
+    name it (DESIGN 6): the directory with its links resolved, the file
+    name as given, since the write replaces a link standing there and
+    does not follow it, and the whole compared without case and without
+    the difference between a composed character and its parts. Whether
+    this volume folds either is not asked: on one that does not, two
+    names apart by that alone are refused all the same."""
+    import os
+    import unicodedata
+
+    path = os.path.join(os.path.realpath(out_dir), f"{stem}.glb")
+    decomposed = unicodedata.normalize("NFD", path).casefold()
+    return unicodedata.normalize("NFD", decomposed)
 
 
 def _export_report(asset_path: Path, args) -> tuple[dict, bool]:
@@ -693,22 +707,26 @@ def _export_report(asset_path: Path, args) -> tuple[dict, bool]:
     opened = _open(asset_path)
     sc = opened.asset
     project_dir = asset_mod.project_root(asset_path)
+    out_dir = _export_out_dir(args.out, project_dir)
     # A sub-asset sharing its stem with the project's root asset would
     # write the root's <stem>.glb + manifest pair - a silent overwrite,
-    # since every out dir is shared per project.
+    # since every out dir is shared per project. The two names are
+    # compared as the files a sweep's projects write are.
     if (
         asset_path.resolve().parent.name.lower() == asset_mod.SUBASSETS_DIR
         and sources_mod.asset_files(project_dir)
     ):
         root_asset = sources_mod.resolve(project_dir)
-        if root_asset.stem.casefold() == asset_path.stem.casefold():
+        if (
+            _export_file_key(out_dir, root_asset.resolve().stem)
+            == _export_file_key(out_dir, asset_path.resolve().stem)
+        ):
             raise MoraineError(
                 "export_stem_collision",
                 f"sub-asset '{asset_path.name}' shares its stem with the "
                 f"project's root asset, so its export would overwrite "
                 f"'{root_asset.stem}.glb' - rename the sub-asset file",
             )
-    out_dir = _export_out_dir(args.out, project_dir)
     ev = _evaluation(opened, recompute=args.recompute)
     result = export_asset(
         sc, profile=args.profile, out_dir=out_dir,
@@ -732,21 +750,21 @@ def _export_report(asset_path: Path, args) -> tuple[dict, bool]:
 def _refuse_shared_export_paths(ws: workspace_mod.Workspace, out: str) -> None:
     """A sweep writes one GLB per project (DESIGN 6): two projects whose
     files would land on one path are refused before anything is
-    evaluated, since the later would overwrite the earlier unseen."""
-    import os
-
+    evaluated, since the later would overwrite the earlier unseen. A
+    path one project could not write to is compared like any other:
+    telling the two apart means reading the path as each platform does,
+    and a wrong answer there lets an overwrite through."""
     writers: dict[str, list[str]] = {}
     for name in ws.projects:
         try:
             asset = ws.resolve_asset(name)
-        except MoraineError:
+            out_dir = _export_out_dir(out, asset_mod.project_root(asset))
+            # The export names its files after the recipe the build
+            # read, which for a linked recipe is the link's target.
+            stem = asset.resolve().stem
+        except (MoraineError, OSError, RuntimeError):
             continue  # the sweep reports this project's own error
-        glb = _export_out_dir(out, asset_mod.project_root(asset)) / f"{asset.stem}.glb"
-        # One file by its links resolved and its case folded: the
-        # default volumes of Windows and macOS fold case, and whether
-        # this one does is not asked. On a volume that does not, two
-        # names apart by case alone are refused all the same.
-        writers.setdefault(os.path.realpath(glb).casefold(), []).append(name)
+        writers.setdefault(_export_file_key(out_dir, stem), []).append(name)
     shared = [names for names in writers.values() if len(names) > 1]
     if shared:
         raise MoraineError(
@@ -771,8 +789,14 @@ def _cmd_export(args) -> int:
     projects, failed = _sweep(target, lambda p: _export_report(p, args))
     roll: dict = {"ok": not failed, "projects": len(projects), "failed": failed}
     if args.recompute:
-        # What the sweep proved (DESIGN 6): the verdicts, summed.
-        verdicts = [r["recompute"] for r in projects.values() if "recompute" in r]
+        # What the sweep proved (DESIGN 6): the verdicts, summed, that of
+        # a project whose write failed after it among them.
+        verdicts = [
+            r.get("recompute")
+            or r.get("error", {}).get("detail", {}).get("recompute")
+            for r in projects.values()
+        ]
+        verdicts = [v for v in verdicts if v]
         roll["recompute"] = {
             key: sum(v.get(key, 0) for v in verdicts)
             for key in ("nodes", "matched", "unrecorded", "mismatched_total")
