@@ -407,7 +407,10 @@ take just the project directory (§4.2).
   engine-side references. Because they become cache/export filenames
   and engine object names, names match `[A-Za-z][A-Za-z0-9_-]*` and
   are unique case-insensitively. The order outputs are declared in
-  carries no meaning (§9.1).
+  carries no meaning (§9.1). An output is **absent** when the asset
+  does not have it at the knob values of this build: no `mo.output`
+  declares a name a requirements file takes (§5.2). The IR lists
+  those names under root `"absent"`, sorted on one line.
 - **Root `"params"`:** the asset's declared knobs (§4.8), one entry
   per line in declaration order. An entry holds the knob's `id`, the
   `value` the build resolved for it, the declaration's `label`,
@@ -479,7 +482,8 @@ take just the project directory (§4.2).
   from several outputs, taken by an assert wherever it takes an
   output name (§5.2). Groups and outputs share one namespace
   (collisions refused, case-folded like output names). A group holds
-  two or more distinct declared outputs, never another group. An
+  two or more distinct outputs, declared or absent, never another
+  group. An
   output may belong to several groups. Absent when the asset declares
   none. Evaluation, export, and the cache ignore the key.
 - **Root `"asserts"`:** declarative constraints as asset content,
@@ -1438,8 +1442,11 @@ vocabulary and the IR's are one:
   is a keyword, outputs and groups named by string, with the IR's
   argument names (`tol`, `min`, `max`, `every`, `self`). There is no
   `owner` argument: the
-  file decides (§5.2). An unknown name fails the build, which is
-  what makes assert-first a build state (§8.1).
+  file decides (§5.2). A name nothing declares fails the build in an
+  asset file (`unknown_output`), whose author declares the outputs
+  too. In a requirements file the build records it as absent (§4.1)
+  and the entry fails in the report (§5.2), where assert-first
+  starts (§8.1).
 - *In a requirements file:* the assert functions, `mo.budget`,
   `mo.group` for a group its asserts name (§5.2), and
   `mo.param_value(id)`, an opaque handle to one of that asset's
@@ -1588,7 +1595,8 @@ every assert, budget, and `mo.param_value` call it makes is
 recorded, never resolved. *Resolution:* with every declaration in,
 the build resolves output and group names, knob ids, and handles,
 and an unknown name fails here with the site of the call that named
-it. Order inside a file therefore matters to values (a constant is
+it, but for an output's name a requirements file takes (Asserts,
+above). Order inside a file therefore matters to values (a constant is
 bound before an expression uses it, as in any program) but not to
 names. Nothing but the build writes under `build/`, and nothing
 reads a recipe but the build.
@@ -1845,8 +1853,7 @@ below adds only its measurement and judgment:
 - Root `"asserts"` (§4.1) is checked deterministically at eval time
   and reported through `validate` — gating, never waivable. An
   unevaluatable entry (an image, empty or non-finite geometry, a
-  face without a frame) fails with the reason. An unknown output name
-  is refused at load. Sub-asset
+  face without a frame) fails with the reason. Sub-asset
   asserts gate every consuming root's validate, per override
   identity (§4.6).
 - **Every entry carries its measurement, pass or fail** — the
@@ -1884,6 +1891,12 @@ below adds only its measurement and judgment:
   key inside the entry (it serves the one-vs-rest form but not a pair
   of pieces); grouping by reference source (partners dropped with no
   line in the file).
+- **Absent outputs.** An entry that names an absent output (§4.1),
+  or a group with an absent member, fails with the name: a
+  requirement about a part is not met by the asset losing the part.
+  It fails as one entry beside every other (§8.2). A group is absent
+  with any one member and never narrows to the rest, since its
+  members are the entry's reach (ownership, below).
 - **Quantifier keys, one spelling each.** A cross-output check sees
   an instanced output as the union of its copies. The opt-in keys
   cover what the union cannot. `"every": [name, ...]` (contact and
@@ -2401,7 +2414,8 @@ the files written and the count left `unchanged`, the files
 `removed`, the names `unrecognized`,
 what `blocked` a removal in the project's `build/` (§4.8), the asset
 files left `unread` (§7.2), and per asset the node, assert, and
-output counts, and the build time (`ms`). Its errors carry the
+output counts and the names `absent` (§4.1), and the build time
+(`ms`). Its errors carry the
 recipe `site` and `via` (§4.8).
 A `params.json` that is not one object of knob values fails the
 build too (`bad_params_file`), naming the file and the line.
@@ -2542,7 +2556,8 @@ one alike. A waived check is green, so the waivers are counted by
 check under `waived` (`{"not_sunk": 2}`). An advisory check
 (`level: "warn"`, §9.1) is stated once, as a `warnings` row naming
 the check, the `outputs` it failed on, and the `fix`, and the full
-report holds its row per output as well. A failing entry keeps its
+report holds its row per output as well. `absent` lists the outputs
+the asset does not have (§4.1). A failing entry keeps its
 own keys whole. `ref_assets` (§4.6), `mates` (§5.1), `by_site`,
 `consumers`, `warnings`, and `serve` are listed whole. A report that
 says less still says that something was not checked, and how much.
@@ -3411,8 +3426,10 @@ The guide's entry into this loop is **assert-first**, the Concept's
    own invariants and waivers go to the asset. Interpenetration
    needs no entry, because the built-in overlap guard covers every
    pair from the first edit.
-2. Build. An assert over an output not yet declared fails the build
-   (`unknown_output`): the red state the loop starts in.
+2. Build and validate. An asset with no output yet fails the build
+   (`no_outputs`). From its first output on, a requirement over one
+   not yet declared fails as its own entry (§5.2): the red state the
+   loop starts in, every unmet requirement on one report.
 3. Declare and build the outputs until `build` and then `validate`
    are green. The finished project carries its own acceptance
    criteria in a file the human can read.
@@ -3443,7 +3460,8 @@ contract. Normative recipe: the guide's authoring-loop section.
   whatever it returns.
 - A finding about an asset the runtime can still evaluate is a
   failing entry beside every other entry, as a knob outside its
-  declared range is (§6). An error in place of the report hides every
+  declared range is (§6) and a requirement over an absent output
+  (§5.2). An error in place of the report hides every
   unrelated entry behind one finding, and isolating that finding
   costs a round per guess. Errors remain for an asset the runtime
   cannot read or evaluate, and for a value a consumer offers that the

@@ -90,7 +90,9 @@ or a value in `params.json` of another kind than the knob's, shown
 as `mismatch`), a referenced asset's failing knobs included with
 their `asset`; `by_site`, the failing entries counted by the line
 they share, and by `via` where they came through more than one call, so
-one wrong expression in a loop reads as one row; `consumers`, the
+one wrong expression in a loop reads as one row; `absent`, the
+outputs a requirement names that the asset does not have (see *Asset
+assertions*); `consumers`, the
 projects that reference this one (see *build*); `serve`, the running
 server's file-watch liveness (`watch: "alive" | "dead"`, with its
 `port` and `project`) when a `moraine serve` on `--port` serves this
@@ -98,7 +100,7 @@ root.
 By default the report states each gating list as counts
 (`outputs_total` / `outputs_ok`, `asserts_total` / `asserts_ok`, and
 so on) with its failing entries, keeps `warnings`, `mates`,
-`ref_assets`, `by_site`, `consumers`, and `serve`, and counts every
+`ref_assets`, `by_site`, `absent`, `consumers`, and `serve`, and counts every
 green entry's honesty key (`unchecked`, `ceded`, `stronger`) at the
 top level under that key: `entries`, and by name what they hold, as
 in `"ceded": {"entries": 1, "pairs": 312}`. Waived checks are

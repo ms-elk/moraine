@@ -10,8 +10,8 @@ first, so `build` alone is for reading what a recipe expands to, or
 for the refusal with nothing evaluated. `PROJECT` is a project
 directory or an asset file. A requirements file and a `lib/` file are
 built with their asset and are not targets. The report lists each IR
-with its `recipe` and its `nodes` / `asserts` / `outputs` counts, the
-files `written`, and the count left `unchanged`, since a build that
+with its `recipe`, its `nodes` / `asserts` / `outputs` counts, and
+the outputs `absent` (see *Asset assertions*), the files `written`, and the count left `unchanged`, since a build that
 changes nothing touches no file. `warnings` carries
 `copies_not_instanced` (see *load*), `threshold_tautology` (see
 *requirements*), and `accepted_value_unused`, an id `params.json`

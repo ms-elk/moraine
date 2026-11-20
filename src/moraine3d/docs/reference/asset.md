@@ -56,8 +56,9 @@ per line. Those are the lists (`nodes`, `params`, `asserts`) and the
 objects `outputs`, `groups` (optional: a piece built from several
 outputs, named once for the asserts, see *groups*), and
 `checks` (output name -> waivers, `false` the only value).
-`asset_checks` (see *checks*) and `budgets` (see *budgets*) are
-inline. An op's input order and param names are its own section's
+`asset_checks` (see *checks*), `budgets` (see *budgets*), and
+`absent` (optional: the names a requirements file takes that no
+output declares, see *Asset assertions*) are inline. An op's input order and param names are its own section's
 contract, printed with the asset that uses it.
 
 `params` entries: one per knob the recipe declares (see *knobs*),

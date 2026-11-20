@@ -359,6 +359,15 @@ group beside one of its own members is refused, since that output
 would be measured against itself. The entry echoes the resolution
 as `members`. Example: `examples/shelf_pair`.
 
+An output is **absent** when a requirements file names it and no
+`mo.output` declares it at these knob values (a branch of the recipe
+did not run, or the output is not built yet). An entry that names
+one, or a group with one among its members, fails with the names
+under `absent` while every other entry is judged, and the report
+lists them at the top level under `absent`. A group never narrows to
+the members left. The fix is the output: a human-owned entry is
+removed only with the human's approval.
+
 ### contact (assert kind)
 
 Recipe: `mo.assert_contact(id = ..., outputs = ..., every = ..., tol = ..., min_area = ...)`

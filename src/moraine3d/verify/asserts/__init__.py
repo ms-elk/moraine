@@ -33,6 +33,7 @@ and pinned by golden tests (DESIGN 5.2, 10).
 
 from __future__ import annotations
 
+from ...core import asserts as vocab
 from ...core.mesh import Value
 from ...core.sites import where
 from . import clearance, common, contact, count, embedded, extent, mated, no_overlap
@@ -54,7 +55,7 @@ KINDS = {
 def check_asserts(
     values: dict[str, Value], asserts: list[dict], proto_manifold=None,
     *, ref_embeds: dict | None = None, groups: dict[str, list[str]] | None = None,
-    copy_bounds=None,
+    copy_bounds=None, absent=(),
 ) -> list[dict]:
     """Asset assertions (DESIGN 5.2): declarative constraints checked
     deterministically, gating like tier-1 checks — one entry per
@@ -69,18 +70,24 @@ def check_asserts(
     ``groups`` the asset's root ``groups`` object
     (DESIGN 4.1) — a name an entry takes where it takes an output
     resolves to the union of the group's members, and the entry echoes
-    the resolution under ``members``. A kind the parser accepts but no
-    module here evaluates raises rather than falling through to
-    another kind's semantics.
+    the resolution under ``members``. ``absent`` names the outputs the
+    asset does not have (DESIGN 4.1): an entry that reaches one fails
+    here, as itself, and is handed to no kind. A kind the parser
+    accepts but no module here evaluates raises rather than falling
+    through to another kind's semantics.
     """
     ctx = common.Context(
         values, proto_manifold=proto_manifold, copy_bounds=copy_bounds, groups=groups
     )
+    lost = {
+        a["id"]: vocab.absent_names(a, ctx.groups, absent)
+        for a in asserts if not a.get("builtin")
+    }
     pairs: set[frozenset] = set()
     self_outputs: set[str] = set()
     for a in asserts:
         hook = getattr(KINDS.get(a["kind"]), "cedes", None)
-        if hook is not None:
+        if hook is not None and not lost.get(a["id"]):
             p, s = hook(a, ctx)
             pairs |= p
             self_outputs |= s
@@ -121,7 +128,10 @@ def check_asserts(
             entry["from_param"] = dict(a["from_param"])
         entry["owner"] = a["owner"]  # required by the parser; KeyError = unparsed
         entry.update(where(a))  # the recipe line that declared it
-        mod.check(entry, a, ctx)
+        if lost.get(a["id"]):
+            common.refuse_absent(entry, lost[a["id"]])
+        else:
+            mod.check(entry, a, ctx)
         entries.append(entry)
     for e in entries:
         common.settle_floor(e)

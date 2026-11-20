@@ -43,7 +43,9 @@ def test_every_operator_and_assert_kind_is_a_builtin_and_nothing_else():
 def test_every_root_key_has_its_declaration():
     """DESIGN 4.8: declarations, one per IR root key."""
     written_by_calls = {"build_version", "nodes", "asserts"}
-    assert set(prelude.DECLARATIONS.values()) | written_by_calls == set(
+    # What resolution found no declaration for (DESIGN 4.1).
+    resolved = {"absent"}
+    assert set(prelude.DECLARATIONS.values()) | written_by_calls | resolved == set(
         asset_mod.ROOT_KEY_ORDER
     )
 
@@ -562,8 +564,8 @@ def test_a_asset_without_an_output_fails_the_build(tmp_path):
 
 
 def test_an_assert_over_an_undeclared_output_fails_the_build(tmp_path):
-    """DESIGN 8.1: an assert over an output not yet declared fails the
-    build (`unknown_output`): the red state the loop starts in."""
+    """DESIGN 4.8: a name nothing declares fails the build in an asset
+    file (`unknown_output`)."""
     err = refusal(tmp_path, f'''mo.assert_contact(id = "stands", outputs = ["post", "slab"])
 mo.output("slab", {BOX})
 ''')

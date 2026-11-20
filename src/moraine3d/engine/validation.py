@@ -28,6 +28,7 @@ def report(sc: Asset, ev) -> tuple[dict, dict]:
         groups=sc.groups,
         params=params_mod.range_entries(sc),
         sites=ev.output_sites(),
+        absent=sc.absent,
     )
     out = append_ref_asserts(out, ev.ref_asserts())
     mates = ev.mate_frames()

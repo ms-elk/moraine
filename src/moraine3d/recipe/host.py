@@ -109,7 +109,9 @@ class Session:
         self.asserts: list[dict] = []
         self.params: list[dict] = []
         self.outputs: list[tuple[str, Handle, str]] = []
-        self.groups: list[tuple[str, object, str]] = []
+        # Each group with whether the requirements file declared it: the
+        # file whose top level is running, as for an assert (DESIGN 5.2).
+        self.groups: list[tuple[str, object, str, bool]] = []
         self.waivers: list[tuple[object, object, str]] = []
         self.asset_waivers: list[tuple[object, str]] = []
         self.budgets: list[tuple[str, object, str]] = []
@@ -657,7 +659,9 @@ class Session:
         at = sites.where(found)
         given = self._arguments("group", ("name", "outputs"), args, kw, at)
         members = self._plain(given["outputs"], "mo.group 'outputs'", at)
-        self.groups.append((given["name"], members, at))
+        self.groups.append(
+            (given["name"], members, at, self._role(found) == REQUIREMENTS),
+        )
 
     def _declare_waive(self, found, args, kw):
         at = sites.where(found)
@@ -924,9 +928,24 @@ class Session:
                 )
             self._checked(at, asset_mod.check_output, name, node.id, self.nodes, folded)
             outputs[name] = node.id
+        # A name the requirements file takes that no output declares is
+        # absent (DESIGN 4.1): the entries that reach it fail in the
+        # report (DESIGN 5.2), where the asset file's own fail the build.
+        group_names = {g[0] for g in self.groups if isinstance(g[0], str)}
+        absent: set[str] = set()
+
+        def undeclared(names) -> list[str]:
+            return sorted(
+                n for n in names
+                if isinstance(n, str) and n not in outputs and n not in group_names
+            )
+
+        def takable(name: str) -> bool:
+            return bool(asset_mod.OUTPUT_NAME_RE.fullmatch(name))
+
         groups: dict[str, list] = {}
         declared_at: dict[str, str] = {}
-        for name, members, at in self.groups:
+        for name, members, at, human in self.groups:
             if isinstance(name, str) and name in groups:
                 raise self.fail(
                     "bad_group",
@@ -934,7 +953,13 @@ class Session:
                     f"{declared_at[name]}",
                     at,
                 )
-            self._checked(at, asset_mod.check_group, name, members, outputs, folded)
+            lost: list[str] = []
+            if human and isinstance(members, list):
+                lost = [m for m in undeclared(members) if takable(m)]
+            self._checked(
+                at, asset_mod.check_group, name, members, outputs, folded, lost,
+            )
+            absent.update(lost)
             groups[name] = members
             declared_at[name] = at
         checks: dict[str, dict] = {}
@@ -959,14 +984,13 @@ class Session:
             self._checked(at, asset_mod.check_budget, key, value)
             budgets[key] = value
         self._resolve_following()
-        seen: set[str] = set()
         for entry in self.asserts:
             at = sites.Where(entry["site"], entry.get("via", ()))
             names = self._names(entry)
-            missing = sorted(
-                n for n in (names if isinstance(names, set) else ())
-                if isinstance(n, str) and n not in outputs and n not in groups
-            )
+            missing = undeclared(names if isinstance(names, set) else ())
+            if entry["owner"] == "human":
+                absent.update(n for n in missing if takable(n))
+                missing = [n for n in missing if not takable(n)]
             if missing:
                 raise self.fail(
                     "unknown_output",
@@ -976,9 +1000,13 @@ class Session:
                     + (f"; groups: {sorted(groups)}" if groups else ""),
                     at, assertion=entry["id"], output=missing[0],
                 )
+        seen: set[str] = set()
+        taken = asset_mod.takable_names(outputs, absent)
+        for entry in self.asserts:
+            at = sites.Where(entry["site"], entry.get("via", ()))
             self._checked(
                 at, asset_mod.check_assert, f"assert at {at}", entry,
-                outputs, groups, seen,
+                taken, groups, seen,
             )
 
         self.warnings = self._unowned_groups(declared_at)
@@ -989,6 +1017,8 @@ class Session:
         doc["outputs"] = outputs
         if groups:
             doc["groups"] = groups
+        if absent:
+            doc["absent"] = sorted(absent)
         if checks:
             doc["checks"] = checks
         if asset_checks:

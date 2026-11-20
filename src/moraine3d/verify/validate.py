@@ -523,6 +523,7 @@ def validate_outputs(
     groups: dict[str, list[str]] | None = None,
     params: list[dict] | None = None,
     sites: dict[str, dict] | None = None,
+    absent: list[str] | None = None,
 ) -> dict:
     """Tier-1 report over named outputs.
 
@@ -548,7 +549,9 @@ def validate_outputs(
     entries (``core.params.range_entries``, DESIGN 6): reported under
     ``params`` and gating like budgets; absent = no knob carries a range.
     ``sites`` (``Evaluation.output_sites()``) is each output's recipe
-    position, carried on its entry.
+    position, carried on its entry. ``absent`` names the outputs the
+    asset does not have (DESIGN 4.1): reported under ``absent``, and an
+    assert that reaches one fails as its own entry.
     """
     per_checks: dict[str, list[dict]] = {}
     for name, value in values.items():
@@ -590,6 +593,8 @@ def validate_outputs(
             out[name].update(sites[name])
         out[name]["checks"] = checks
     report: dict = {"ok": all_ok, "outputs": out}
+    if absent:
+        report["absent"] = sorted(absent)
     asset_entry = _check_asset_grounded(values, per_checks, asset_checks)
     if asset_entry is not None:
         report["asset_checks"] = [asset_entry]
@@ -597,7 +602,7 @@ def validate_outputs(
     guarded = vocab.builtin_entries() + list(asserts or [])
     entries = check_asserts(
         values, guarded, proto_manifold, ref_embeds=ref_embeds, groups=groups,
-        copy_bounds=copy_bounds,
+        copy_bounds=copy_bounds, absent=absent or (),
     )
     report["asserts"] = entries
     report["ok"] = report["ok"] and all(e["ok"] for e in entries)
@@ -649,7 +654,8 @@ def append_ref_asserts(report: dict, bundles: list[dict]) -> dict:
     for b in bundles:
         guarded = vocab.builtin_entries() + list(b["asserts"])
         entries = check_asserts(
-            b["values"], guarded, ref_embeds=b.get("ref_embeds"), groups=b.get("groups")
+            b["values"], guarded, ref_embeds=b.get("ref_embeds"),
+            groups=b.get("groups"), absent=b.get("absent") or (),
         )
         stamp = {"asset": b["asset"]}
         if "overrides" in b:

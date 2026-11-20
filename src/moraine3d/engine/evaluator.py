@@ -61,6 +61,7 @@ from .. import ops
 from ..cache import records
 from ..cache.records import Record, stats_attributes
 from ..core import params as params_mod
+from ..core import asserts as asserts_vocab
 from ..core import asset as asset_mod
 from ..core.mesh import Image, Mesh, Value, proto_of
 from ..core.asset import Node, Asset
@@ -770,8 +771,13 @@ class Evaluation:
                 pairs: set[frozenset] = set()
                 selfs: set[str] = set()
                 sub_groups = (sub.groups or {}) if sub is not None else {}
+                gone = (sub.absent or ()) if sub is not None else ()
                 for a in (sub.asserts or []) if sub is not None else []:
-                    if a["kind"] == "embedded":
+                    # An entry that reaches an absent output judges
+                    # nothing, so it polices no pair (DESIGN 5.2).
+                    if a["kind"] == "embedded" and not asserts_vocab.absent_names(
+                        a, sub_groups, gone
+                    ):
                         if len(a["outputs"]) == 2:
                             # A group pair is its member cross pairs
                             # (check_asserts cedes the same set).
@@ -860,6 +866,8 @@ class Evaluation:
             }
             if sub.groups:
                 bundle["groups"] = sub.groups
+            if sub.absent:
+                bundle["absent"] = sub.absent
             knobs = params_mod.range_entries(sub)
             if knobs:
                 bundle["params"] = knobs

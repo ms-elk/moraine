@@ -36,8 +36,8 @@ OUTPUT_NAME_RE = re.compile(rf"^{PORTABLE_NAME_FRAGMENT}$")
 
 # Fixed key orders for canonical serialization (DESIGN 4.1).
 ROOT_KEY_ORDER = (
-    "build_version", "nodes", "params", "outputs", "groups", "checks",
-    "asset_checks", "asserts", "budgets", "provenance",
+    "build_version", "nodes", "params", "outputs", "groups", "absent",
+    "checks", "asset_checks", "asserts", "budgets", "provenance",
 )
 NODE_KEY_ORDER = ("id", "op", "inputs", "params", "site", "via")
 # Accepted key sets derive from the serialization orders (the one
@@ -121,6 +121,10 @@ class Asset:
     # Output groups (DESIGN 4.1): group name -> member output names; a
     # name an assert takes wherever it takes an output (DESIGN 5.2).
     groups: dict[str, list[str]] | None = None
+    # Absent outputs (DESIGN 4.1): the names a requirements file takes
+    # that no output declares, sorted. Ignored by evaluation; an assert
+    # that names one fails as its own entry (DESIGN 5.2).
+    absent: list[str] | None = None
     # Set by load(): absolute file path; None for in-memory assets (loads()).
     # asset_ref resolution needs it (DESIGN 4.6).
     path: Path | None = None
@@ -319,12 +323,14 @@ def check_output(name, ref, nodes, folded: dict[str, str]) -> None:
         raise AssetError("bad_output_ref", f"output '{name}' references unknown node '{ref}'")
 
 
-def check_group(gname, members, raw_outputs, folded: dict[str, str]) -> None:
+def check_group(
+    gname, members, raw_outputs, folded: dict[str, str], absent=(),
+) -> None:
     """One ``groups`` entry (DESIGN 4.1): a piece built from several
     outputs named once, so an assert can take the piece where it takes
     an output (DESIGN 5.2). Group and output names share one namespace
     — an assert resolves a name without a second key saying which kind
-    it is."""
+    it is. A member may be one of the ``absent`` names."""
     if not isinstance(gname, str) or not OUTPUT_NAME_RE.fullmatch(gname):
         raise AssetError(
             "bad_group",
@@ -350,12 +356,43 @@ def check_group(gname, members, raw_outputs, folded: dict[str, str]) -> None:
             f"(a group of one is that output; write its name)",
         )
     for m in members:
-        if m not in raw_outputs:
+        if m not in raw_outputs and m not in absent:
             raise AssetError(
                 "bad_group",
                 f"group '{gname}' names unknown output '{m}'; asset "
                 f"outputs: {sorted(raw_outputs)} (groups hold outputs, "
                 f"never other groups)",
+            )
+
+
+def takable_names(raw_outputs, absent) -> frozenset[str]:
+    """The names an assert may take beside the groups (DESIGN 5.2): an
+    absent one is taken like an output's, and fails the entry. Made
+    once per asset, since every assert looks its names up in it."""
+    return frozenset(raw_outputs).union(absent)
+
+
+def check_absent(absent, raw_outputs, groups) -> None:
+    """Root ``absent`` (DESIGN 4.1): the names a requirements file takes
+    that no output declares, sorted, each of an output's form and none
+    of them an output or a group."""
+    if (
+        not isinstance(absent, list) or not absent
+        or not all(isinstance(n, str) and OUTPUT_NAME_RE.fullmatch(n) for n in absent)
+        or absent != sorted(set(absent))
+    ):
+        raise AssetError(
+            "bad_absent",
+            "root 'absent' must be a non-empty sorted list of distinct "
+            "output names (omit the key when there are none) - rebuild "
+            "the recipe rather than edit the IR",
+        )
+    for name in absent:
+        if name in raw_outputs or name in groups:
+            raise AssetError(
+                "bad_absent",
+                f"root 'absent' names '{name}', which the asset declares; "
+                f"rebuild the recipe rather than edit the IR",
             )
 
 
@@ -776,8 +813,13 @@ def loads(text: str) -> Asset:
                 f"root 'groups' must be a non-empty object naming output "
                 f"groups like {example} (omit the key when there are none)",
             )
+    absent = doc.get("absent")
+    if absent is not None:
+        check_absent(absent, raw_outputs, groups or {})
+    if groups is not None:
         for gname, members in groups.items():
-            check_group(gname, members, raw_outputs, folded)
+            check_group(gname, members, raw_outputs, folded, absent or ())
+    takable = takable_names(raw_outputs, absent or ())
 
     provenance = doc.get("provenance")
     if provenance is not None and not isinstance(provenance, dict):
@@ -815,7 +857,7 @@ def loads(text: str) -> Asset:
             raise AssetError("bad_asserts", "root 'asserts' must be a list of assertions")
         seen_assert_ids: set[str] = set()
         for i, a in enumerate(asserts):
-            check_assert(f"asserts[{i}]", a, raw_outputs, groups or {}, seen_assert_ids)
+            check_assert(f"asserts[{i}]", a, takable, groups or {}, seen_assert_ids)
 
     params = doc.get("params")
     if params is not None:
@@ -832,6 +874,7 @@ def loads(text: str) -> Asset:
         nodes=nodes,
         outputs=dict(raw_outputs),
         groups={g: list(m) for g, m in groups.items()} if groups is not None else None,
+        absent=list(absent) if absent is not None else None,
         checks=checks,
         asset_checks=asset_checks,
         provenance=provenance,
@@ -1078,6 +1121,8 @@ def _dumps(asset: Asset) -> str:
     sections.append(_object_block("outputs", asset.outputs))
     if asset.groups is not None:
         sections.append(_object_block("groups", asset.groups))
+    if asset.absent is not None:
+        sections.append(_inline("absent", asset.absent))
     if asset.checks is not None:
         sections.append(_object_block("checks", asset.checks))
     if asset.asset_checks is not None:

@@ -56,6 +56,30 @@ def refuse(entry: dict, why: str) -> None:
     entry["fix"] = why
 
 
+def refuse_absent(entry: dict, names: list[str]) -> None:
+    """Fail an entry that reaches absent outputs (DESIGN 5.2): nothing
+    is there to measure, and the requirement is not met by the asset
+    losing the part. A human-owned entry is never steered toward its
+    own removal, which is the human's to approve."""
+    entry["absent"] = names
+    lost = ", ".join(f"'{n}'" for n in names[:LISTED_COPIES])
+    if len(names) > LISTED_COPIES:
+        lost += f", and {len(names) - LISTED_COPIES} more (see absent)"
+    what = (
+        f"the asset has no output {lost}: no mo.output declares "
+        f"{'it' if len(names) == 1 else 'them'} at these knob values"
+    )
+    if entry["owner"] == "human":
+        refuse(
+            entry,
+            f"{what}; build the output, or ask the human whether the "
+            f"requirement still stands - a line of a requirements file "
+            f"changes with their approval",
+        )
+    else:
+        refuse(entry, f"{what}; build the output, or remove the entry")
+
+
 def owner_advice(entry: dict, repair: str, weaken: str, knob: str = "tol") -> str:
     """The fix advice's owner rule, one home for every assert kind
     (DESIGN 5.2): weakening the constraint (``weaken``) is offered only

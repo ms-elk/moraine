@@ -134,8 +134,12 @@ integers. A knob keeps the type of its default: `mo.param("w", 2,
 Names resolve once the asset's files have all run. An assert may
 name an output declared further down, so asserts can be written
 before the geometry they judge. A name that no `mo.output` or
-`mo.group` declares fails the build (`unknown_output`), which is how
-a requirement written first stays visible until its output exists.
+`mo.group` declares fails the build in an asset file
+(`unknown_output`). In a requirements file it builds, once the asset
+declares any output (`no_outputs` until then): the output is
+absent, and `validate` fails the entries that name it beside every
+other entry (see *Asset assertions*), which is how a requirement
+written first stays red until its output exists.
 
 ### ids (naming nodes and asserts)
 

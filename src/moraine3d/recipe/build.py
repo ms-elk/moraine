@@ -531,6 +531,7 @@ class _Build:
                 "nodes": len(loaded.nodes),
                 "asserts": len(loaded.asserts or []),
                 "outputs": len(loaded.outputs),
+                **({"absent": loaded.absent} if loaded.absent else {}),
             },
             unused=tuple(sorted(
                 set(accepted) - {decl["id"] for decl in session.params}

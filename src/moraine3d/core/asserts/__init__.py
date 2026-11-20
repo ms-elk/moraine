@@ -187,3 +187,16 @@ def output_names(a: dict) -> set[str] | str:
         return {a["faces"][0]}
     outs = a["outputs"]
     return "all" if outs == "all" else set(outs)
+
+
+def absent_names(a: dict, groups: dict, absent) -> list[str]:
+    """The absent outputs an entry reaches (DESIGN 5.2), sorted: a name
+    it takes, or a member of a group it takes. A group is absent with
+    any one member, so its entry never judges the members left."""
+    names = output_names(a)
+    if names == "all" or not absent:
+        return []
+    return sorted({
+        member for name in names for member in groups.get(name, [name])
+        if member in absent
+    })
