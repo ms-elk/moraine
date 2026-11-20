@@ -368,9 +368,10 @@ take just the project directory (§4.2).
   a readable, diffable artifact. The build's `--diff` (§6) reports
   over it, and a human debugging a build reads it. The same
   rule covers every root container that grows per output. The lists
-  (`nodes`, `params`, `asserts`) and the `outputs`/`groups`/`checks`
-  objects serialize one entry per line, because an entry-per-output
-  key must review, diff, and merge entry-wise. Fixed-keyset root
+  (`nodes`, `params`, `absent`, `asserts`) and the
+  `outputs`/`groups`/`checks` objects serialize one entry per line,
+  because an entry-per-output key must review, diff, and merge
+  entry-wise. Fixed-keyset root
   objects (`budgets`, `provenance`, `asset_checks` — it grows per
   check kind, never per output) stay inline.
 - **`"build_version"`** at document root, the version of the build
@@ -407,10 +408,10 @@ take just the project directory (§4.2).
   engine-side references. Because they become cache/export filenames
   and engine object names, names match `[A-Za-z][A-Za-z0-9_-]*` and
   are unique case-insensitively. The order outputs are declared in
-  carries no meaning (§9.1). An output is **absent** when the asset
-  does not have it at the knob values of this build: no `mo.output`
-  declares a name a requirements file takes (§5.2). The IR lists
-  those names under root `"absent"`, sorted on one line.
+  carries no meaning (§9.1). A name a requirements file takes (§5.2)
+  that no `mo.output` declares at the knob values of this build is an
+  **absent** output, and the IR lists them under root `"absent"`,
+  sorted.
 - **Root `"params"`:** the asset's declared knobs (§4.8), one entry
   per line in declaration order. An entry holds the knob's `id`, the
   `value` the build resolved for it, the declaration's `label`,
@@ -483,9 +484,8 @@ take just the project directory (§4.2).
   output name (§5.2). Groups and outputs share one namespace
   (collisions refused, case-folded like output names). A group holds
   two or more distinct outputs, declared or absent, never another
-  group. An
-  output may belong to several groups. Absent when the asset declares
-  none. Evaluation, export, and the cache ignore the key.
+  group. An output may belong to several groups. Absent when the
+  asset declares none. Evaluation, export, and the cache ignore the key.
 - **Root `"asserts"`:** declarative constraints as asset content,
   checked deterministically at eval time and reported through
   `validate` — gating, never waivable. Each entry carries the `site`
@@ -1891,12 +1891,11 @@ below adds only its measurement and judgment:
   key inside the entry (it serves the one-vs-rest form but not a pair
   of pieces); grouping by reference source (partners dropped with no
   line in the file).
-- **Absent outputs.** An entry that names an absent output (§4.1),
-  or a group with an absent member, fails with the name: a
-  requirement about a part is not met by the asset losing the part.
-  It fails as one entry beside every other (§8.2). A group is absent
-  with any one member and never narrows to the rest, since its
-  members are the entry's reach (ownership, below).
+- **Absent outputs.** An entry that names an absent output (§4.1)
+  fails with the name: a requirement about a part is not met by the
+  asset losing the part. A group is absent with any one member and
+  never narrows to the rest, since its members are the entry's reach
+  (ownership, below).
 - **Quantifier keys, one spelling each.** A cross-output check sees
   an instanced output as the union of its copies. The opt-in keys
   cover what the union cannot. `"every": [name, ...]` (contact and
@@ -2556,10 +2555,10 @@ one alike. A waived check is green, so the waivers are counted by
 check under `waived` (`{"not_sunk": 2}`). An advisory check
 (`level: "warn"`, §9.1) is stated once, as a `warnings` row naming
 the check, the `outputs` it failed on, and the `fix`, and the full
-report holds its row per output as well. `absent` lists the outputs
-the asset does not have (§4.1). A failing entry keeps its
+report holds its row per output as well. A failing entry keeps its
 own keys whole. `ref_assets` (§4.6), `mates` (§5.1), `by_site`,
-`consumers`, `warnings`, and `serve` are listed whole. A report that
+`absent` (§4.1), `consumers`, `warnings`, and `serve` are listed
+whole. A report that
 says less still says that something was not checked, and how much.
 `--full` adds the asset's green rows, a referenced asset's staying
 folded as §4.6 folds them, and changes no key: every count and rollup
@@ -3423,7 +3422,9 @@ The guide's entry into this loop is **assert-first**, the Concept's
 1. Write the requirements first. The request's verifiable
    requirements are appended to the requirements file as
    `mo.assert_<kind>` declarations and budgets (§5.2). The agent's
-   own invariants and waivers go to the asset. Interpenetration
+   own invariants and waivers go to the asset, each with the output
+   it names, since an asset file's name for an output not yet
+   declared fails the build (§4.8). Interpenetration
    needs no entry, because the built-in overlap guard covers every
    pair from the first edit.
 2. Build and validate. An asset with no output yet fails the build

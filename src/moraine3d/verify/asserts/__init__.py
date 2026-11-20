@@ -79,6 +79,7 @@ def check_asserts(
     ctx = common.Context(
         values, proto_manifold=proto_manifold, copy_bounds=copy_bounds, groups=groups
     )
+    absent = frozenset(absent)
     lost = {
         a["id"]: vocab.absent_names(a, ctx.groups, absent)
         for a in asserts if not a.get("builtin")

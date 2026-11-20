@@ -953,9 +953,9 @@ class Session:
                     f"{declared_at[name]}",
                     at,
                 )
-            lost: list[str] = []
+            lost: frozenset[str] = frozenset()
             if human and isinstance(members, list):
-                lost = [m for m in undeclared(members) if takable(m)]
+                lost = frozenset(m for m in undeclared(members) if takable(m))
             self._checked(
                 at, asset_mod.check_group, name, members, outputs, folded, lost,
             )
@@ -1002,11 +1002,12 @@ class Session:
                 )
         seen: set[str] = set()
         taken = asset_mod.takable_names(outputs, absent)
+        declared = frozenset(outputs)
         for entry in self.asserts:
             at = sites.Where(entry["site"], entry.get("via", ()))
             self._checked(
                 at, asset_mod.check_assert, f"assert at {at}", entry,
-                taken, groups, seen,
+                taken if entry["owner"] == "human" else declared, groups, seen,
             )
 
         self.warnings = self._unowned_groups(declared_at)

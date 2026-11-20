@@ -771,7 +771,7 @@ class Evaluation:
                 pairs: set[frozenset] = set()
                 selfs: set[str] = set()
                 sub_groups = (sub.groups or {}) if sub is not None else {}
-                gone = (sub.absent or ()) if sub is not None else ()
+                gone = frozenset((sub.absent or ()) if sub is not None else ())
                 for a in (sub.asserts or []) if sub is not None else []:
                     # An entry that reaches an absent output judges
                     # nothing, so it polices no pair (DESIGN 5.2).

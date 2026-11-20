@@ -192,7 +192,8 @@ def output_names(a: dict) -> set[str] | str:
 def absent_names(a: dict, groups: dict, absent) -> list[str]:
     """The absent outputs an entry reaches (DESIGN 5.2), sorted: a name
     it takes, or a member of a group it takes. A group is absent with
-    any one member, so its entry never judges the members left."""
+    any one member, so its entry never judges the members left.
+    ``absent`` is a set, made once per asset by the caller."""
     names = output_names(a)
     if names == "all" or not absent:
         return []

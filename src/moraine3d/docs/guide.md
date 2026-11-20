@@ -179,12 +179,12 @@ watching, on the project the human picks) → subject
 stages working:
 
 - **Author assert-first** — the test-first habit, applied to assets.
-  Before building geometry, list every verifiable requirement in the
-  request, then land each as asset content in the same edit that
-  introduces the output it names. Solid-based checks stay red until
-  the outputs close, by design. An elevated output passes the
-  ground checks with no waiver, but nothing verifies what holds it
-  up: write the `contact`/`place` (or `mated`) in the same edit.
+  Before building geometry, write every verifiable requirement of the
+  request into the requirements file, red until its output exists.
+  Your own invariants land with the output they name. Solid-based
+  checks stay red until the outputs close, by design. An elevated
+  output passes the ground checks with no waiver, but nothing verifies
+  what holds it up: write the `contact`/`place` (or `mated`) with it.
   Never waive a sunk part — fix penetration by translating; waive
   `not_sunk` only for deliberate below-ground geometry, asset-level
   `grounded` only for out-of-asset support. Build from the

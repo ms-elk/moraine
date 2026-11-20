@@ -817,8 +817,9 @@ def loads(text: str) -> Asset:
     if absent is not None:
         check_absent(absent, raw_outputs, groups or {})
     if groups is not None:
+        gone = frozenset(absent or ())
         for gname, members in groups.items():
-            check_group(gname, members, raw_outputs, folded, absent or ())
+            check_group(gname, members, raw_outputs, folded, gone)
     takable = takable_names(raw_outputs, absent or ())
 
     provenance = doc.get("provenance")
@@ -856,8 +857,15 @@ def loads(text: str) -> Asset:
         if not isinstance(asserts, list):
             raise AssetError("bad_asserts", "root 'asserts' must be a list of assertions")
         seen_assert_ids: set[str] = set()
+        declared = frozenset(raw_outputs)
         for i, a in enumerate(asserts):
-            check_assert(f"asserts[{i}]", a, takable, groups or {}, seen_assert_ids)
+            # An absent name is the requirements file's to take
+            # (DESIGN 4.8): an agent-owned entry names declared outputs.
+            human = isinstance(a, dict) and a.get("owner") == "human"
+            check_assert(
+                f"asserts[{i}]", a, takable if human else declared,
+                groups or {}, seen_assert_ids,
+            )
 
     params = doc.get("params")
     if params is not None:
@@ -1122,7 +1130,9 @@ def _dumps(asset: Asset) -> str:
     if asset.groups is not None:
         sections.append(_object_block("groups", asset.groups))
     if asset.absent is not None:
-        sections.append(_inline("absent", asset.absent))
+        sections.append(_list_block(
+            "absent", [json.dumps(n, allow_nan=False) for n in asset.absent],
+        ))
     if asset.checks is not None:
         sections.append(_object_block("checks", asset.checks))
     if asset.asset_checks is not None:

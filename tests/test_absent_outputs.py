@@ -211,6 +211,20 @@ def test_the_loader_judges_root_absent(tmp_path):
         assert exc.value.code in ("bad_absent", "bad_group", "bad_assert_outputs"), bad
 
 
+def test_the_loader_takes_an_absent_name_from_a_human_owned_entry_alone(tmp_path):
+    """DESIGN 4.8: a name nothing declares fails the build in an asset
+    file, and an IR read by path is held to the same: an agent-owned
+    entry names declared outputs."""
+    doc = ir(build_recipe(tmp_path, f'mo.output("slab", {SLAB})\n', files={
+        "asset.requirements.star": 'mo.assert_count(id = "lamps", outputs = ["lamp"], value = 2)\n',
+    }))
+    [entry] = doc["asserts"]
+    assert asset_mod.loads(json.dumps(doc)).absent == ["lamp"]
+    with pytest.raises(AssetError) as exc:
+        asset_mod.loads(json.dumps({**doc, "asserts": [{**entry, "owner": "agent"}]}))
+    assert exc.value.code == "bad_assert_outputs" and "'lamp'" in exc.value.message
+
+
 def test_the_build_diff_names_a_change_of_what_is_absent(tmp_path):
     """DESIGN 6: `build --diff` names the declarations that changed,
     and an output a requirement lost is one."""
