@@ -652,6 +652,7 @@ def test_no_builtin_returns_an_evaluated_value():
         "waive_asset": session.declare("waive_asset", asset, "grounded"),
         "vendored": session.declare("vendored", asset, "kit/part.star", "0" * 24),
         "budget": session.declare("budget", human, materials=2),
+        "optional": session.declare("optional", human, ["part"], "w"),
         "param": session.declare("param", asset, "w", 2.5, min=1.0, max=3.0),
     }
     assert set(returned) == set(prelude.DECLARATIONS)

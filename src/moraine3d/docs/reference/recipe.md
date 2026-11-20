@@ -65,6 +65,7 @@ call:
 | `"checks": {"slab": {"not_sunk": false}}` | `mo.waive("slab", "not_sunk")` |
 | `"asset_checks": {"grounded": false}` | `mo.waive_asset("grounded")` |
 | `"budgets": {"materials": 2}` | `mo.budget(materials = 2)`, in the requirements file |
+| `"optional": {"lamp": "lamp_on"}` | `mo.optional(["lamp"], "lamp_on")`, in the requirements file |
 | a `params` entry | `mo.param(...)` (see *knobs*) |
 
 JSON values are written as Starlark literals: `true` is `True`,
@@ -103,7 +104,7 @@ arguments.
   [outputs])`, `mo.param(id, default, ...)`, `mo.waive(output,
   check)`, `mo.waive_asset(check)`, `mo.vendored(source, hash)`, and
   in a requirements file `mo.budget(materials = N)`,
-  `mo.param_value(id)`, and `mo.group` for a group its asserts name
+  `mo.optional(outputs, knob)`, `mo.param_value(id)`, and `mo.group` for a group its asserts name
   (see *requirements*).
 - **Asserts.** `mo.assert_<kind>(id = ..., <key> = ...)`, one function
   per kind, keywords only, with the IR's keys (`outputs`, `faces`,
@@ -232,7 +233,8 @@ mo.budget(materials = 1)
 holds what the human requires of it. An assert declared there is
 reported with `owner: "human"`, and one declared in an asset file or
 in a function an asset calls with `owner: "agent"`. The file holds
-constants, asserts, budgets, and the groups its asserts name: a
+constants, asserts, budgets, the parts the human made optional, and
+the groups its asserts name: a
 group's members are the requirement's reach, so a group an asset file
 declares and a requirement names draws `group_not_owned`, in `build`
 and among `validate`'s warnings, with the move as its `fix`. Every
@@ -265,6 +267,18 @@ runs, so arithmetic and `<` on it fail the build (see *refusals*).
 true), and a handle that ends up no assert's threshold fails the
 build (`param_value_unused`): a requirements file cannot branch on a
 knob's value. The entry's `from_param` names the knob.
+
+A part the human made optional is declared so, once:
+`mo.optional(["lamp_base", "lantern"], "lamp")` names the outputs, or
+groups, that may be absent while the knob `lamp` is off (a boolean
+knob that is false, a number knob that is 0). A requirement over one
+that is absent then judges nothing and is green with
+`unchecked: {"optional": [...]}`, counted in the report. Absent
+while the knob is on it fails, and present it is judged whatever the
+knob holds (see *Asset assertions*). It weakens every requirement
+that names the part: write it only where the request made the part
+optional, never to clear a failing entry. An asset file takes none
+(`optional_outside_requirements`) and branches with `if`.
 
 ### knobs (`mo.param`, the human-tweakable values)
 
@@ -343,5 +357,6 @@ the spelling to write instead. What Python habit meets most often:
 | `mo.budget` in an asset file | `budget_outside_requirements` | the requirements file |
 | `mo.param_value(...) + 0.1`, `< 2` | `param_value_arithmetic` | the derived quantity as a constant of the requirements file |
 | `mo.param_value` in an asset, or anywhere but a threshold | `param_value_outside_requirements`, `param_value_misplaced` | in an asset, the value `mo.param` returned |
-| `if mo.param_value(...):`, `== 2`, a handle no assert takes | `param_value_unused` | requirements that hold at every value of the knob, the handle as the threshold that moves |
+| `if mo.param_value(...):`, `== 2`, a handle no assert takes | `param_value_unused` | requirements that hold at every value of the knob, `mo.optional` for a part the human made optional, the handle as the threshold that moves |
+| `mo.optional` in an asset file | `optional_outside_requirements` | `if` around the part, and the declaration in the requirements file where the human made the part optional |
 | a `load` the three rules exclude | `load_refused` | see *load* |

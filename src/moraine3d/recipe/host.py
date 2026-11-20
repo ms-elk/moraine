@@ -115,6 +115,7 @@ class Session:
         self.waivers: list[tuple[object, object, str]] = []
         self.asset_waivers: list[tuple[object, str]] = []
         self.budgets: list[tuple[str, object, str]] = []
+        self.optionals: list[tuple[list[str], str, str]] = []
         self.provenance: tuple[dict, str] | None = None
         self.references: list[Reference] = []
         self.accepted_offers: dict = {}
@@ -718,6 +719,37 @@ class Session:
         for key, value in kw.items():
             self.budgets.append((key, self._plain(value, f"mo.budget '{key}'", at), at))
 
+    def _declare_optional(self, found, args, kw):
+        """The outputs that may be absent while a knob is off (DESIGN
+        5.2). It weakens every requirement that names one, so it is the
+        requirements file's to state."""
+        at = sites.where(found)
+        if self._role(found) != REQUIREMENTS:
+            raise self.fail(
+                "optional_outside_requirements",
+                f"mo.optional is declared in an asset file; which parts "
+                f"may be absent is the human's to say - write it in "
+                f"'{self.requirements_file}' where their request made the "
+                f"part optional, and branch with 'if' here",
+                at,
+            )
+        given = self._arguments("optional", ("outputs", "knob"), args, kw, at)
+        names = self._plain(given["outputs"], "mo.optional 'outputs'", at)
+        knob = given["knob"]
+        if (
+            not isinstance(names, list) or not names
+            or not all(isinstance(n, str) for n in names)
+            or not isinstance(knob, str)
+        ):
+            raise self.fail(
+                "bad_declaration",
+                "mo.optional takes the outputs (or groups) by name and the "
+                "id of the knob that switches them, as in "
+                "mo.optional([\"lamp_base\", \"lantern\"], \"lamp\")",
+                at,
+            )
+        self.optionals.append((names, knob, at))
+
     def _declare_param(self, found, args, kw):
         at = sites.where(found)
         self._refuse_in_requirements(
@@ -838,7 +870,9 @@ class Session:
                     f"('if', '==', 'and', 'not'): it holds no number while "
                     f"the file runs, so the file cannot branch on a knob's "
                     f"value - state requirements that hold at every value "
-                    f"the knob takes. Otherwise pass it as the threshold "
+                    f"the knob takes, and declare a part the human made "
+                    f"optional with mo.optional([\"<output>\"], "
+                    f"\"{knob.id}\"). Otherwise pass it as the threshold "
                     f"that moves with the knob, or remove the call",
                     knob.site, param=knob.id,
                 )
@@ -984,6 +1018,41 @@ class Session:
             self._checked(at, asset_mod.check_budget, key, value)
             budgets[key] = value
         self._resolve_following()
+        knobs = {decl["id"]: decl for decl in self.params}
+        optional: dict[str, str] = {}
+        for names, knob, at in self.optionals:
+            decl = knobs.get(knob)
+            if decl is None:
+                raise self._from(params_mod.unknown_param(knob, knobs), at)
+            kind = asset_mod.param_kind(decl["value"])
+            if kind not in asset_mod.OPTIONAL_KNOB_KINDS:
+                raise self.fail(
+                    "bad_optional",
+                    f"mo.optional names the knob '{knob}', which is a "
+                    f"{kind}; a part is switched by a boolean knob, or a "
+                    f"number knob, off while it is 0",
+                    at, param=knob,
+                )
+            for name in names:
+                for member in groups.get(name, [name]):
+                    if member not in outputs and not takable(member):
+                        raise self.fail(
+                            "unknown_output",
+                            f"mo.optional names '{member}', which is no "
+                            f"output's name; declared outputs: "
+                            f"{sorted(outputs)}",
+                            at, output=member,
+                        )
+                    if member in optional:
+                        raise self.fail(
+                            "bad_optional",
+                            f"output '{member}' is declared optional twice; "
+                            f"one knob switches a part",
+                            at, output=member,
+                        )
+                    optional[member] = knob
+                    if member not in outputs:
+                        absent.add(member)
         for entry in self.asserts:
             at = sites.Where(entry["site"], entry.get("via", ()))
             names = self._names(entry)
@@ -1020,6 +1089,8 @@ class Session:
             doc["groups"] = groups
         if absent:
             doc["absent"] = sorted(absent)
+        if optional:
+            doc["optional"] = optional
         if checks:
             doc["checks"] = checks
         if asset_checks:

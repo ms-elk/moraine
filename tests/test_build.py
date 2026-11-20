@@ -87,8 +87,11 @@ def test_the_corpus_covers_the_vocabulary():
     assert set(vocab.AUTHORABLE_KINDS) - used_kinds == set()
     # No shipped example waives an asset-level check; the declaration's
     # own test builds one (test_recipe_builtins). Nor does one hold a
-    # requirement over an output it lacks (test_absent_outputs).
-    assert set(asset_mod.ROOT_KEY_ORDER) - used_keys == {"absent", "asset_checks"}
+    # requirement over an output it lacks (test_absent_outputs), or
+    # declare a part optional (test_optional_outputs).
+    assert set(asset_mod.ROOT_KEY_ORDER) - used_keys == {
+        "absent", "asset_checks", "optional",
+    }
 
 
 def test_the_translator_orders_definitions_before_uses():

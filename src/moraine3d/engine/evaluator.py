@@ -868,6 +868,9 @@ class Evaluation:
                 bundle["groups"] = sub.groups
             if sub.absent:
                 bundle["absent"] = sub.absent
+            excused = asset_mod.excused_outputs(sub)
+            if excused:
+                bundle["excused"] = excused
             knobs = params_mod.range_entries(sub)
             if knobs:
                 bundle["params"] = knobs

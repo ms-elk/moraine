@@ -20,6 +20,7 @@ DECLARATIONS = {
     "group": "groups",
     "param": "params",
     "budget": "budgets",
+    "optional": "optional",
     "waive": "checks",
     "waive_asset": "asset_checks",
     "vendored": "provenance",

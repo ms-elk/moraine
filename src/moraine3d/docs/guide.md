@@ -70,7 +70,7 @@ the plan commits (each row's limit changes plans, not parameters):
 | texture a surface | *patterns* + `unwrap` | box/planar projection only; one source per slot |
 | assign materials | `material` | name is the export identity; a factor knob on a shared name is never live |
 | place another project's asset | `asset_ref` | an override reaching a material needs `material_rename` |
-| state a requirement relative to a knob or another part | `extent` + `requirements` | a threshold is a number: `param_value` takes no arithmetic, no assert compares two measurements — substitute, and say which |
+| state a requirement relative to a knob or another part | `extent` + `requirements` | a threshold is a number: `param_value` takes no arithmetic, no assert compares two measurements — substitute, and say which; a part the human made optional is declared with `mo.optional` |
 
 ## Workspace & projects {#workspace}
 

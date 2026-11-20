@@ -56,18 +56,29 @@ def refuse(entry: dict, why: str) -> None:
     entry["fix"] = why
 
 
-def refuse_absent(entry: dict, names: list[str]) -> None:
+def leave_unjudged(entry: dict, names: list[str]) -> None:
+    """Settle an entry whose absent outputs are optional under a knob
+    that is off (DESIGN 5.2): it judges nothing. ``ok`` is what
+    ``validate`` gates on, and ``unchecked`` names what was not there
+    to measure, so a report counts what it did not judge."""
+    entry["ok"] = True
+    entry["unchecked"] = {"optional": names}
+
+
+def refuse_absent(entry: dict, names: list[str], required: list[str]) -> None:
     """Fail an entry that reaches absent outputs (DESIGN 5.2): nothing
     is there to measure, and the requirement is not met by the asset
-    losing the part. A human-owned entry is never steered toward its
+    losing the part. ``required`` are the ones to build, those no knob
+    that is off excuses: the entry names every absent output, and its
+    fix only these. A human-owned entry is never steered toward its
     own removal, which is the human's to approve."""
     entry["absent"] = names
-    lost = ", ".join(f"'{n}'" for n in names[:LISTED_COPIES])
-    if len(names) > LISTED_COPIES:
-        lost += f", and {len(names) - LISTED_COPIES} more (see absent)"
+    lost = ", ".join(f"'{n}'" for n in required[:LISTED_COPIES])
+    if len(required) > LISTED_COPIES:
+        lost += f", and {len(required) - LISTED_COPIES} more"
     what = (
         f"the asset has no output {lost}: no mo.output declares "
-        f"{'it' if len(names) == 1 else 'them'} at these knob values"
+        f"{'it' if len(required) == 1 else 'them'} at these knob values"
     )
     if entry["owner"] == "human":
         refuse(

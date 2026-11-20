@@ -37,7 +37,7 @@ OUTPUT_NAME_RE = re.compile(rf"^{PORTABLE_NAME_FRAGMENT}$")
 # Fixed key orders for canonical serialization (DESIGN 4.1).
 ROOT_KEY_ORDER = (
     "build_version", "nodes", "params", "outputs", "groups", "absent",
-    "checks", "asset_checks", "asserts", "budgets", "provenance",
+    "optional", "checks", "asset_checks", "asserts", "budgets", "provenance",
 )
 NODE_KEY_ORDER = ("id", "op", "inputs", "params", "site", "via")
 # Accepted key sets derive from the serialization orders (the one
@@ -94,6 +94,10 @@ KNOWN_ASSET_CHECKS = frozenset({"grounded"})
 # undeclared ones are not checked at all — there is no built-in default.
 KNOWN_BUDGETS = frozenset({"materials"})
 
+# The knobs that switch an optional output (DESIGN 5.2), by kind: one
+# the recipe's own ``if`` reads as on or off.
+OPTIONAL_KNOB_KINDS = ("boolean", "number")
+
 
 @dataclass
 class Node:
@@ -125,6 +129,10 @@ class Asset:
     # that no output declares, sorted. Ignored by evaluation; an assert
     # that names one fails as its own entry (DESIGN 5.2).
     absent: list[str] | None = None
+    # Optional outputs (DESIGN 4.1): output name -> the id of the knob
+    # that excuses its absence while off. Ignored by evaluation; an
+    # assert over one that is absent then judges nothing (DESIGN 5.2).
+    optional: dict[str, str] | None = None
     # Set by load(): absolute file path; None for in-memory assets (loads()).
     # asset_ref resolution needs it (DESIGN 4.6).
     path: Path | None = None
@@ -370,6 +378,56 @@ def takable_names(raw_outputs, absent) -> frozenset[str]:
     absent one is taken like an output's, and fails the entry. Made
     once per asset, since every assert looks its names up in it."""
     return frozenset(raw_outputs).union(absent)
+
+
+def check_optional(optional, takable, params) -> None:
+    """Root ``optional`` (DESIGN 4.1): each output the human made
+    optional with the knob that excuses it, a declared boolean or
+    number knob. The name is an output's, declared or absent."""
+    knobs = {
+        d.get("id"): d.get("value")
+        for d in (params if isinstance(params, list) else []) if isinstance(d, dict)
+    }
+    if not isinstance(optional, dict) or not optional:
+        raise AssetError(
+            "bad_optional",
+            "root 'optional' must be a non-empty object of output names, "
+            "each with its knob's id, like {\"lamp\": \"lamp_on\"} (omit "
+            "the key when there are none)",
+        )
+    for name, knob in optional.items():
+        if name not in takable:
+            raise AssetError(
+                "bad_optional",
+                f"root 'optional' names '{name}', which is neither an "
+                f"output nor one of the 'absent' names",
+            )
+        if not isinstance(knob, str) or knob not in knobs:
+            raise AssetError(
+                "bad_optional",
+                f"optional output '{name}' names the knob {knob!r}, which "
+                f"the asset does not declare; declared: {sorted(knobs)}",
+            )
+        if param_kind(knobs[knob]) not in OPTIONAL_KNOB_KINDS:
+            raise AssetError(
+                "bad_optional",
+                f"optional output '{name}' names the knob '{knob}', a "
+                f"{param_kind(knobs[knob])}; a part is switched by a "
+                f"boolean knob, or a number knob, off while it is 0",
+            )
+
+
+def excused_outputs(sc: "Asset") -> frozenset[str]:
+    """The optional outputs whose knob is off (DESIGN 5.2), read from
+    the values the asset's knobs hold now: an entry whose absent
+    outputs are all among them judges nothing. A knob is off as the
+    recipe's ``if`` reads its value, false or 0."""
+    if not sc.optional:
+        return frozenset()
+    values = {decl["id"]: decl["value"] for decl in sc.params or []}
+    return frozenset(
+        name for name, knob in sc.optional.items() if not values[knob]
+    )
 
 
 def check_absent(absent, raw_outputs, groups) -> None:
@@ -876,6 +934,10 @@ def loads(text: str) -> Asset:
         for i, decl in enumerate(params):
             check_param(f"params[{i}]", decl, nodes, seen_ids, seen_bindings)
     _check_followed(params, asserts)
+    # After the knobs, which an optional output names.
+    optional = doc.get("optional")
+    if optional is not None:
+        check_optional(optional, takable, params)
 
     return Asset(
         build_version=build_version,
@@ -883,6 +945,7 @@ def loads(text: str) -> Asset:
         outputs=dict(raw_outputs),
         groups={g: list(m) for g, m in groups.items()} if groups is not None else None,
         absent=list(absent) if absent is not None else None,
+        optional=dict(optional) if optional is not None else None,
         checks=checks,
         asset_checks=asset_checks,
         provenance=provenance,
@@ -1133,6 +1196,8 @@ def _dumps(asset: Asset) -> str:
         sections.append(_list_block(
             "absent", [json.dumps(n, allow_nan=False) for n in asset.absent],
         ))
+    if asset.optional is not None:
+        sections.append(_object_block("optional", asset.optional))
     if asset.checks is not None:
         sections.append(_object_block("checks", asset.checks))
     if asset.asset_checks is not None:

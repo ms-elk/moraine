@@ -28,6 +28,7 @@ DECLARATIONS = {
     "group": "mo.group(name, outputs)",
     "param": "mo.param(id, default, min = ..., max = ..., label = ..., step = ...)",
     "budget": "mo.budget(materials = int)",
+    "optional": "mo.optional(outputs, knob)",
     "waive": "mo.waive(output, check)",
     "waive_asset": "mo.waive_asset(check)",
     "vendored": "mo.vendored(source, hash)",

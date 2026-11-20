@@ -55,7 +55,7 @@ KINDS = {
 def check_asserts(
     values: dict[str, Value], asserts: list[dict], proto_manifold=None,
     *, ref_embeds: dict | None = None, groups: dict[str, list[str]] | None = None,
-    copy_bounds=None, absent=(),
+    copy_bounds=None, absent=(), excused=(),
 ) -> list[dict]:
     """Asset assertions (DESIGN 5.2): declarative constraints checked
     deterministically, gating like tier-1 checks — one entry per
@@ -72,7 +72,9 @@ def check_asserts(
     resolves to the union of the group's members, and the entry echoes
     the resolution under ``members``. ``absent`` names the outputs the
     asset does not have (DESIGN 4.1): an entry that reaches one fails
-    here, as itself, and is handed to no kind. A kind the parser
+    here, as itself, and is handed to no kind. ``excused`` names the
+    optional ones whose knob is off (DESIGN 5.2): an entry whose absent
+    outputs are all among them judges nothing and says so. A kind the parser
     accepts but no module here evaluates raises rather than falling
     through to another kind's semantics.
     """
@@ -84,6 +86,7 @@ def check_asserts(
         a["id"]: vocab.absent_names(a, ctx.groups, absent)
         for a in asserts if not a.get("builtin")
     }
+    excused = frozenset(excused)
     pairs: set[frozenset] = set()
     self_outputs: set[str] = set()
     for a in asserts:
@@ -129,8 +132,11 @@ def check_asserts(
             entry["from_param"] = dict(a["from_param"])
         entry["owner"] = a["owner"]  # required by the parser; KeyError = unparsed
         entry.update(where(a))  # the recipe line that declared it
-        if lost.get(a["id"]):
-            common.refuse_absent(entry, lost[a["id"]])
+        gone = lost.get(a["id"])
+        if gone and excused.issuperset(gone):
+            common.leave_unjudged(entry, gone)
+        elif gone:
+            common.refuse_absent(entry, gone, [n for n in gone if n not in excused])
         else:
             mod.check(entry, a, ctx)
         entries.append(entry)

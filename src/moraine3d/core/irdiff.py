@@ -22,7 +22,8 @@ from .sites import where
 # The root keys a declaration writes, beside the nodes, the asserts,
 # and the outputs the diff reports entry by entry.
 _DECLARED = (
-    "params", "groups", "absent", "checks", "asset_checks", "budgets", "provenance",
+    "params", "groups", "absent", "optional", "checks", "asset_checks",
+    "budgets", "provenance",
 )
 _POSITION = ("site", "via")
 

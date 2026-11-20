@@ -369,9 +369,9 @@ take just the project directory (§4.2).
   over it, and a human debugging a build reads it. The same
   rule covers every root container that grows per output. The lists
   (`nodes`, `params`, `absent`, `asserts`) and the
-  `outputs`/`groups`/`checks` objects serialize one entry per line,
-  because an entry-per-output key must review, diff, and merge
-  entry-wise. Fixed-keyset root
+  `outputs`/`groups`/`optional`/`checks` objects serialize one entry
+  per line, because an entry-per-output key must review, diff, and
+  merge entry-wise. Fixed-keyset root
   objects (`budgets`, `provenance`, `asset_checks` — it grows per
   check kind, never per output) stay inline.
 - **`"build_version"`** at document root, the version of the build
@@ -486,6 +486,10 @@ take just the project directory (§4.2).
   two or more distinct outputs, declared or absent, never another
   group. An output may belong to several groups. Absent when the
   asset declares none. Evaluation, export, and the cache ignore the key.
+- **Optional root `"optional"`:** the outputs the human made
+  optional, each with the knob that excuses it, `"optional":
+  {"lamp_base": "lamp"}`, declared by `mo.optional` (§5.2).
+  Evaluation, export, and the cache ignore the key.
 - **Root `"asserts"`:** declarative constraints as asset content,
   checked deterministically at eval time and reported through
   `validate` — gating, never waivable. Each entry carries the `site`
@@ -1429,8 +1433,8 @@ vocabulary and the IR's are one:
   refused.
 - *Declarations, one per IR root key:* `mo.output(name, node)`,
   `mo.group(name, [outputs])`, `mo.param(id, default)` with `min`,
-  `max`, `label`, and `step` as keywords, `mo.budget(...)` (in a
-  requirements file only,
+  `max`, `label`, and `step` as keywords, `mo.budget(...)` and
+  `mo.optional(outputs, knob)` (in a requirements file only,
   §5.2), `mo.waive(output, check)` and `mo.waive_asset(check)` for
   the waivers of §4.1, and `mo.vendored(source, hash)` (§4.6).
   `mo.param` returns the knob's resolved value. Values resolve in
@@ -1448,7 +1452,7 @@ vocabulary and the IR's are one:
   and the entry fails in the report (§5.2), where assert-first
   starts (§8.1).
 - *In a requirements file:* the assert functions, `mo.budget`,
-  `mo.group` for a group its asserts name (§5.2), and
+  `mo.optional`, `mo.group` for a group its asserts name (§5.2), and
   `mo.param_value(id)`, an opaque handle to one of that asset's
   declared knobs, usable whole as a threshold (`value`, `tol`,
   `min`, `max`, or `min_area`) and nowhere else. Arithmetic on a
@@ -1865,7 +1869,9 @@ below adds only its measurement and judgment:
   number forces its reader to raise a tolerance until the entry fails
   and read the gap from the failure. That is a re-run over every
   assert, measured to dominate a revision's tool-wait, so the exact
-  search runs once, in the check.
+  search runs once, in the check. An entry that judged nothing has
+  none to carry: one failing over an absent output, one left
+  unjudged over an optional one (both below).
 - **Units are the kind's own measure.** `tol`, `min`, `max`, and
   `value` are meters on every length kind and copies on `count`,
   never a unit that depends on which other keys are present: an
@@ -1896,6 +1902,22 @@ below adds only its measurement and judgment:
   asset losing the part. A group is absent with any one member and
   never narrows to the rest, since its members are the entry's reach
   (ownership, below).
+- **Optional outputs.** A part the human made optional is declared
+  so once, in the requirements file: `mo.optional(["lamp_base",
+  "lantern"], "lamp")` names the outputs, or groups, that may be
+  absent while the knob is off. The knob is a boolean or a number,
+  off while it is false or 0, as the recipe's `if` reads it. An
+  entry whose absent outputs are all optional under a knob that is
+  off judges nothing and cedes nothing. Its `ok` is true, since
+  `ok` is what `validate` gates on and the entry gates nothing, and
+  its `unchecked` names what was not there to measure (the honesty
+  roster, below). An optional output that is present is judged
+  whatever its knob holds. Declaring a part optional weakens every
+  requirement that names it, so the declaration is written only
+  where the human's request made the part optional, and an asset
+  file takes none. The file owns which knob excuses the part, not
+  the knob's value, which resolves as any knob's does (§4.8): a
+  default that switches the part off moves no line of that file.
 - **Quantifier keys, one spelling each.** A cross-output check sees
   an instanced output as the union of its copies. The opt-in keys
   cover what the union cannot. `"every": [name, ...]` (contact and
@@ -1915,7 +1937,9 @@ below adds only its measurement and judgment:
 - **The honesty roster.** A green entry that quantified less than it
   reads names the gap: `unchecked` (a scope not quantified —
   `instanced_copies` for a contact without `every`,
-  `instanced_self_pairs` for a clearance without `self`), `ceded`
+  `instanced_self_pairs` for a clearance without `self`, `optional`
+  for an entry over an optional output its knob switched off),
+  `ceded`
   (pairs handed to a declared embed), `stronger` (a stronger `mated`
   mode that also holds). The report's `warnings` carry
   `contact_unquantified` as a row naming the `every` fix, because the

@@ -366,7 +366,10 @@ one, or a group with one among its members, fails with the names
 under `absent` while every other entry is judged, and the report
 lists them at the top level under `absent`. A group never narrows to
 the members left. The fix is the output: a human-owned entry is
-removed only with the human's approval.
+removed only with the human's approval. The one exception is a part
+the human made optional (`mo.optional`, see *requirements*): absent
+while its knob is off, a requirement over it judges nothing and is
+counted under `unchecked.optional`.
 
 ### contact (assert kind)
 

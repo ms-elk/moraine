@@ -6,6 +6,7 @@ runs read the same report.
 from __future__ import annotations
 
 from ..core import params as params_mod
+from ..core import asset as asset_mod
 from ..core.asset import Asset
 from ..verify.validate import (
     VERDICT_CHANNELS, append_ref_asserts, validate_outputs,
@@ -29,6 +30,7 @@ def report(sc: Asset, ev) -> tuple[dict, dict]:
         params=params_mod.range_entries(sc),
         sites=ev.output_sites(),
         absent=sc.absent,
+        excused=asset_mod.excused_outputs(sc),
     )
     out = append_ref_asserts(out, ev.ref_asserts())
     mates = ev.mate_frames()
