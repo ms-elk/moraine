@@ -267,6 +267,8 @@ def _write_pair(
     generator = f"moraine {dist_version('moraine3d')}"
     glb, info = build_glb(in_export_order(values), generator)
     for name, rec in records.items():
+        if name not in values:
+            continue  # absent (DESIGN 4.1): the gate left it out
         stats = rec.stats
         if name in baked:
             # Report what ships: the cached record keeps instanced stats
@@ -360,13 +362,20 @@ def export_asset(
         return red
 
     try:
+        if not values:
+            raise MoraineError(
+                "nothing_to_export",
+                f"every output of the asset is absent at these knob values "
+                f"({sorted(records)} hold no copy), so there is no part to "
+                f"write; export at a value that leaves one",
+            )
         glb_path, manifest_path, info = _write_pair(
             sc, ev, values, records, baked, profile, out_dir, bake_instances,
         )
     except MoraineError as e:
         if verdict is not None:
-            # The verdict was reached before the write failed, and the
-            # error carries it (DESIGN 6).
+            # The verdict was reached before the export failed, and
+            # the error carries it (DESIGN 6).
             e.detail["recompute"] = verdict
         raise
 

@@ -55,7 +55,7 @@ KINDS = {
 def check_asserts(
     values: dict[str, Value], asserts: list[dict], proto_manifold=None,
     *, ref_embeds: dict | None = None, groups: dict[str, list[str]] | None = None,
-    copy_bounds=None, absent=(), excused=(),
+    copy_bounds=None, absent=(), excused=(), empty=(),
 ) -> list[dict]:
     """Asset assertions (DESIGN 5.2): declarative constraints checked
     deterministically, gating like tier-1 checks — one entry per
@@ -74,12 +74,15 @@ def check_asserts(
     asset does not have (DESIGN 4.1): an entry that reaches one fails
     here, as itself, and is handed to no kind. ``excused`` names the
     optional ones whose knob is off (DESIGN 5.2): an entry whose absent
-    outputs are all among them judges nothing and says so. A kind the parser
+    outputs are all among them judges nothing and says so. ``empty`` names
+    the absent ones that are declared and have no copies, which a kind
+    with a measure for them still judges (``count``). A kind the parser
     accepts but no module here evaluates raises rather than falling
     through to another kind's semantics.
     """
     ctx = common.Context(
-        values, proto_manifold=proto_manifold, copy_bounds=copy_bounds, groups=groups
+        values, proto_manifold=proto_manifold, copy_bounds=copy_bounds,
+        groups=groups, empty=empty,
     )
     absent = frozenset(absent)
     lost = {
@@ -133,10 +136,15 @@ def check_asserts(
         entry["owner"] = a["owner"]  # required by the parser; KeyError = unparsed
         entry.update(where(a))  # the recipe line that declared it
         gone = lost.get(a["id"])
-        if gone and excused.issuperset(gone):
+        counted = getattr(mod, "MEASURES_NO_COPIES", False)
+        if gone and counted and ctx.empty.issuperset(gone):
+            mod.check(entry, a, ctx)
+        elif gone and excused.issuperset(gone):
             common.leave_unjudged(entry, gone)
         elif gone:
-            common.refuse_absent(entry, gone, [n for n in gone if n not in excused])
+            common.refuse_absent(
+                entry, gone, [n for n in gone if n not in excused], ctx.empty,
+            )
         else:
             mod.check(entry, a, ctx)
         entries.append(entry)

@@ -10,7 +10,9 @@ selects that region on every copy), except TANGENT directions, which
 map through each instance's linear part like the geometry they frame. No params. Instance transforms must have
 positive determinant (guaranteed by ``array``/``scatter``/``transform``
 construction) so the shared winding stays CCW-outward; a
-non-positive-determinant transform is an actionable error. A Mesh input
+non-positive-determinant transform is an actionable error. An input
+without copies (an ``array`` of count 0) is ``no_copies``: a mesh holds
+at least one. A Mesh input
 is an error — merging is explicit, and a mesh needs no baking (Day-One
 Invariant 6: nothing merges silently, this op is the explicit opt-in).
 Intended use: turning repeated cutters (bolt circles, window openings)
@@ -58,6 +60,12 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
         )
     proto = src.prototype
     xf = np.asarray(src.transforms, dtype=np.float64)  # (k, 4, 4)
+    if len(xf) == 0:
+        raise OpError(
+            "no_copies",
+            "bake_instances input has no copies (an array of count 0); a "
+            "mesh holds at least one - bake only while the count is not 0",
+        )
     det = np.linalg.det(xf[:, :3, :3])
     if np.any(det <= 0):
         bad = int(np.argmax(det <= 0))

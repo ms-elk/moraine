@@ -283,6 +283,12 @@ def _instance_frame(value, instance, *, subject: str):
             )
         return None, None
     copies = len(value.transforms)
+    if copies == 0:
+        raise FaceGroupError(
+            "no_copies",
+            f"{subject} has no copies (an array of count 0), so there is "
+            f"no copy to take a frame from",
+        )
     if instance is None:
         raise FaceGroupError(
             "missing_instance",

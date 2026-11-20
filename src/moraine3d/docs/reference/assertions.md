@@ -361,12 +361,16 @@ as `members`. Example: `examples/shelf_pair`.
 
 An output is **absent** when a requirements file names it and no
 `mo.output` declares it at these knob values (a branch of the recipe
-did not run, or the output is not built yet). An entry that names
+did not run, or the output is not built yet), or when it is declared
+and has no copies (an `array` of `count` 0). Nothing checks, draws,
+or exports an absent output, and `validate`, `stats`, `eval`,
+`query`, and `export` name it under `absent`. An entry that names
 one, or a group with one among its members, fails with the names
 under `absent` while every other entry is judged, and the report
 lists them at the top level under `absent`. A group never narrows to
-the members left. The fix is the output: a human-owned entry is
-removed only with the human's approval. The one exception is a part
+the members left. `count` alone still measures an output that is
+declared and has no copies, as 0. The fix is the output: a
+human-owned entry is removed only with the human's approval. The one exception is a part
 the human made optional (`mo.optional`, see *requirements*): absent
 while its knob is off, a requirement over it judges nothing and is
 counted under `unchecked.optional`.

@@ -28,7 +28,9 @@ import numpy as np
 
 from ..core.atomic import ReplaceError, atomic_replace
 from ..core.glb import GLB_VERSION, build_glb
-from ..core.mesh import Image, Instances, Material, Mesh, Value, proto_of
+from ..core.mesh import (
+    Image, Instances, Material, Mesh, Value, no_copies, proto_of,
+)
 from ..core.paths import PREVIEW_DIR_NAME, cache_dir, preview_dir
 from ..core.png import encode_png, quantize8, srgb_encode
 from ..errors import MoraineError
@@ -216,12 +218,17 @@ def meta_intact(meta: object) -> bool:
     if stats.get("kind") == "image":
         return True  # image stats are never subscripted for geometry
     bounds = stats.get("bounds")
+    # Instances of no copy have no extent, so their stats hold no
+    # bounds (``Instances.stats``); every other geometry record does.
+    bounded = (
+        bounds is None if no_copies(stats)
+        else isinstance(bounds, dict)
+        and _vec3(bounds.get("min")) and _vec3(bounds.get("max"))
+    )
     return (
         isinstance(stats.get("verts"), int)
         and isinstance(stats.get("tris"), int)
-        and isinstance(bounds, dict)
-        and _vec3(bounds.get("min"))
-        and _vec3(bounds.get("max"))
+        and bounded
         and isinstance(stats.get("instances", 0), int)
         and isinstance(stats.get("attributes", []), list)
         and isinstance(stats.get("groups", {}), dict)

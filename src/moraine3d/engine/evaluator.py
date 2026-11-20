@@ -63,7 +63,7 @@ from ..cache.records import Record, stats_attributes
 from ..core import params as params_mod
 from ..core import asserts as asserts_vocab
 from ..core import asset as asset_mod
-from ..core.mesh import Image, Mesh, Value, proto_of
+from ..core.mesh import Image, Mesh, Value, no_copies, proto_of
 from ..core.asset import Node, Asset
 from ..core.sites import where
 from ..errors import MoraineError, OpError, AssetError
@@ -248,6 +248,7 @@ class Evaluation:
         # record key -> whether its flat-shaded value has curved surface
         # (the flat_shading gate; one mesh load per boolean, not per walk).
         self._curved_memo: dict[tuple, bool] = {}
+        self._empty_memo: dict[tuple[Path, str], list[str]] = {}
         # (resolved path, override token) -> the landed overrides, for
         # ref_asserts report stamping (token alone is not human-readable).
         self._ref_overrides: dict[tuple[Path, str], dict] = {}
@@ -332,11 +333,22 @@ class Evaluation:
             for name, node_id in outputs.items()
         }
 
+    def absent(self, only: str | None = None) -> list[str]:
+        """The outputs the root asset does not have (DESIGN 4.1): the
+        names its requirements file takes that nothing declares, and
+        the declared ones that evaluated to no copies. What a reader of
+        the outputs leaves out, and names."""
+        empty = [n for n, rec in self.records(only).items() if no_copies(rec.stats)]
+        return sorted({*(self.root.absent or ()), *empty})
+
     def results(self, only: str | None = None) -> dict:
         """records() plus output GLBs (meshes) / preview PNGs (images);
-        per-output info dicts."""
+        per-output info dicts. An output without copies is absent
+        (DESIGN 4.1) and has neither."""
         results: dict[str, dict] = {}
         for name, rec in self.records(only).items():
+            if no_copies(rec.stats):
+                continue
             node = self.root.nodes[self.root.outputs[name]]
             entry = {"node_id": node.id}
             entry.update(where(node))
@@ -501,6 +513,11 @@ class Evaluation:
             at_output = {
                 name: self._root_record(self.root.outputs[name]).stats for name in reached
             }
+            # An output without copies is absent (DESIGN 4.1): nothing
+            # of it ships, so no loss reaches it.
+            at_output = {n: st for n, st in at_output.items() if not no_copies(st)}
+            if not at_output:
+                continue
             lost_attrs = sorted(
                 s for s in dropped
                 if any(s not in stats_attributes(st) for st in at_output.values())
@@ -771,13 +788,16 @@ class Evaluation:
                 pairs: set[frozenset] = set()
                 selfs: set[str] = set()
                 sub_groups = (sub.groups or {}) if sub is not None else {}
-                gone = frozenset((sub.absent or ()) if sub is not None else ())
-                for a in (sub.asserts or []) if sub is not None else []:
+                embeds = [
+                    a for a in (sub.asserts or []) if a["kind"] == "embedded"
+                ] if sub is not None else []
+                # What this use's values left absent, asked only where
+                # an embed could cede.
+                gone = self._absent_of(target, token) if embeds else frozenset()
+                for a in embeds:
                     # An entry that reaches an absent output judges
                     # nothing, so it polices no pair (DESIGN 5.2).
-                    if a["kind"] == "embedded" and not asserts_vocab.absent_names(
-                        a, sub_groups, gone
-                    ):
+                    if not asserts_vocab.absent_names(a, sub_groups, gone):
                         if len(a["outputs"]) == 2:
                             # A group pair is its member cross pairs
                             # (check_asserts cedes the same set).
@@ -813,6 +833,29 @@ class Evaluation:
                     covered_pairs.append([na, nb])
         return {"pairs": covered_pairs, "self": covered_self}
 
+    def _empty_of(self, path: Path, token: str) -> list[str]:
+        """The outputs of one referenced asset instance that evaluated
+        to no copies (DESIGN 4.1), by its overrides. Stats alone: no
+        value is loaded."""
+        key = (path, token)
+        if key not in self._empty_memo:
+            sub = self._assets[key]
+            try:
+                self._empty_memo[key] = [
+                    name for name in sorted(sub.outputs)
+                    if no_copies(self._eval_chain(sub, sub.outputs[name], token).stats)
+                ]
+            except MoraineError as e:
+                self._site_error(e)
+                raise
+        return self._empty_memo[key]
+
+    def _absent_of(self, path: Path, token: str) -> frozenset[str]:
+        """The absent outputs of one referenced asset instance: the
+        names its IR lists and the ones without copies."""
+        sub = self._assets[(path, token)]
+        return frozenset({*(sub.absent or ()), *self._empty_of(path, token)})
+
     def ref_asserts(self) -> list[dict]:
         """Sub-asset assert bundles (DESIGN 4.6): for each asset
         instance loaded through ``asset_ref``, its asserts plus every
@@ -847,9 +890,11 @@ class Evaluation:
             ):
                 sub = self._assets[(path, token)]
                 try:
+                    # An output without copies is absent (DESIGN 4.1).
+                    empty = self._empty_of(path, token)
                     values_by_instance[(path, token)] = {
                         name: self._eval_chain(sub, sub.outputs[name], token).value()
-                        for name in sorted(sub.outputs)
+                        for name in sorted(sub.outputs) if name not in empty
                     }
                 except MoraineError as e:
                     self._site_error(e)
@@ -866,8 +911,11 @@ class Evaluation:
             }
             if sub.groups:
                 bundle["groups"] = sub.groups
-            if sub.absent:
-                bundle["absent"] = sub.absent
+            empty = self._empty_of(path, token)
+            if sub.absent or empty:
+                bundle["absent"] = sorted({*(sub.absent or ()), *empty})
+            if empty:
+                bundle["empty"] = empty
             excused = asset_mod.excused_outputs(sub)
             if excused:
                 bundle["excused"] = excused

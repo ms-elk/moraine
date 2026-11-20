@@ -63,7 +63,7 @@ the plan commits (each row's limit changes plans, not parameters):
 | rest a part on a surface | `place` | on-top only, single horizontal plane |
 | butt / fit / dock faces | `mate` + `mated` | planar face sets; a contained joint stays authored, checked by `mated` `mode: "contained"` |
 | select faces | *Face predicates* | triangles, not logical faces; groups drop on topology rebuilds |
-| repeat parts | `array` / `scatter` | transform frame; stochastic outputs cannot become knobs |
+| repeat parts | `array` / `scatter` | transform frame; an `array` of `count` 0 leaves its output absent; stochastic outputs cannot become knobs |
 | terrain / relief | `grid`, `noise_displace`, `extrude`, `boolean` | open surfaces cannot be outputs |
 | chamfer edges | `bevel` | convex solids only |
 | turn a rotational part | `revolve` | the solid always contains the axis — a ring / torus has no op |

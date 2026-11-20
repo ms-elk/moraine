@@ -525,6 +525,7 @@ def validate_outputs(
     sites: dict[str, dict] | None = None,
     absent: list[str] | None = None,
     excused=(),
+    empty=(),
 ) -> dict:
     """Tier-1 report over named outputs.
 
@@ -554,7 +555,8 @@ def validate_outputs(
     asset does not have (DESIGN 4.1): reported under ``absent``, and an
     assert that reaches one fails as its own entry, unless every one it
     reaches is among ``excused``, the optional outputs whose knob is off
-    (``core.asset.excused_outputs``).
+    (``core.asset.excused_outputs``). ``empty`` are the absent ones that
+    are declared and have no copies, which ``count`` still measures.
     """
     per_checks: dict[str, list[dict]] = {}
     for name, value in values.items():
@@ -606,6 +608,7 @@ def validate_outputs(
     entries = check_asserts(
         values, guarded, proto_manifold, ref_embeds=ref_embeds, groups=groups,
         copy_bounds=copy_bounds, absent=absent or (), excused=excused,
+        empty=empty,
     )
     report["asserts"] = entries
     report["ok"] = report["ok"] and all(e["ok"] for e in entries)
@@ -659,7 +662,7 @@ def append_ref_asserts(report: dict, bundles: list[dict]) -> dict:
         entries = check_asserts(
             b["values"], guarded, ref_embeds=b.get("ref_embeds"),
             groups=b.get("groups"), absent=b.get("absent") or (),
-            excused=b.get("excused") or (),
+            excused=b.get("excused") or (), empty=b.get("empty") or (),
         )
         stamp = {"asset": b["asset"]}
         if "overrides" in b:

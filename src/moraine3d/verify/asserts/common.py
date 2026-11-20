@@ -65,21 +65,34 @@ def leave_unjudged(entry: dict, names: list[str]) -> None:
     entry["unchecked"] = {"optional": names}
 
 
-def refuse_absent(entry: dict, names: list[str], required: list[str]) -> None:
+def refuse_absent(
+    entry: dict, names: list[str], required: list[str], empty=frozenset(),
+) -> None:
     """Fail an entry that reaches absent outputs (DESIGN 5.2): nothing
     is there to measure, and the requirement is not met by the asset
     losing the part. ``required`` are the ones to build, those no knob
     that is off excuses: the entry names every absent output, and its
-    fix only these. A human-owned entry is never steered toward its
+    fix only these, each by why it is absent (declared nowhere, or
+    declared with no copies, ``empty``). A human-owned entry is never steered toward its
     own removal, which is the human's to approve."""
     entry["absent"] = names
-    lost = ", ".join(f"'{n}'" for n in required[:LISTED_COPIES])
-    if len(required) > LISTED_COPIES:
-        lost += f", and {len(required) - LISTED_COPIES} more"
-    what = (
-        f"the asset has no output {lost}: no mo.output declares "
-        f"{'it' if len(required) == 1 else 'them'} at these knob values"
-    )
+
+    def named(some: list[str]) -> str:
+        text = ", ".join(f"'{n}'" for n in some[:LISTED_COPIES])
+        if len(some) > LISTED_COPIES:
+            text += f", and {len(some) - LISTED_COPIES} more"
+        return text
+
+    undeclared = [n for n in required if n not in empty]
+    copyless = [n for n in required if n in empty]
+    why = []
+    if undeclared:
+        why.append(f"no mo.output declares {named(undeclared)}")
+    if copyless:
+        why.append(
+            f"{named(copyless)} {'has' if len(copyless) == 1 else 'have'} no copies"
+        )
+    what = f"{' and '.join(why)} at these knob values"
     if entry["owner"] == "human":
         refuse(
             entry,
@@ -225,9 +238,12 @@ class Context:
 
     def __init__(
         self, values: dict[str, Value], *, proto_manifold=None, copy_bounds=None,
-        groups: dict[str, list[str]] | None = None,
+        groups: dict[str, list[str]] | None = None, empty=(),
     ) -> None:
         self.values = values
+        # The outputs declared with no copies (DESIGN 4.1): absent, so
+        # not among ``values``, and counted as 0 by the kind that counts.
+        self.empty = frozenset(empty)
         self.proto_manifold = proto_manifold
         self._copy_bounds_of = copy_bounds
         self.groups = groups or {}

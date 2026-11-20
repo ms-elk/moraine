@@ -391,13 +391,14 @@ class Instances:
         return world.min(axis=0), world.max(axis=0)
 
     def stats(self) -> dict:
-        lo, hi = self.bounds()
         s = {
             "verts": int(len(self.prototype.vertices)),
             "tris": int(len(self.prototype.faces)),
             "instances": int(len(self.transforms)),
-            "bounds": _stat_bounds(lo, hi),
         }
+        if len(self.transforms):
+            # No copy, no extent: the output is absent (DESIGN 4.1).
+            s["bounds"] = _stat_bounds(*self.bounds())
         attrs = self.prototype.attribute_names()
         if attrs:
             s["attributes"] = attrs
@@ -433,6 +434,13 @@ def bind_material(value: "Mesh | Instances", mat: Material) -> "Mesh | Instances
     if isinstance(value, Instances):
         return Instances(prototype=bind(value.prototype), transforms=value.transforms)
     return bind(value)
+
+
+def no_copies(stats: dict) -> bool:
+    """Whether a value's stats say it is instanced with no copy (DESIGN
+    4.1): as an output it is absent, and nothing draws, checks, or
+    ships it."""
+    return stats.get("instances") == 0
 
 
 def proto_of(value: Mesh | Instances) -> Mesh:

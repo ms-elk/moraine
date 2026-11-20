@@ -9,6 +9,11 @@ from __future__ import annotations
 from ...core.mesh import Image, Instances
 from . import common
 
+# The one kind with a measure for an output that is declared and has no
+# copies (DESIGN 5.2): it counts 0, where every other kind has nothing
+# to measure and the entry fails as absent.
+MEASURES_NO_COPIES = True
+
 
 def check(entry: dict, a: dict, ctx: common.Context) -> None:
     """Fill a count entry (DESIGN 5.2): the output's copy count — an
@@ -17,12 +22,15 @@ def check(entry: dict, a: dict, ctx: common.Context) -> None:
     rides every evaluable entry; an image output is unevaluatable."""
     common.dimension_requirement(entry, a, None)
     name = a["outputs"][0]
-    value = ctx.values[name]
-    if isinstance(value, Image):
-        entry["ok"] = False
-        entry["fix"] = f"output '{name}' is an image; assertions apply to geometry"
-        return
-    measured = len(value.transforms) if isinstance(value, Instances) else 1
+    if name in ctx.empty:
+        measured = 0
+    else:
+        value = ctx.values[name]
+        if isinstance(value, Image):
+            entry["ok"] = False
+            entry["fix"] = f"output '{name}' is an image; assertions apply to geometry"
+            return
+        measured = len(value.transforms) if isinstance(value, Instances) else 1
     entry["measured"] = measured
     miss = common.dimension_verdict(entry, measured)
     entry["ok"] = miss is None

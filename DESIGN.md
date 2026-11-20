@@ -411,7 +411,11 @@ take just the project directory (§4.2).
   carries no meaning (§9.1). A name a requirements file takes (§5.2)
   that no `mo.output` declares at the knob values of this build is an
   **absent** output, and the IR lists them under root `"absent"`,
-  sorted.
+  sorted. So is a declared output whose value has no copies, an
+  `array` of `count` 0, which evaluation finds. An absent output is
+  no part of the asset: the checks, the budgets, the viewer, and
+  export leave it out, and a report that leaves it out names it
+  under `absent`.
 - **Root `"params"`:** the asset's declared knobs (§4.8), one entry
   per line in declaration order. An entry holds the knob's `id`, the
   `value` the build resolved for it, the declaration's `label`,
@@ -524,6 +528,9 @@ take just the project directory (§4.2).
   `{prototype: <node-id>, transforms: [...]}`, never merged geometry.
   Merging is the explicit operator `bake_instances` — the one
   deliberate Instances → Mesh opt-in, unblocking `boolean` cutters.
+  An operator that carries instances carries none the same way. One
+  that reads a copy or merges them (the anchor of `place` and `mate`,
+  `bake_instances`) refuses an input without copies (`no_copies`).
 - **Vertex attributes** use glTF's semantics verbatim (`COLOR_n` /
   `TEXCOORD_n` / `TANGENT` — §4.3's ecosystem-standard rule). Each
   op's semantics contract declares per attribute whether it is
@@ -1901,7 +1908,8 @@ below adds only its measurement and judgment:
   fails with the name: a requirement about a part is not met by the
   asset losing the part. A group is absent with any one member and
   never narrows to the rest, since its members are the entry's reach
-  (ownership, below).
+  (ownership, below). `count` alone measures an output that is
+  declared and has no copies, as 0, optional or not.
 - **Optional outputs.** A part the human made optional is declared
   so once, in the requirements file: `mo.optional(["lamp_base",
   "lantern"], "lamp")` names the outputs, or groups, that may be
@@ -3749,7 +3757,8 @@ it would lose geometry). The same writer serves the viewer
   there, never in `gltf`.
 - Preserves part hierarchy and pivots (animation and LOD depend on
   this — never flatten to a single mesh). v1 scope: the hierarchy is
-  exactly the named-output level. Each named output is one part,
+  exactly the named-output level. Each named output that is not
+  absent (§4.1) is one part,
   parts are never merged, and every part's pivot is the asset origin
   (author assets so the origin is the natural pivot). A richer
   `Assembly` value type is tracked

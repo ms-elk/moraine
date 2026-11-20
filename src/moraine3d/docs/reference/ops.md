@@ -241,7 +241,10 @@ the threshold. Deterministic. Example: `examples/pipe_tee`.
 Recipe: `mo.array(a, id = ..., count = int, step_translate = ..., step_rotate_deg = ..., step_scale = ...)`
 
 Linear array of its single input as instances. `count` (default 2,
-1..1000000); per-step TRS `step_translate` `[x, y, z]` (default
+0..1000000; 0 emits no copy, and an output without copies is absent:
+see *Asset assertions*. What reads a copy, `place` or `mate` on an
+anchor's copy and `bake_instances`, refuses none with `no_copies`, so
+build it under `if` on the count); per-step TRS `step_translate` `[x, y, z]` (default
 `[0, 0, 0]`), `step_rotate_deg` `[rx, ry, rz]` (default `[0, 0, 0]`),
 `step_scale`, scalar or `[sx, sy, sz]` (default 1, components > 0: a
 mirroring step would alternate instance handedness against the shared
@@ -274,7 +277,7 @@ geometry they frame. No params. Instance
 transforms must have positive determinant (guaranteed by
 `array`/`scatter`/`transform` construction) so shared winding stays
 CCW-outward; violations are an actionable error. A Mesh input is an
-error. Merging is explicit, and a mesh needs no baking (nothing
+error, and so is an input without copies (`no_copies`). Merging is explicit, and a mesh needs no baking (nothing
 merges silently; this op is the explicit opt-in).
 Intended use: repeated cutters for `boolean` (bolt circles, window
 openings). Delivery format is not a reason to use

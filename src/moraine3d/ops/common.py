@@ -273,6 +273,12 @@ def face_group(
             ) from None
         if e.code == "empty_group":
             raise OpError(f"empty_{role}", f"{op}: {e.message}", param=param) from None
+        if e.code == "no_copies":
+            raise OpError(
+                "no_copies",
+                f"{op}: {e.message}; build what stands on it only while "
+                f"the count is not 0",
+            ) from None
         if e.code == "missing_instance":
             raise OpError(
                 f"missing_{inst_param}", f"{op}: {e.message} (pass '{inst_param}')",

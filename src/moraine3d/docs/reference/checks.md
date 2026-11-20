@@ -91,7 +91,8 @@ as `mismatch`), a referenced asset's failing knobs included with
 their `asset`; `by_site`, the failing entries counted by the line
 they share, and by `via` where they came through more than one call, so
 one wrong expression in a loop reads as one row; `absent`, the
-outputs a requirement names that the asset does not have (see *Asset
+outputs the asset does not have, a name a requirement takes that
+nothing declares or an output without copies (see *Asset
 assertions*); `consumers`, the
 projects that reference this one (see *build*); `serve`, the running
 server's file-watch liveness (`watch: "alive" | "dead"`, with its

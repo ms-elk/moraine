@@ -247,6 +247,14 @@ def _target_root(target) -> Path:
     return workspace_mod.enclosing_root(asset_mod.project_root(target))
 
 
+def _absent(ev, only: str | None = None) -> dict:
+    """The report's ``absent`` (DESIGN 4.1, 6): the outputs the asset
+    does not have, which the report's ``outputs`` leave out. No key
+    where there are none."""
+    absent = ev.absent(only)
+    return {"absent": absent} if absent else {}
+
+
 def _cmd_eval(args) -> int:
     from ..engine.stats import asset_rollup
 
@@ -257,7 +265,7 @@ def _cmd_eval(args) -> int:
     ev = _evaluation(opened, recompute=args.recompute)
     results = ev.results(only=args.output)
     profile = ev.profile()
-    report = {"outputs": results, "profile": profile}
+    report = {"outputs": results, **_absent(ev, args.output), "profile": profile}
     summary: dict = {}
     if args.recompute:
         # The determinism check (DESIGN 4.4): a mismatch is exit 1 with
@@ -308,8 +316,11 @@ def _stats_report(asset_path: Path) -> dict:
     # records(), not results(): stats come from cache metadata and must
     # not pay for GLB materialization (DESIGN 8.2 tiering).
     ev = _evaluation(opened)
-    records = ev.records()
-    stats = {name: rec.stats for name, rec in records.items()}
+    absent = _absent(ev)
+    stats = {
+        name: rec.stats for name, rec in ev.records().items()
+        if name not in absent.get("absent", ())
+    }
     asset = asset_rollup(stats, len(sc.nodes))
     sites = ev.output_sites()
     stats = {
@@ -329,6 +340,7 @@ def _stats_report(asset_path: Path) -> dict:
     return {
         "asset": asset,
         "outputs": stats,
+        **absent,
         "profile": profile,
     }
 
@@ -534,7 +546,11 @@ def _cmd_query(args) -> int:
         )
     opened = _open(_resolve_asset(args.project))
     ev = _evaluation(opened)
-    records = ev.records(only=args.output)
+    absent = _absent(ev, args.output)
+    records = {
+        name: rec for name, rec in ev.records(only=args.output).items()
+        if name not in absent.get("absent", ())
+    }
     _note_asset(opened, ev, partial=args.output is not None, outputs=len(records))
     sites = ev.output_sites()
     rows = {
@@ -559,7 +575,8 @@ def _cmd_query(args) -> int:
     _print(_stamped({
         "outputs": {
             name: {**sites.get(name, {}), **row} for name, row in rows.items()
-        }
+        },
+        **absent,
     }))
     return 0
 

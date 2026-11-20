@@ -1,7 +1,8 @@
 """``array`` operator.
 
 Semantics: linear array of its single input as instances. Params:
-``count`` (int, 1..1000000, default 2) copies; per-step TRS
+``count`` (int, 0..1000000, default 2) copies, 0 leaving the output
+absent (DESIGN 4.1); per-step TRS
 ``step_translate`` [x, y, z] meters (default [0, 0, 0]),
 ``step_rotate_deg`` [rx, ry, rz] (default [0, 0, 0]), ``step_scale``
 scalar or [sx, sy, sz] (default 1, components > 0 — a mirroring step
@@ -40,7 +41,7 @@ ATTRIBUTE_POLICY = "preserved"  # the prototype passes through untouched
 
 
 def evaluate(inputs: list, params: dict, ctx) -> Instances:
-    count = common.integer("array", params, "count", 2, minimum=1, maximum=COUNT_MAX)
+    count = common.integer("array", params, "count", 2, minimum=0, maximum=COUNT_MAX)
     # Validated under their own names first: transform.matrix reports its
     # params as 'translate' / 'rotate_deg' / 'scale', and an error must
     # name the param the author actually wrote.
@@ -62,7 +63,7 @@ def evaluate(inputs: list, params: dict, ctx) -> Instances:
     )
 
     steps = np.empty((count, 4, 4))
-    steps[0] = np.eye(4)
+    steps[:1] = np.eye(4)
     for i in range(1, count):
         steps[i] = steps[i - 1] @ step
 

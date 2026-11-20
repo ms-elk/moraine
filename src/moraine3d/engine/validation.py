@@ -8,6 +8,7 @@ from __future__ import annotations
 from ..core import params as params_mod
 from ..core import asset as asset_mod
 from ..core.asset import Asset
+from ..core.mesh import no_copies
 from ..verify.validate import (
     VERDICT_CHANNELS, append_ref_asserts, validate_outputs,
 )
@@ -16,7 +17,13 @@ from ..verify.validate import (
 def report(sc: Asset, ev) -> tuple[dict, dict]:
     """The report of ``sc`` as ``ev`` evaluated it, before any export
     profile's checks, and the values it judged, by output."""
-    values = {name: rec.value() for name, rec in ev.records().items()}
+    records = ev.records()
+    # An output without copies is absent (DESIGN 4.1): no check judges
+    # it, and the report names it.
+    empty = [name for name, rec in records.items() if no_copies(rec.stats)]
+    values = {
+        name: rec.value() for name, rec in records.items() if name not in empty
+    }
     out = validate_outputs(
         values,
         checks_policy=sc.checks,
@@ -29,7 +36,8 @@ def report(sc: Asset, ev) -> tuple[dict, dict]:
         groups=sc.groups,
         params=params_mod.range_entries(sc),
         sites=ev.output_sites(),
-        absent=sc.absent,
+        absent=sorted({*(sc.absent or ()), *empty}),
+        empty=empty,
         excused=asset_mod.excused_outputs(sc),
     )
     out = append_ref_asserts(out, ev.ref_asserts())
