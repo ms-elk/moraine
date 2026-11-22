@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from ...core import mating
 from ...core.asserts.common import NOISE_FLOOR
-from ...core.mesh import Image, Value, proto_of
+from ...core.mesh import Image, Instances, Value, proto_of
 from ...core.predicates import FaceGroupError, resolve_face_group
 from .. import bounds, depth, solids
 from ..distance import (
@@ -140,6 +140,28 @@ def missing_copy(entry: dict, name: str, index: int, copies: int | None) -> str:
         f"output '{name}' has {copies} {'copy' if copies == 1 else 'copies'}; "
         f"copy index {index} is out of range (0..{copies - 1}); {advice}"
     )
+
+
+def face_reason(entry: dict, value: Value, spec, err: FaceGroupError) -> str:
+    """Why a face spec ``[output, tag, copy?]`` resolved to no face set
+    (DESIGN 5.2), from the resolver's refusal. What the refusal says
+    about the copy index is advice on the entry's own line, so it
+    follows the owner: a copy the output lacks is ``missing_copy``, and
+    an instanced output whose face names no copy steers a human-owned
+    entry to the geometry or to the human, never to an index the agent
+    would pick."""
+    name = spec[0]
+    copies = len(value.transforms) if isinstance(value, Instances) else None
+    if err.code == "bad_instance" and len(spec) > 2:
+        return missing_copy(entry, name, spec[2], copies)
+    if err.code == "missing_instance" and entry["owner"] == "human":
+        return (
+            f"output '{name}' is instanced ({copies} copies) and the face "
+            f"names no copy; build '{name}' as one mesh, or ask the human "
+            f"which copies the requirement means - a line of a requirements "
+            f"file changes with their approval"
+        )
+    return err.message
 
 
 def unchecked_instanced(entry: dict, key: str, names) -> None:

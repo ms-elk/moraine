@@ -39,13 +39,15 @@ def _read(lo: np.ndarray, hi: np.ndarray, what: str, ax: int) -> np.ndarray:
     return (lo[..., ax] + hi[..., ax]) / 2.0
 
 
-def _face_group(value, name: str, tag: str, instance):
+def _face_group(a: dict, value, face, instance):
     """The tagged face set's local triangles ``(g, 3, 3)`` and, when a
-    copy is named, its world matrix — or the resolver's reason."""
+    copy is named, its world matrix — or the resolver's reason, its
+    advice on the copy index ruled by the entry's owner."""
+    name, tag = face[0], face[1]
     try:
         tf = resolve_face_group(value, tag, instance, subject=f"output '{name}'")
     except FaceGroupError as e:
-        return None, None, e.message
+        return None, None, common.face_reason(a, value, face, e)
     return mating.group_triangles(tf.mesh, tf.faces), tf.matrix, None
 
 
@@ -82,7 +84,7 @@ def _subject_boxes(a: dict, ctx: common.Context, every: bool):
             # its local points are then placed per copy, axis by axis,
             # exactly as the output form's copy boxes are.
             index = (0 if instanced else None) if every else (face[2] if len(face) > 2 else None)
-            tri, matrix, why = _face_group(value, m, face[1], index)
+            tri, matrix, why = _face_group(a, value, face, index)
             if why is not None:
                 return subject, counts, boxes, why
             pts = tri.reshape(-1, 3)

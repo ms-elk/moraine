@@ -33,12 +33,13 @@ _VERB = {
 }
 
 
-def _side(face, every, ctx: common.Context):
+def _side(entry: dict, face, every, ctx: common.Context):
     """One face of the entry as the copies it is judged on: ``(specs,
     why)`` — the spec as written, or under ``every`` one indexed spec
     per copy of its output (a plain mesh: its one copy), each with its
     world triangles and mating frame. The first copy without a frame is
-    the side's reason."""
+    the side's reason, its advice on the copy index ruled by the
+    entry's owner (``common.face_reason``)."""
     name = face[0]
     value = ctx.values[name]
     instanced = isinstance(value, Instances)
@@ -50,8 +51,8 @@ def _side(face, every, ctx: common.Context):
     for s in specs:
         tri, err = common.face_triangles(ctx.values, s)
         if err is not None:
-            why = err.message
-            if err.code == "missing_instance":
+            why = common.face_reason(entry, value, s, err)
+            if err.code == "missing_instance" and entry["owner"] == "agent":
                 why += (
                     f', or write "every": ["{name}"] to judge the face on '
                     f"every copy"
@@ -153,7 +154,7 @@ def check(entry: dict, a: dict, ctx: common.Context) -> None:
     sides = []
     reasons: list[str] = []
     for face in a["faces"]:
-        copies, why = _side(face, every, ctx)
+        copies, why = _side(entry, face, every, ctx)
         if why is not None:
             reasons.append(why)
         sides.append(copies)
