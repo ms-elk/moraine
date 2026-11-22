@@ -1547,14 +1547,14 @@ def test_clearance_pass_fail_touch(tmp_path, monkeypatch):
 
 def test_clearance_states_its_gap():
     """The gap is a design value with no default (DESIGN 5.2): an entry
-    without `min` is refused with the key to write, and `tol` and `max`
-    are answered with what clearance takes."""
+    without `min` is refused with the key to write, `tol` is answered
+    with what clearance takes, and `max` is an edge above `min`."""
     base = {"id": "g", "kind": "clearance", "outputs": ["lower", "upper"]}
     for extra, needle in (
         ({}, "needs 'min'"),
         ({"min": 0}, "finite number > 0"),
         ({"tol": 0.05}, "as 'min'"),
-        ({"min": 0.05, "max": 0.1}, "no upper bound"),
+        ({"min": 0.05, "max": 0.05}, "above 'min'"),
     ):
         with pytest.raises(AssetError) as exc:
             asset_mod.loads(_dist_asset(1.6, [{**base, **extra}]))

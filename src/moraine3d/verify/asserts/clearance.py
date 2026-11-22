@@ -1,9 +1,12 @@
 """``clearance`` (DESIGN 5.2): the minimum surface distance between two
 subjects — or between one output and every other geometry output the
 asset has at validate time (``others``) — is at least ``min``,
-inclusive; any touch or pierce fails.
-Already universal over an instanced subject (the union minimum is the
-per-copy minimum); ``self`` adds every copy pair of each instanced
+inclusive; any touch or pierce fails. With ``max`` (the pair form) the
+closest approach also lies at or under it.
+The least gap is already universal over an instanced subject (the
+union minimum is the per-copy minimum), while ``max`` reads the
+nearest copy alone, so its entry names the instanced outputs under
+``unchecked.instanced_copies``; ``self`` adds every copy pair of each instanced
 output in scope (``self_pairs``), and without it the entry names those
 outputs under ``unchecked.instanced_self_pairs``. Over one output alone
 ``self`` is the copy form: that output's copy pairs and nothing else,
@@ -82,6 +85,19 @@ def check(entry: dict, a: dict, ctx: common.Context) -> None:
 
     if failing_pairs:
         fix.append(common.listed(failing_pairs, partner_miss))
+    top = a.get("max")
+    if top is not None:
+        if nearest is not None and common.misses(entry, nearest[1] - top):
+            advice = common.owner_advice(
+                entry, "bring them closer", "raise 'max' to the intended reach",
+                knob="'max'",
+            )
+            fix.append(
+                f"outputs '{s.name_a}' and '{nearest[0]}' are {nearest[1]:.4g} m "
+                f"apart (clearance max {top:.6g} m); {advice}"
+            )
+        # The upper edge is existential over copies, as contact's is.
+        common.unchecked_instanced(entry, "instanced_copies", s.inst)
     if s.others_mode and failing_pairs:
         # Its own key: the `self` block below fills `failing_pairs`
         # with copy-pair rows of a different arity.

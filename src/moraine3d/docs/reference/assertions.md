@@ -260,7 +260,7 @@ bar takes none.
   |---|---|---|---|
   | overlap guard | the union already fails on any copy (holds for every copy by construction) | every copy pair, by default | outputs only; an `embedded` between groups cedes the member pairs |
   | `contact` | existential on the union. `every = [name]` makes it hold for every copy, distance and `min_area` alike (without it `min_area` reads the area summed over the copies); `[name, copy]` measures that copy alone, its distance and its own area, the other side unchanged | none (all pairs touching is unsatisfiable; a "no isolated copy" form is not offered) | the members' union; `every = [group]`, every copy of every member (counts per member) |
-  | `clearance` | the union minimum is the per-copy minimum (holds for every copy by construction) | `self = True`, every copy pair >= `min`; over one output alone, the copy form | the union; `others = True` partners are the outputs outside the group; `self` refused |
+  | `clearance` | `min`: the union minimum is the per-copy minimum (holds for every copy by construction); `max` reads the nearest copy | `self = True`, every copy pair >= `min`; over one output alone, the copy form | the union; `others = True` partners are the outputs outside the group; `self` refused |
   | `embedded` | pair form on the unions | `self = True`, band over overlapping pairs; `connected = True`, the band plus one body | pair form: the union's intersection depth; `self`/`connected` refused |
   | `mated` | a copy index per face. `every = [name]` judges every copy of the named outputs, two named outputs paired by index | - | refused (a group has no faces) |
   | `extent` | `outputs` form: the union of the copies; `faces` form: one indexed copy | `every = True`, each copy's own bounds or face set | `outputs` form: the members' united bounds, `every` every member's copies; `faces` form refused |
@@ -458,7 +458,7 @@ Examples: `examples/anchored_crate` (two rests), `examples/pallet` (per copy).
 
 ### clearance (assert kind)
 
-Recipe: `mo.assert_clearance(id = ..., outputs = ..., others = ..., self = ..., min = ...)`
+Recipe: `mo.assert_clearance(id = ..., outputs = ..., others = ..., self = ..., min = ..., max = ...)`
 
 The minimum surface distance (`contact`'s measure) must be
 >= `min` (meters, > 0). It is one scalar over the whole pair,
@@ -466,8 +466,17 @@ the closest approach in any direction, never a per-axis gap ("keep N
 above" on a spiral measures the diagonal to the neighboring tread,
 not the rise). `min` is the design gap, required: "robustly
 separate" is `min = 0.001`, a physics-simulation target 0.01 to
-0.04 m (engine contact offsets). There is no `tol` and no `max`:
-parts that must stay within a distance are `contact`'s. Touching or
+0.04 m (engine contact offsets). There is no `tol`. **`max`**
+(meters, above `min`, the two-output form only) bounds the same
+closest approach from above, for a gap that must exist and stay
+bounded: `mo.assert_clearance(id = "lamp_reach", outputs = ["lamp",
+"railing"], min = 0.3, max = 0.5)`. Over an instanced output `max`
+reads the nearest copy alone, and the entry names the output under
+`unchecked.instanced_copies`; for every copy within a distance of
+the other output write `contact` with `every` and that `tol`.
+`others` and `self` take no `max` (a bound on the spacing between
+copies has no spelling: write the pair's band and the copy spacing
+as two entries). Touching or
 crossing surfaces fail at distance 0. A **fully contained** output is
 invisible to surface distance (the surface-to-surface gap is
 genuinely positive): material separation is the overlap guard's domain

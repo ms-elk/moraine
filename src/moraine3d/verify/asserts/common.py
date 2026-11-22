@@ -170,7 +170,7 @@ def unchecked_instanced(entry: dict, key: str, names) -> None:
     three opt-in quantifiers and the enclosure check)."""
     names = list(names)
     if names:
-        entry["unchecked"] = {key: names}
+        entry.setdefault("unchecked", {})[key] = names
 
 
 def misses(entry: dict, shortfall: float) -> bool:

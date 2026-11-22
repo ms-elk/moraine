@@ -1944,7 +1944,8 @@ below adds only its measurement and judgment:
   later becomes an array.
 - **The honesty roster.** A green entry that quantified less than it
   reads names the gap: `unchecked` (a scope not quantified —
-  `instanced_copies` for a contact without `every`,
+  `instanced_copies` for a contact without `every` or a clearance
+  with `max`,
   `instanced_self_pairs` for a clearance without `self`, `optional`
   for an entry over an optional output its knob switched off),
   `ceded`
@@ -2022,7 +2023,14 @@ below adds only its measurement and judgment:
   enclosure `not_enclosed`'s. Both take two named outputs, never a
   universal scope on both sides (universal contact is contradictory;
   universal clearance outlaws flush assembly). Clearance rejects
-  `min: 0` (vacuously true). A quantified entry adds the loosest copy
+  `min: 0` (vacuously true). Its pair form takes an optional `max`
+  above `min`: the closest approach then lies in the band, a gap that
+  must exist and stay bounded (a lamp 0.3 to 0.5 m from its railing).
+  Where every copy must stay within a distance of the other output,
+  the spelling is `contact`'s `every` with that `tol`. The
+  one-vs-rest form and `self` take no `max`: an upper
+  bound over every partner, or between one output's copies, is a
+  different quantifier, left unspelled. A quantified entry adds the loosest copy
   (`every_max`, contact) or the closest copy pair (`self_min`,
   clearance — a doubling box search, so a green spacing check names
   its tightest gap without measuring every pair). Beside a pair,
@@ -2247,7 +2255,7 @@ below adds only its measurement and judgment:
   |---|---|---|---|
   | overlap guard | ∀ by construction (any copy's intersection is the union's) | every copy pair, by default | outputs only; a declared embed between groups cedes the member cross pairs |
   | `contact` | existential on the union; `every` makes it ∀ per named output, distance and `min_area` alike; `[output, copy]` measures that one copy | none: all pairs touching is unsatisfiable beyond two copies, and a "no isolated copy" (∀∃) form has no demand — if it arrives it is a new spelling, not `self` | the members' union; `every` naming a group quantifies every member's copies |
-  | `clearance` | ∀ by construction (the union minimum is the per-copy minimum), so `every` is refused | `self` — every copy pair ≥ `min`; over one output alone, the copy form | the union; the one-vs-rest partners are the geometry outputs outside the group (its own members touch by construction); `self` refused |
+  | `clearance` | `min` ∀ by construction (the union minimum is the per-copy minimum), so `every` is refused; `max` reads the nearest copy | `self` — every copy pair ≥ `min`; over one output alone, the copy form | the union; the one-vs-rest partners are the geometry outputs outside the group (its own members touch by construction); `self` refused |
   | `embedded` | pair form on the unions (all-pairs embed is unsatisfiable, like contact's ∀) | `self` — band over every overlapping pair; `connected` — the band plus one body | pair form: the union's intersection depth; `self`/`connected` refused |
   | `mated` | one indexed copy per face; `every` judges every copy of the named outputs, two named outputs paired by index | — | refused: a group has no faces |
   | `extent` | no partner: the output form measures the union of the copies, the face form one indexed copy | `every` — each copy's own bounds or face set against the judgment | output form: the members' united bounds, `every` every member's copies; face form refused |

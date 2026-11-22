@@ -1,6 +1,7 @@
 """``clearance`` (DESIGN 5.2): the minimum surface distance between two
 subjects — or between one output and every other geometry output
-(``others``) — is at least ``min``; ``self`` adds each instanced
+(``others``) — is at least ``min``, and on the pair form at most
+``max`` when the entry states one; ``self`` adds each instanced
 output's own copy pairs, and over one output alone it is the spacing
 between that output's copies.
 """
@@ -16,35 +17,51 @@ KEY_KINDS = {
     "others": numbers.OTHER,
     "self": numbers.OTHER,
     "min": numbers.FLOAT,
+    "max": numbers.FLOAT,
 }
 KEYS = frozenset(KEY_KINDS)
 # The gap is a design value, so it has no default (DESIGN 5.2): an
 # entry states the least distance it requires.
 MIN_UNIT = "the least surface distance, m"
+MAX_UNIT = "the greatest surface distance, m"
 KEY_MEANING = {
     "outputs": "the two subjects it measures between",
     "others": "one named output kept clear of every other geometry output",
     "self": "per-copy pairs of instanced outputs",
     "min": MIN_UNIT,
+    "max": MAX_UNIT,
 }
 SUBJECT = "measures between its two named outputs"
-# `every` on clearance has a specific answer: the union already holds
-# per copy, and copy spacing is `self`. `tol` and `max` name what the
-# kind does not have: an allowance, and an upper bound.
+# `every` on clearance has a specific answer: the least gap already
+# holds per copy, copy spacing is `self`, and the upper bound has no
+# per-copy form here. `tol` names what the kind does not have, an
+# allowance.
 REFUSALS = {
     "tol": (
         "'tol' is an allowance on the kinds that measure against a "
         "target; clearance states the least gap, in meters, as 'min'"
     ),
-    "max": (
-        "'max' does not apply to clearance - it has no upper bound: 'min' "
-        "is the least gap; parts that must stay within a distance are "
-        "'contact' with a 'tol'"
-    ),
     "every": (
-        "'every' does not apply to clearance - clearance against another "
-        "output already holds for every copy (the union minimum is the "
-        'per-copy minimum); for spacing between copies use "self": true'
+        "'every' does not apply to clearance - the least gap against "
+        "another output already holds for every copy (the union minimum is "
+        'the per-copy minimum); for spacing between copies use "self": '
+        "true, and for every copy within a distance of the other output "
+        "use contact's \"every\" with that 'tol'"
+    ),
+}
+# The forms that take no `max` (DESIGN 5.2), each with what its upper
+# bound would have to quantify over.
+_NO_MAX = {
+    "others": (
+        "'max' bounds the gap between two named outputs; with \"others\" "
+        "it would hold every other output within reach - write the pair "
+        "that must stay close as its own entry"
+    ),
+    "self": (
+        "'max' bounds the gap between two named outputs; an upper bound "
+        "on the spacing between copies has no spelling - \"self\" holds "
+        "copy pairs to 'min' alone, so write the pair's band and the copy "
+        "spacing as two entries"
     ),
 }
 
@@ -53,7 +70,9 @@ def validate_entry(aid: str, a: dict, raw_outputs, groups: dict) -> None:
     """Parse-time shape of a clearance entry (DESIGN 5.2): the pair form
     names 2 distinct subjects; the one-vs-rest form (``others``) and the
     copy form (``self`` alone) name one; ``self`` refuses a group (copy
-    pairs belong to one output); ``min`` is stated and positive."""
+    pairs belong to one output); ``min`` is stated and positive;
+    ``max``, the pair form's alone and never beside ``self``, exceeds
+    it."""
     common.check_flag(aid, a, "others", "for the two-output form")
     outs = a.get("outputs")
     if not a.get("others") and isinstance(outs, list) and len(outs) == 1:
@@ -104,4 +123,17 @@ def validate_entry(aid: str, a: dict, raw_outputs, groups: dict) -> None:
         raise AssetError(
             "bad_assert",
             f"assert '{aid}' 'min' must be a finite number > 0 ({MIN_UNIT})",
+        )
+    top = a.get("max")
+    if top is None:
+        return
+    for key, why in _NO_MAX.items():
+        if a.get(key):
+            raise AssetError("bad_assert", f"assert '{aid}': {why}")
+    if not common.is_number(top) or top <= gap:
+        raise AssetError(
+            "bad_assert",
+            f"assert '{aid}' 'max' must be a finite number above 'min' "
+            f"({gap:g}): the band [min, max] holds the closest approach "
+            f"({MAX_UNIT})",
         )
