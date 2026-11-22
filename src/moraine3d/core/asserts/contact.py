@@ -2,7 +2,7 @@
 subjects is at most ``tol``; ``min_area`` (the bearing form) requires
 the face area they share to be at least that many square meters;
 ``every`` quantifies both over each copy of the named instanced
-outputs.
+outputs, and an ``[output, copy]`` side names one copy alone.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from .. import numbers
 from . import common
 
 KEY_KINDS = {
-    "outputs": numbers.OTHER,
+    "outputs": numbers.INT,  # a side's copy index
     "every": numbers.OTHER,
     "tol": numbers.FLOAT,
     "min_area": numbers.FLOAT,
@@ -38,15 +38,24 @@ SUBJECT = "measures between its two named outputs"
 
 def validate_entry(aid: str, a: dict, raw_outputs, groups: dict) -> None:
     """Parse-time shape of a contact entry (DESIGN 5.2): ``outputs``
-    names 2 distinct subjects (either may be a group), ``every``, when
-    present, a non-empty subset of them, and ``min_area``, when
-    present, a finite number > 0 (a written 0 would be the plain form
-    spelled twice)."""
-    common.check_pair(aid, a, "contact", raw_outputs, groups)
+    names 2 distinct subjects (either may be a group, or one copy of an
+    instanced output as ``[output, copy]``), ``every``, when present, a
+    non-empty subset of the names, none of them a side that names one
+    copy, and ``min_area``, when present, a finite number > 0 (a
+    written 0 would be the plain form spelled twice)."""
+    common.check_pair(aid, a, "contact", raw_outputs, groups, copies=True)
     common.check_names(
-        aid, a, "every", "outputs", a["outputs"],
+        aid, a, "every", "outputs", [common.side_name(o) for o in a["outputs"]],
         "the outputs whose every copy must touch the other",
     )
+    for o in a["outputs"]:
+        if not isinstance(o, str) and o[0] in (a.get("every") or ()):
+            raise common.AssetError(
+                "bad_assert_outputs",
+                f"assert '{aid}': \"every\" names '{o[0]}', so each of its "
+                f"copies is judged; drop the copy index, or take '{o[0]}' out "
+                f"of \"every\" to name one copy",
+            )
     common.check_tol(aid, a, TOL_UNIT)
     area = a.get("min_area")
     if area is not None and (not common.is_number(area) or area <= 0):

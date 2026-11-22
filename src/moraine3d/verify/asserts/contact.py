@@ -8,7 +8,12 @@ all); ``every`` checks each copy of the named outputs and reports the
 checked counts (a group's plain member is its one copy, judged apart
 from the other members), and an entry left existential over instanced
 outputs names them under ``unchecked.instanced_copies``; one whose
-``every`` judged no more than the union also draws a top-level warning. ``distance`` rides every evaluable entry, pass or fail.
+``every`` judged no more than the union also draws a top-level warning.
+An ``[output, copy]`` side is that one copy, a subject labeled
+``output[copy]``: its own distance and its own shared area, where a
+side named whole reads the union's, and no instanced output left
+existential on that side (the other side keeps its conditions).
+``distance`` rides every evaluable entry, pass or fail.
 ``min_area`` is the bearing form: the face area the two subjects
 share within ``tol`` along the normal (``bearing.shared_area``) must
 be at least that many square meters, so an edge or corner contact,
@@ -260,7 +265,11 @@ def report_warnings(entries: list[dict]) -> list[dict]:
     one plain output judged the union and nothing else, so its row
     stays); clearance's unchecked copy pairs
     get no row, since its cross-output meaning does not weaken (the
-    union minimum is the per-copy minimum)."""
+    union minimum is the per-copy minimum). The row's fix is written in
+    the names the entry takes: ``every`` names the side, which is the
+    group where the instanced output is a group's member, and the copy
+    form replaces that side with the member's own ``[output, copy]``,
+    a group having no copy."""
     out: list[dict] = []
     for e in entries:
         if e.get("kind") != "contact":
@@ -276,12 +285,20 @@ def report_warnings(entries: list[dict]) -> list[dict]:
         if "asset" in e:
             w["asset"] = e["asset"]
         w.update(where(e))
+        side = {
+            m: g for g, members in (e.get("members") or {}).items() for m in members
+        }
+        sides = list(dict.fromkeys(side.get(n, n) for n in names))
+        first = names[0]
         w["note"] = (
             f"contact '{e['assert']}' is existential over instanced "
             f"{list(names)}: one near copy satisfies it for all, and an output "
             f"arrayed after the entry was written weakened it with no file "
-            f"diff; write \"every\": {json.dumps(list(names))} if every copy "
-            f"must touch"
+            f"diff; write \"every\": {json.dumps(sides)} if every copy "
+            f"must touch, or one copy as the side if one copy does, "
+            f"{json.dumps([first, 0])[:-2]}<copy>] in place of "
+            f"{json.dumps(side.get(first, first))}"
+            + (" (a group has no copy)" if first in side else "")
         )
         out.append(w)
     return out

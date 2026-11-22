@@ -181,27 +181,55 @@ def check_judgment(aid: str, a: dict, kind: str, unit: str, number, band_word: s
         )
 
 
-def check_pair(aid: str, a: dict, kind: str, raw_outputs, groups: dict) -> None:
+def side_name(side) -> str:
+    """The output a pair's side names: the name itself, or the output
+    of an ``[output, copy]`` side."""
+    return side if isinstance(side, str) else side[0]
+
+
+def _is_copy(side) -> bool:
+    return (
+        isinstance(side, list) and len(side) == 2 and isinstance(side[0], str)
+        and isinstance(side[1], int) and not isinstance(side[1], bool)
+        and side[1] >= 0
+    )
+
+
+def check_pair(
+    aid: str, a: dict, kind: str, raw_outputs, groups: dict, copies: bool = False,
+) -> None:
     """``outputs`` names exactly two distinct known names (an output or
     a group) standing for disjoint subjects — the pair form the
-    distance kinds share."""
+    distance kinds share. With ``copies`` a side may be ``[output,
+    copy]``, one copy of an instanced output by its 0-based index
+    (DESIGN 5.2); whether the output has that copy is an evaluation
+    fact, judged at validate time."""
     outs = a.get("outputs")
     if (
         not isinstance(outs, list) or len(outs) != 2
-        or not all(isinstance(o, str) for o in outs)
-        or len(set(outs)) != 2
+        or not all(isinstance(o, str) or (copies and _is_copy(o)) for o in outs)
+        or len({side_name(o) for o in outs}) != 2
     ):
+        one_copy = (
+            "; a side may be [output, copy], one copy of an instanced "
+            "output by its 0-based index" if copies else ""
+        )
         raise AssetError(
             "bad_assert_outputs",
             f"assert '{aid}' 'outputs' must list 2 distinct output "
-            f"names ({kind} measures between exactly two; "
+            f"names ({kind} measures between exactly two{one_copy}; "
             f'"others": true keeps one output clear of every other '
             f"- clearance only; a piece of several outputs is one "
             f"name under root 'groups')",
         )
-    for o in outs:
-        known_name(aid, o, raw_outputs, groups)
-    disjoint_subjects(aid, kind, outs, groups)
+    names = [side_name(o) for o in outs]
+    for o, name in zip(outs, names):
+        known_name(aid, name, raw_outputs, groups)
+        if not isinstance(o, str) and name in groups:
+            raise group_refusal(
+                aid, kind, name, groups, "names one copy of one output"
+            )
+    disjoint_subjects(aid, kind, names, groups)
 
 
 def check_names(aid: str, a: dict, key: str, source: str, names: list, what: str) -> None:

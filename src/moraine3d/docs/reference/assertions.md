@@ -259,7 +259,7 @@ bar takes none.
   | kind | against the other output | between the copies of one output | a group name (`mo.group`) |
   |---|---|---|---|
   | overlap guard | the union already fails on any copy (holds for every copy by construction) | every copy pair, by default | outputs only; an `embedded` between groups cedes the member pairs |
-  | `contact` | existential on the union. `every = [name]` makes it hold for every copy, distance and `min_area` alike | none (all pairs touching is unsatisfiable; a "no isolated copy" form is not offered) | the members' union; `every = [group]`, every copy of every member (counts per member) |
+  | `contact` | existential on the union. `every = [name]` makes it hold for every copy, distance and `min_area` alike (without it `min_area` reads the area summed over the copies); `[name, copy]` measures that copy alone, its distance and its own area, the other side unchanged | none (all pairs touching is unsatisfiable; a "no isolated copy" form is not offered) | the members' union; `every = [group]`, every copy of every member (counts per member) |
   | `clearance` | the union minimum is the per-copy minimum (holds for every copy by construction) | `self = True`, every copy pair >= `min`; over one output alone, the copy form | the union; `others = True` partners are the outputs outside the group; `self` refused |
   | `embedded` | pair form on the unions | `self = True`, band over overlapping pairs; `connected = True`, the band plus one body | pair form: the union's intersection depth; `self`/`connected` refused |
   | `mated` | a copy index per face. `every = [name]` judges every copy of the named outputs, two named outputs paired by index | - | refused (a group has no faces) |
@@ -420,6 +420,23 @@ over one plain output judges nothing more, and the row stays. The
 row is raised where the entry can be edited: a consumer's report
 keeps a referenced asset's entry and its `unchecked`, and carries
 no row for it.
+**One copy** of an instanced output is a side written `[name,
+copy]`, the 0-based index: `mo.assert_contact(id = "end_seat",
+outputs = ["end_deck", ["crossbeams", 0]])` for a part that rests on
+one copy of an arrayed partner, where the plain form would stand
+existential and `every` would be false. The copy is measured alone
+and labeled `crossbeams[0]`: `distance` is its own, and `min_area`
+reads the area that one copy shares, where a side named whole sums
+the area over its copies (a deck bearing 0.4 m^2 on each of two
+beams passes `min_area = 0.6` against `"beams"` and fails it against
+`["beams", 0]` and `["beams", 1]` alike). Only the indexed side
+leaves `unchecked` and the `contact_unquantified` row: an instanced
+output on the other side is still named there and still draws its
+row, until `every` or an index of its own covers it. An index the
+output has no copy for
+fails the entry with the reason, as does one on a plain mesh; a
+group takes no index, `every` cannot name the indexed output, and
+the two sides name different outputs. `clearance` takes names only.
 **`min_area`** (square meters, yours to state
 like clearance's `min`) is the bearing form: an edge or a corner on
 a face is distance 0 like a face on a face, so a part that must be

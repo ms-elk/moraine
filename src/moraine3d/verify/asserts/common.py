@@ -15,6 +15,8 @@ from ...core.predicates import FaceGroupError, resolve_face_group
 from .. import bounds, depth, solids
 from ..distance import (
     aabb_gap,
+    copy_bounds as source_copy_bounds,
+    copy_source,
     exact_surface_distance,
     source_why,
     surface_distance,
@@ -116,6 +118,27 @@ def owner_advice(entry: dict, repair: str, weaken: str, knob: str = "tol") -> st
     return (
         f"{repair} - a failing human-owned assertion means fix the geometry, "
         f"not the {knob}"
+    )
+
+
+def missing_copy(entry: dict, name: str, index: int, copies: int | None) -> str:
+    """Why an entry that names copy ``index`` of ``name`` cannot be
+    judged (DESIGN 5.2): the output is a plain mesh (``copies`` None)
+    or has fewer copies. The index is the entry's own, so the advice
+    follows the owner: a human-owned entry is pointed at the geometry
+    alone, never at dropping or changing its index."""
+    if copies is None:
+        advice = owner_advice(
+            entry, f"build '{name}' as an array or scatter that has the copy",
+            "drop the copy index", knob="copy index",
+        )
+        return f"output '{name}' is a plain mesh and has no copy {index}; {advice}"
+    advice = owner_advice(
+        entry, "build the copy", "name a copy the output has", knob="copy index",
+    )
+    return (
+        f"output '{name}' has {copies} {'copy' if copies == 1 else 'copies'}; "
+        f"copy index {index} is out of range (0..{copies - 1}); {advice}"
     )
 
 
@@ -338,12 +361,17 @@ class PairScope:
     name, every other geometry output in the one-vs-rest form
     (``others``, echoed with the partner count), or none in clearance's
     copy form — with a name standing for the union of its group
-    members. ``srcs`` and ``bounds`` are the
-    members' triangle sources and exact boxes; ``why`` is set when a
-    member has no source (the entry fails with that reason). ``scope``
+    members, and an ``[output, copy]`` side for that one copy, a
+    subject named ``output[copy]`` (``copies``) that views the output's
+    prototype and its one transform, never a world-space duplicate of
+    the mesh. ``srcs`` and ``bounds`` are the
+    members' triangle sources and exact boxes (a named copy's box is
+    the corner box ``every`` reads a copy under, outward of the exact
+    one); ``why`` is set when a member has no source or an output lacks
+    the copy a side names (the entry fails with that reason). ``scope``
     is the ``self`` quantifier's range — both names of a pair, the
     subject alone in the one-vs-rest form — and ``inst`` its instanced
-    outputs. The pair helpers measure between two names member-pair by
+    outputs, a named copy not among them. The pair helpers measure between two names member-pair by
     member-pair, each pair under its own proven bound (a union's bound
     is not a member's). ``tol`` is the distance the kind judges by:
     the entry's ``key``, or ``default_tol`` where the kind has one.
@@ -362,7 +390,14 @@ class PairScope:
             # Refused by the parser; an entry that reaches evaluation
             # without it still fails as one entry, never as a traceback.
             self.why = f"'{key}' is missing: the parser requires it on this kind"
-        outs = entry["outputs"]
+        self.srcs: dict = {}
+        self.bounds: dict = {}
+        # The sides that name one copy, by label.
+        self.copies: set[str] = set()
+        outs = [
+            o if isinstance(o, str) else self._copy(ctx, entry, *o)
+            for o in entry["outputs"]
+        ]
         self.name_a = outs[0]
         self.mem_a = ctx.members(self.name_a)
         # The one-vs-rest form (clearance only, DESIGN 5.2): the partners are
@@ -378,22 +413,45 @@ class PairScope:
             entry["pairs"] = len(self.partners)
         names = [self.name_a, *self.partners]
         self.flat = list(dict.fromkeys(m for n in names for m in ctx.members(n)))
-        self.srcs: dict = {}
         if self.why is not None:
             return
         for n in self.flat:
+            if n in self.copies:
+                continue
             src, why = ctx.tri_source(n)
             if why is not None:
                 self.why = why
                 return
             self.srcs[n] = src
-        self.bounds = {n: ctx.world_bounds(n) for n in self.flat}
+            self.bounds[n] = ctx.world_bounds(n)
         # `self`'s scope: both outputs of a pair; the named output alone in
         # the one-vs-rest form (its partners are the rest of the asset, and
         # clearance against them already holds per copy).
         self.scope = self.mem_a if self.others_mode else self.flat
-        self.inst = [n for n in self.scope if self.srcs[n][1] is not None]
+        self.inst = [
+            n for n in self.scope
+            if self.srcs[n][1] is not None and n not in self.copies
+        ]
         self.name_b = self.partners[0] if self.partners else None
+
+    def _copy(self, ctx: Context, entry: dict, name: str, index: int) -> str:
+        """Resolve an ``[output, copy]`` side to its label (DESIGN 5.2).
+        A copy the output does not have sets ``why`` (``missing_copy``)."""
+        label = f"{name}[{index}]"
+        self.copies.add(label)
+        if self.why is not None:
+            return label
+        src, why = ctx.tri_source(name)
+        if why is not None:
+            self.why = why
+        elif src[1] is None or index >= len(src[1]):
+            self.why = missing_copy(
+                entry, name, index, None if src[1] is None else len(src[1]),
+            )
+        else:
+            self.srcs[label] = copy_source(src, index)
+            self.bounds[label] = source_copy_bounds(src, index)
+        return label
 
     def pair_broad(self, x: str, y: str) -> dict[tuple[str, str], float | None]:
         """The broad-phase result per member pair of two names."""

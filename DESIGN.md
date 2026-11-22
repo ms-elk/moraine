@@ -1950,7 +1950,8 @@ below adds only its measurement and judgment:
   `ceded`
   (pairs handed to a declared embed), `stronger` (a stronger `mated`
   mode that also holds). The report's `warnings` carry
-  `contact_unquantified` as a row naming the `every` fix, because the
+  `contact_unquantified` as a row naming the fix (`every`, or the one
+  copy as a side), because the
   weakening it marks arrives with no file diff and no red verdict. An
   output arrayed after the entry was written turns "touches its
   support" into "some copy touches". The row is for an entry that
@@ -2039,6 +2040,15 @@ below adds only its measurement and judgment:
   `distance`, and `detail.failing_partners`. `self` composes over
   `a`'s copies. If there are no other geometry outputs, the
   one-vs-rest check passes vacuously. Contact refuses the key.
+  A contact side may name one copy of an instanced output, `[output,
+  copy]` with the 0-based index `mated`'s face takes: a part resting
+  on one copy of an arrayed partner (an end deck on the end crossbeam)
+  is neither the existential plain form nor `every`. The copy is
+  measured as a subject of its own, labeled `output[copy]`: its own
+  distance, and under `min_area` the area it alone shares. A deck
+  bearing 0.4 m² on each of two beams meets `min_area` 0.6 against
+  the beams by name and against neither beam by index. `every` names
+  no output a side indexes. Clearance takes names alone.
   *Tolerance ownership:* contact's `tol` is a numerics floor owned by
   the tool. Above ~16 m one float32 ulp exceeds 1e-6 and a
   correctly flush contact reads as a gap; 1e-5 keeps every ≤ 160 m
@@ -2064,7 +2074,8 @@ below adds only its measurement and judgment:
   `area`, and under `every` the copy sharing least as `area_min` and
   the copies short of the bound as `bare_copies`, each copy measured
   against the other subject as a whole; a group's area sums its
-  members' faces. The storage-noise floor applies to the area's
+  members' faces, an instanced output's its copies'. The storage-noise
+  floor applies to the area's
   side length. A curved seat shares area only where the two
   tessellations put a facet on one plane, so a shaft in a bore is
   `mated`'s question. A written 0 is refused, being the plain form.
@@ -2235,7 +2246,7 @@ below adds only its measurement and judgment:
   | kind | against the other output | between the copies of one output | a group name in place of an output |
   |---|---|---|---|
   | overlap guard | ∀ by construction (any copy's intersection is the union's) | every copy pair, by default | outputs only; a declared embed between groups cedes the member cross pairs |
-  | `contact` | existential on the union; `every` makes it ∀ per named output, distance and `min_area` alike | none: all pairs touching is unsatisfiable beyond two copies, and a "no isolated copy" (∀∃) form has no demand — if it arrives it is a new spelling, not `self` | the members' union; `every` naming a group quantifies every member's copies |
+  | `contact` | existential on the union; `every` makes it ∀ per named output, distance and `min_area` alike; `[output, copy]` measures that one copy | none: all pairs touching is unsatisfiable beyond two copies, and a "no isolated copy" (∀∃) form has no demand — if it arrives it is a new spelling, not `self` | the members' union; `every` naming a group quantifies every member's copies |
   | `clearance` | ∀ by construction (the union minimum is the per-copy minimum), so `every` is refused | `self` — every copy pair ≥ `min`; over one output alone, the copy form | the union; the one-vs-rest partners are the geometry outputs outside the group (its own members touch by construction); `self` refused |
   | `embedded` | pair form on the unions (all-pairs embed is unsatisfiable, like contact's ∀) | `self` — band over every overlapping pair; `connected` — the band plus one body | pair form: the union's intersection depth; `self`/`connected` refused |
   | `mated` | one indexed copy per face; `every` judges every copy of the named outputs, two named outputs paired by index | — | refused: a group has no faces |

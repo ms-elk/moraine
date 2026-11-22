@@ -121,7 +121,8 @@ def check_asserts(
         else:
             entry["outputs"] = a["outputs"]
             named = (
-                [n for n in a["outputs"] if n in ctx.groups] if a["outputs"] != "all" else []
+                [n for n in a["outputs"] if isinstance(n, str) and n in ctx.groups]
+                if a["outputs"] != "all" else []
             )
             if named:
                 # The resolution rides the entry: a reader sees which
