@@ -25,6 +25,7 @@ from pathlib import Path
 
 from ..errors import BuildError, AssetError
 from . import asserts as vocab
+from . import numbers
 from .atomic import ReplaceError, atomic_replace
 from .paths import PORTABLE_NAME_FRAGMENT
 from .sites import where
@@ -164,21 +165,19 @@ def param_kind(value) -> str | None:
     Numbers must be finite: an inf value (reachable via an overflow
     literal like 1e999, which json parses without hitting
     ``parse_constant``) would produce an invalid-JSON param_schema
-    payload downstream.
+    payload downstream, and an integer beyond a float's range is no
+    number a slider or a float param holds.
     """
     if isinstance(value, bool):
         return "boolean"
     if isinstance(value, (int, float)):
-        return "number" if math.isfinite(value) else None
+        return "number" if numbers.is_finite(value) else None
     if isinstance(value, str):
         return "text"
     if (
         isinstance(value, list)
         and 2 <= len(value) <= 4
-        and all(
-            isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c)
-            for c in value
-        )
+        and all(numbers.is_finite(c) for c in value)
     ):
         return "vector"
     return None
@@ -709,11 +708,7 @@ def check_param(
         # not as a TypeError in the range comparisons below.
         if key not in decl:
             continue
-        v = decl[key]
-        if (
-            not isinstance(v, (int, float)) or isinstance(v, bool)
-            or not math.isfinite(v)
-        ):
+        if not numbers.is_finite(decl[key]):
             raise AssetError(
                 "bad_param_decl", f"param '{pid}' '{key}' must be a finite number"
             )

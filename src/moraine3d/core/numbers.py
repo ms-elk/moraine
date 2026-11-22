@@ -8,6 +8,8 @@ float whatever its value, so one value written two ways is one IR.
 
 from __future__ import annotations
 
+import math
+
 FLOAT = "float"
 INT = "int"
 OTHER = "other"
@@ -22,6 +24,18 @@ class FloatForInteger(ValueError):
         super().__init__(f"{value!r} at '{path}'")
         self.value = value
         self.path = path
+
+
+def is_finite(value: object) -> bool:
+    """Whether ``value`` is a number a float holds finitely. An integer
+    beyond a float's range is none, like an infinity: ``math.isfinite``
+    raises on one, where every caller has a refusal of its own to give."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def _is_int(v: object) -> bool:

@@ -30,13 +30,12 @@ never a silent pick.
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
 from dataclasses import dataclass
 
 from ..errors import MoraineError
+from . import numbers
 from .mesh import Image, Instances, Mesh, proto_of, stat_num, stat_vec, tri_cross
 
 # Shared-kernel version (DESIGN 4.5): ops that consume this module declare
@@ -79,10 +78,7 @@ def validate_predicate(pred, *, where: str = "select") -> None:
             if key == "tol":
                 if "eq" not in comp:
                     raise bad(f"'{field}' has 'tol' without 'eq'; tol only qualifies eq")
-                if (
-                    not isinstance(val, (int, float)) or isinstance(val, bool)
-                    or not math.isfinite(val) or val < 0
-                ):
+                if not numbers.is_finite(val) or val < 0:
                     raise bad(f"'{field}' 'tol' must be a finite number >= 0")
                 continue
             if key not in COMPARATORS:
@@ -90,7 +86,7 @@ def validate_predicate(pred, *, where: str = "select") -> None:
                     f"'{field}' has unknown comparator '{key}'; "
                     f"known: {list(COMPARATORS)} (+ 'tol' with eq)"
                 )
-            if not isinstance(val, (int, float)) or isinstance(val, bool) or not math.isfinite(val):
+            if not numbers.is_finite(val):
                 raise bad(f"'{field}' '{key}' must be a finite number")
 
 

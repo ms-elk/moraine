@@ -83,6 +83,12 @@ def typed_entry(entry: dict) -> None:
                 "bad_assert",
                 numbers.integer_fix(f"assert '{entry.get('id')}' '{key}'", e),
             ) from None
+        except OverflowError:
+            raise AssetError(
+                "bad_assert",
+                f"assert '{entry.get('id')}' '{key}' must be a finite number: "
+                f"the integer written is beyond what a float holds",
+            ) from None
 
 
 def builtin_entries() -> list[dict]:

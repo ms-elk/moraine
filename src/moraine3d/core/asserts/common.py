@@ -7,10 +7,10 @@ face-tag spelling.
 
 from __future__ import annotations
 
-import math
 import re
 
 from ...errors import AssetError
+from .. import numbers
 from ..paths import PORTABLE_NAME_FRAGMENT
 
 # The storage-noise floor on every length comparison an assert makes
@@ -46,7 +46,7 @@ FACE_TAG_RE = re.compile(rf"^{PORTABLE_NAME_FRAGMENT}$")
 
 
 def is_number(val) -> bool:
-    return isinstance(val, (int, float)) and not isinstance(val, bool) and math.isfinite(val)
+    return numbers.is_finite(val)
 
 
 def known_name(aid: str, name: str, raw_outputs, groups: dict) -> None:
