@@ -1956,7 +1956,8 @@ below adds only its measurement and judgment:
   reads names the gap: `unchecked` (a scope not quantified —
   `instanced_copies` for a contact without `every` or a clearance
   with `max`,
-  `instanced_self_pairs` for a clearance without `self`, `optional`
+  `instanced_self_pairs` for a clearance without `self`,
+  `embed_depth` for an `embedded` `self` without bounds, `optional`
   for an entry over an optional output its knob switched off),
   `ceded`
   (pairs handed to a declared embed), `stronger` (a stronger `mated`
@@ -2192,7 +2193,11 @@ below adds only its measurement and judgment:
   scatter's validate) is skipped and the entry reports
   `measured: false` (the copy form adding the broad-phase
   `candidate_pairs`). Their content is the declaration itself, owned
-  and traveling through `asset_ref`. A band is one kind, not two
+  and traveling through `asset_ref`. A `self` among them reads as a
+  check of the copy pairs, so while it has a candidate pair it names
+  its output under `unchecked.embed_depth`: copies that may sink into
+  one another only so far are a `max`, and copies that may only touch
+  are the guard's, with no entry. A band is one kind, not two
   one-sided entries: the declaration that opens a hole in the guard
   must carry its own ceiling in the same entry, or the ceiling half
   goes unwritten the way unpaired waivers do. *Cede.* A declared

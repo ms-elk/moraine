@@ -1013,6 +1013,43 @@ def test_embedded_self_is_the_free_overlap_declaration(tmp_path, monkeypatch):
     assert "depth_range" not in weave and "overlapping" not in weave
 
 
+def test_embedded_self_without_bounds_names_its_unbounded_depth(tmp_path, monkeypatch):
+    """A `self` without bounds reads as a check of the copy pairs and
+    bounds none, so while it has a candidate pair it names its output
+    under `unchecked.embed_depth` (DESIGN 5.2), which the default report
+    counts (DESIGN 6); with no candidate pair, or with a written `max`,
+    the entry carries no such key."""
+    from moraine3d.verify.validate import compact
+
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    free = {"id": "weave", "kind": "embedded", "outputs": ["row"], "self": True,
+            "owner": "agent"}
+    report = _run_asserts(_row_asset_with(0.8, [dict(free)]))
+    entry = _entry(report, "weave")
+    assert entry["ok"] is True and entry["candidate_pairs"] == 2
+    assert entry["unchecked"] == {"embed_depth": ["row"]}
+    assert compact(report)["unchecked"] == {"entries": 1, "embed_depth": 1}
+
+    report = _run_asserts(_row_asset_with(2.0, [dict(free)]))
+    assert _entry(report, "weave")["candidate_pairs"] == 0
+    assert "unchecked" not in _entry(report, "weave")
+    assert "unchecked" not in compact(report)
+
+    report = _run_asserts(_row_asset_with(0.8, [dict(free, max=0.5)]))
+    assert _entry(report, "weave")["ok"] is True
+    assert "unchecked" not in _entry(report, "weave")
+
+
+def test_guard_copy_pair_fix_names_the_bounded_declaration(tmp_path, monkeypatch):
+    """The declaration that opens a hole in the guard carries its own
+    ceiling in the same entry (DESIGN 5.2): the guard's fix for failing
+    copy pairs names `embedded` with `self` together with its `max`."""
+    monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
+    guard = _guard(_run_asserts(_row_asset_with(0.8, [])))
+    assert guard["ok"] is False and "row[0]" in guard["fix"]
+    assert "'embedded' with 'self'" in guard["fix"] and "'max'" in guard["fix"]
+
+
 def test_embedded_free_overlap_declaration_skips_the_kernel(tmp_path, monkeypatch):
     """The pure free-overlap declaration never builds a copy solid or
     measures an intersection (embedded semantics: the exact depth of

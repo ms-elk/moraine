@@ -50,7 +50,8 @@ def check(entry: dict, a: dict, ctx: common.Context) -> None:
     ``self`` without bounds), which measure nothing: their band admits
     every depth, so the exact intersection would price a number no
     verdict reads; they report ``measured: false`` (the copy form with
-    the copy pairs the kernel would have measured, ``candidate_pairs``)
+    the copy pairs the kernel would have measured, ``candidate_pairs``,
+    and with any such pair the output under ``unchecked.embed_depth``)
     and need no solid. An unevaluatable entry fails with the reason.
     """
     outs = a["outputs"]
@@ -125,6 +126,8 @@ def check(entry: dict, a: dict, ctx: common.Context) -> None:
         entry["self_pairs"] = pairs_n
         entry["candidate_pairs"] = int(len(ii))
         entry["measured"] = False
+        if len(ii):
+            entry["unchecked"] = {"embed_depth": [name]}
         entry["ok"] = True
         return
     pairs_n, overlapping, why = depth.copy_pair_depths(value, name, ctx.proto_solid(name))

@@ -19,4 +19,4 @@ mo.output("rocks", rocks)
 # A rock sinks as its seed puts it, and rocks may overlap each other:
 # the free-overlap spellings, with no floor and no ceiling.
 mo.assert_embedded(id = "rocks_sunk", outputs = ["rocks", "ground"], min = 0)
-mo.assert_embedded(id = "rocks_may_touch", outputs = ["rocks"], self = True)
+mo.assert_embedded(id = "rocks_may_overlap", outputs = ["rocks"], self = True)

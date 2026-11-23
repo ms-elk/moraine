@@ -34,7 +34,9 @@ def _self_pair_fix(self_failing) -> tuple[str, list[list]]:
     listed = common.listed(self_failing, _overlap_item)
     fix = (
         f"{listed} ({_OVERLAP_CRITERION}); increase "
-        f"the array step, reseed the scatter, or shrink the prototype"
+        f"the array step, reseed the scatter, or shrink the prototype - "
+        f"an intended overlap is a declared 'embedded' with 'self', and "
+        f"its 'max' bounds the depth"
     )
     rows = [[x, y, round(v, 12), round(d, 12)] for x, y, v, d in self_failing]
     return fix, rows

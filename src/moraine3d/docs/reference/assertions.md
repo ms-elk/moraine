@@ -608,8 +608,13 @@ separate fail `min`, which no overlap check can see. Three forms:
   Its `min` defaults to 0, so both bounds omitted is the **pure
   free-overlap declaration**: copies may interpenetrate, said
   visibly, with an owner, traveling through `asset_ref`, none of
-  which a checks waiver gives. A written positive `min` is a
-  positive claim: copies that have all separated fail it.
+  which a checks waiver gives. It bounds no depth. Copies that may
+  only touch take no entry: the guard passes flush contact, and a
+  `self` would cede their pairs and admit overlap up to its band.
+  Copies that may sink into one another, but only so far, state
+  that depth as `max` (a copy lying wholly inside another reads its
+  own 2 x V/A). A written positive `min` is a positive claim: copies
+  that have all separated fail it.
 - **`connected = True`**, `outputs = [a]`: `self`'s band, plus
   the copies must form **one body** through embeds >= `min` (a rail
   of overlapping segments, a chain of modules). Strictly stronger
@@ -633,8 +638,10 @@ except the pure free-overlap declarations (pair `min` 0 without
 `max`; `self` with no bounds), which measure nothing: a band
 admitting every depth needs no kernel, so they report
 `measured: false` (the `self` form with the copy pairs it would have
-measured as `candidate_pairs`) and pass on an open (non-watertight)
-mesh too;
+measured as `candidate_pairs` and, when there are any, the output
+under `unchecked.embed_depth`: write `max` if the request limits the
+depth, or report that nothing does) and pass on an open
+(non-watertight) mesh too;
 failing copy pairs ride `detail.failing_pairs`. Unevaluatable
 entries fail with the reason; the copy forms are vacuous
 (`self_pairs` 0) on a plain-mesh output, so the declaration is

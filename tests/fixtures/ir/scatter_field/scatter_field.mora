@@ -18,7 +18,7 @@
 "asserts": [
 {"id": "rocks_on_ground", "kind": "contact", "outputs": ["rocks", "ground"], "every": ["rocks"], "owner": "human"},
 {"id": "rocks_sunk", "kind": "embedded", "outputs": ["rocks", "ground"], "min": 0, "owner": "agent"},
-{"id": "rocks_may_touch", "kind": "embedded", "outputs": ["rocks"], "self": true, "owner": "agent"},
+{"id": "rocks_may_overlap", "kind": "embedded", "outputs": ["rocks"], "self": true, "owner": "agent"},
 {"id": "rock_count", "kind": "count", "outputs": ["rocks"], "value": 40, "owner": "human"},
 {"id": "ground_size", "kind": "extent", "outputs": ["ground"], "measure": "size_x", "value": 8.0, "owner": "human"}
 ]
