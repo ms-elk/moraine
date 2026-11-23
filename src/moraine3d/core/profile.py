@@ -5,7 +5,8 @@ A profile is a list of ``(a, b)`` float pairs. The functions answer
 with facts (an index, a sign, a list of normals) and never raise for
 the shape of a profile: the operator owns the wording of a refusal and
 the fix it names. ``closed`` reads the list as a loop, its last point
-joined to its first.
+joined to its first. The last functions follow a profile into the
+solid an operator builds from it, where float32 has rounded it.
 """
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ import math
 
 import manifold3d
 import numpy as np
+
+from .mesh import degenerate_tri_count, tri_cross, triangles_meet
 
 # Shared-kernel version (DESIGN 4.5): ops that consume this module declare
 # it in KERNELS and this integer joins their cache keys. Bump on ANY
@@ -161,6 +164,87 @@ def close_edges(poly: list[Point], within: float):
         at = np.flatnonzero(gaps <= within)
         if len(at):
             yield np.stack([np.full(len(at), k), m0 + at], axis=1)
+
+
+# How many walls one pass of the triangle test sets against each other.
+_WALL_PAIRS = 1 << 14
+
+
+def _walls_meet(start: np.ndarray, end: np.ndarray, pairs: np.ndarray) -> bool:
+    """Between the outlines at the two ends of s spans, (s, q, 3) each:
+    do the walls of any of the given (p, 2) pairs of edges share a
+    point? A wall is the two triangles a mesh carries for its edge, and
+    one collapsed onto a line, as at a point on an axis, carries no
+    face and is left out."""
+    q = start.shape[1]
+    total = len(start) * len(pairs)
+    for at in range(0, total, _WALL_PAIRS):
+        s, p = np.divmod(np.arange(at, min(at + _WALL_PAIRS, total)), len(pairs))
+        p = pairs[p]
+
+        def wall(edge: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+            u, w = edge, (edge + 1) % q
+            au, aw = start[s, u].astype(np.float64), start[s, w].astype(np.float64)
+            bu, bw = end[s, u].astype(np.float64), end[s, w].astype(np.float64)
+            return np.stack([au, aw, bw], axis=1), np.stack([au, bw, bu], axis=1)
+
+        for one in wall(p[:, 0]):
+            for other in wall(p[:, 1]):
+                live = tri_cross(one).any(axis=1) & tri_cross(other).any(axis=1)
+                if live.any() and triangles_meet(one[live], other[live]).any():
+                    return True
+    return False
+
+
+def rounded_walls_meet(stations: np.ndarray, t: np.ndarray, seen: list[Point]) -> bool:
+    """Do two walls of a solid land on each other when its vertices
+    round to float32? ``stations`` (n, q, 3) holds an outline as the
+    solid carries it at n places, unrounded, and ``t`` (m, 3) the unit
+    direction span i runs, from station i to the next: m is n where the
+    last span returns to the first station, n - 1 otherwise. ``seen``
+    is the outline as every span shows it end on, the same q points:
+    the section itself where the stations stand square to their spans
+    or mitered between them, and narrower where they stand askew.
+
+    Rounding moves a vertex by half a float32 step along each axis.
+    Seen along a span, where its walls run, that moves the outline by
+    the part of each step square to the span. Only walls that stand
+    nearer than two such moves in that view can meet, and there the
+    rounded walls themselves decide: the triangles between two
+    stations, which can cross between stations that each look sound."""
+    n, m = len(stations), len(t)
+    stepped = stations.astype(np.float32)
+    nxt = (np.arange(m) + 1) % n
+    half = 0.5 * np.spacing(np.abs(stepped)).astype(np.float64)  # (n, q, 3)
+    square = np.sqrt(np.clip(1.0 - t ** 2, 0.0, None))  # (m, 3)
+    moved = np.maximum(
+        (half[:m] * square[:, None, :]).sum(axis=2).max(axis=1),
+        (half[nxt] * square[:, None, :]).sum(axis=2).max(axis=1),
+    )
+    suspect = np.flatnonzero(clearance(seen) <= 2.0 * moved)
+    if len(suspect):
+        for pairs in close_edges(seen, 2.0 * float(moved[suspect].max())):
+            if _walls_meet(stepped[suspect], stepped[nxt[suspect]], pairs):
+                return True
+    return False
+
+
+# How many faces one pass of the rounding check reads the corners of.
+_FACES = 1 << 13
+
+
+def rounded_faces_lost(exact: np.ndarray, faces: np.ndarray) -> int:
+    """How many triangles of a solid do not survive its vertices
+    rounding to float32: those that turn over or lose all area against
+    the unrounded ``exact`` (v, 3) or, with none of those, those the
+    rounded mesh carries as degenerate."""
+    turned = thin = 0
+    for at in range(0, len(faces), _FACES):
+        was = exact[faces[at:at + _FACES]]
+        now = was.astype(np.float32).astype(np.float64)
+        turned += int(((tri_cross(was) * tri_cross(now)).sum(axis=1) <= 0.0).sum())
+        thin += degenerate_tri_count(now.reshape(-1, 3), np.arange(now.size // 3).reshape(-1, 3))
+    return turned or thin
 
 
 def corners(

@@ -41,7 +41,7 @@ import trimesh
 
 from ..core import numbers, profile
 from ..core.mating import secondary_axis
-from ..core.mesh import Mesh, degenerate_tri_count, tri_cross, triangles_meet
+from ..core.mesh import Mesh
 from ..errors import OpError
 from . import common
 
@@ -192,33 +192,6 @@ def _lost(what: str) -> OpError:
         f"sweep section does not survive rounding to float32: {what}; "
         "enlarge the profile, or build nearer the origin",
     )
-
-
-# How many walls one pass of the triangle test sets against each other.
-_WALL_PAIRS = 1 << 14
-
-
-def _walls_meet(start: np.ndarray, end: np.ndarray, pairs: np.ndarray) -> bool:
-    """Between the rings of s segments, (s, q, 3) each: do the walls of
-    any of the given (p, 2) pairs of profile edges share a point? A wall
-    is the two triangles the mesh carries for its edge."""
-    q = start.shape[1]
-    total = len(start) * len(pairs)
-    for at in range(0, total, _WALL_PAIRS):
-        s, p = np.divmod(np.arange(at, min(at + _WALL_PAIRS, total)), len(pairs))
-        p = pairs[p]
-
-        def wall(edge: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-            u, w = edge, (edge + 1) % q
-            au, aw = start[s, u].astype(np.float64), start[s, w].astype(np.float64)
-            bu, bw = end[s, u].astype(np.float64), end[s, w].astype(np.float64)
-            return np.stack([au, aw, bw], axis=1), np.stack([au, bw, bu], axis=1)
-
-        for one in wall(p[:, 0]):
-            for other in wall(p[:, 1]):
-                if triangles_meet(one, other).any():
-                    return True
-    return False
 
 
 def _segment_solid(start: np.ndarray, end: np.ndarray, cap: np.ndarray):
@@ -472,8 +445,7 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
     exact = np.concatenate(verts)
     vertices = exact.astype(np.float32)
     tris = np.concatenate(faces)
-    facing = (tri_cross(exact[tris]) * tri_cross(vertices.astype(np.float64)[tris])).sum(axis=1)
-    lost = int((facing <= 0.0).sum()) or degenerate_tri_count(vertices, tris)
+    lost = profile.rounded_faces_lost(exact, tris)
     if lost:
         raise _lost(f"{lost} triangle(s) collapse or turn over")
     # The weld `validate` judges a surface by: vertices it merges must
@@ -483,27 +455,10 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
     if not welded.is_watertight:
         raise _lost("its vertices weld into an open surface")
 
-    # Rounding moves a vertex by half a float32 step along each axis.
-    # Seen along a segment, where its walls run, that moves the section
-    # by the part of each step square to the segment. Only walls that
-    # stand nearer than two such moves can meet, and there the rounded
-    # walls themselves decide: the triangles between the two rings,
-    # which can cross between rings that each look sound.
-    stepped = rings.astype(np.float32)
-    nxt = (np.arange(m) + 1) % n
-    half = 0.5 * np.spacing(np.abs(stepped)).astype(np.float64)  # (n, q, 3)
-    square = np.sqrt(np.clip(1.0 - t ** 2, 0.0, None))  # (m, 3)
-    moved = np.maximum(
-        (half[:m] * square[:, None, :]).sum(axis=2).max(axis=1),
-        (half[nxt] * square[:, None, :]).sum(axis=2).max(axis=1),
-    )
-    suspect = np.flatnonzero(profile.clearance(section) <= 2.0 * moved)
-    if len(suspect):
-        for pairs in profile.close_edges(section, 2.0 * float(moved[suspect].max())):
-            if _walls_meet(stepped[suspect], stepped[nxt[suspect]], pairs):
-                raise _lost("walls of the profile round onto each other")
+    if profile.rounded_walls_meet(rings, t, section):
+        raise _lost("walls of the profile round onto each other")
 
-    fold = _folded(stepped, t, plane, cap, closed)
+    fold = _folded(rings.astype(np.float32), t, plane, cap, closed)
     if fold is not None:
         raise _bad(
             "path",

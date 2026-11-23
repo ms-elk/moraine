@@ -144,3 +144,73 @@ def test_triangles_meet_where_they_share_a_point():
     assert not meet([[0, 0, 1e-6], [2, 0, 1e-6], [0, 2, 1e-6]])     # parallel, just above
     assert not meet([[2.1, 0, 0], [4, 0, 0], [2.1, 2, 0]])          # beside it in the plane
     assert not meet([[1.01, 1.01, -1], [1.01, 1.01, 1], [3, 3, 0]])  # passes its long edge
+
+
+def test_wall_test_sets_a_bounded_number_of_walls_at_once(monkeypatch):
+    """DESIGN 5: tessellation ceilings are absurdity guards, so an
+    outline at its ceiling is judged in passes of bounded size - one
+    span and twenty thousand pairs of edges reach the triangle test a
+    pass at a time, never all at once."""
+    seen = []
+
+    def count(a, b):
+        seen.append(len(a))
+        return np.zeros(len(a), dtype=bool)
+
+    monkeypatch.setattr(profile, "triangles_meet", count)
+    q = 400
+    angle = np.arange(q) * 2.0 * math.pi / q
+    start = np.stack([np.cos(angle), np.sin(angle), np.zeros(q)], axis=1)[None]
+    end = start + [0.0, 0.0, 1.0]
+    k = np.arange(20000)
+    pairs = np.stack([k % 100, 150 + k % 200], axis=1)
+    assert not profile._walls_meet(start, end, pairs)
+    assert sum(seen) == 4 * len(pairs)
+    assert max(seen) <= profile._WALL_PAIRS < len(pairs)
+
+
+def test_wall_test_leaves_out_a_wall_collapsed_onto_a_line():
+    """DESIGN 5: walls that close on each other are an error, and a
+    wall whose edge sits on an axis has only the one triangle - the
+    collapsed one carries no face, so two such walls that stand apart
+    are not taken to meet along the line they collapse onto."""
+    # Outline points 0 and 3 sit on the axis the stations turn about.
+    outline = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]])
+    turned = outline[:, [2, 1, 0]] * [-1.0, 1.0, 1.0]
+    pairs = np.array([[0, 2]])  # the two rims that run out from the axis
+    assert not profile._walls_meet(outline[None], turned[None], pairs)
+
+
+def test_face_check_reads_a_bounded_number_of_faces_at_once(monkeypatch):
+    """DESIGN 5: tessellation ceilings are absurdity guards, and a
+    section that collapses or turns over when its vertices round to
+    float32 is an error - so the faces are read in passes of bounded
+    size, and one lost in a late pass is still counted."""
+    seen = []
+    inner = profile.tri_cross
+
+    def count(tri):
+        seen.append(len(tri))
+        return inner(tri)
+
+    monkeypatch.setattr(profile, "tri_cross", count)
+    monkeypatch.setattr(profile, "_FACES", 8)
+    k = np.arange(40.0)[:, None, None]
+    sound = k * [1.0, 0.0, 0.0] + [[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [0.0, 0.5, 0.0]]
+    faces = np.arange(120).reshape(40, 3)
+    assert profile.rounded_faces_lost(sound.reshape(-1, 3), faces) == 0
+    assert max(seen) <= 8 < len(faces)
+
+    # 32 m out one float32 step is 2^-18 m: these corners round to
+    # (0, 0), (2, 1), (4, 1) steps, the other way around.
+    step = 2.0**-18
+    turned = sound.copy()
+    turned[30] = 32.0 + step * np.array([[0.0, 0.25, 0.0], [2.0, 0.625, 0.0], [4.0, 1.375, 0.0]])
+    turned[30, :, 2] = 0.0
+    assert profile.rounded_faces_lost(turned.reshape(-1, 3), faces) == 1
+
+    # A sliver float32 keeps the right way around, thinner than the
+    # degeneracy bar.
+    thin = sound.copy()
+    thin[37] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 1e-10, 0.0]]
+    assert profile.rounded_faces_lost(thin.reshape(-1, 3), faces) == 1

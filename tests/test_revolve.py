@@ -35,8 +35,8 @@ def watertight(m) -> bool:
 # so the exact volume is the polygon-area factor times the profile's
 # integral of r^2 dy (each linear band is a frustum of the inscribed
 # pyramid - quads are planar because r is linear in y).
-def _polygon_factor(seg: int) -> float:
-    return 0.5 * seg * math.sin(2.0 * math.pi / seg)
+def _polygon_factor(seg: int, arc_deg: float = 360.0) -> float:
+    return 0.5 * seg * math.sin(math.radians(arc_deg) / seg)
 
 
 def test_revolve_flange_golden():
@@ -243,3 +243,140 @@ def test_revolve_full_turn_result_hash_frozen(params, faces, frozen):
     mesh = revolve.evaluate([], params, None)
     assert len(mesh.faces) == faces
     assert mesh.result_hash() == frozen
+    turned = revolve.evaluate([], {**params, "arc_deg": 360.0}, None)
+    assert turned.result_hash() == frozen
+
+
+FLANGE = [[0, 0], [0.5, 0], [0.5, 0.2], [0.2, 0.2], [0.2, 0.6], [0, 0.6]]
+FLANGE_BANDS = 0.5**2 * 0.2 + 0.2**2 * 0.4  # the profile's integral of r^2 dy
+DRUM = [[0.5, -1.0], [0.5, 1.0]]
+
+
+def test_revolve_part_turn_golden():
+    """Semantics: below 360 both cut faces are closed with flat caps -
+    a quarter drum in 8 steps is 9 columns of its 2 rings, two end fans
+    of 9 points about a center, and the 4-point generating polygon on
+    each cut face, watertight."""
+    seg = 8
+    m = revolve.evaluate([], {"profile": DRUM, "segments": seg, "arc_deg": 90.0}, None)
+    assert len(m.vertices) == 2 * (seg + 1) + 2 * (seg + 2) + 2 * 4
+    assert len(m.faces) == 2 * seg + 2 * seg + 2 * 2
+    s = m.stats()
+    assert s["bounds"]["min"] == [0.0, -1.0, -0.5]
+    assert s["bounds"]["max"] == [0.5, 1.0, 0.0]
+    assert volume(m) == pytest.approx(_polygon_factor(seg, 90.0) * 0.5**2 * 2.0, rel=1e-5)
+    assert watertight(m)
+
+
+@pytest.mark.parametrize("arc_deg", [30.0, 90.0, 200.0, 270.0])
+@pytest.mark.parametrize(
+    "prof,bands", [(FLANGE, FLANGE_BANDS), (DRUM, 0.5**2 * 2.0)], ids=["poles", "caps"]
+)
+def test_revolve_part_turn_volume(arc_deg, prof, bands):
+    """Semantics: `segments` counts the steps across the arc, so every
+    cross-section is the sector of an inscribed polygon of that many
+    sides - the exact volume, whether the ends close at poles or with
+    flat caps."""
+    seg = 7
+    m = revolve.evaluate([], {"profile": prof, "segments": seg, "arc_deg": arc_deg}, None)
+    assert volume(m) == pytest.approx(_polygon_factor(seg, arc_deg) * bands, rel=1e-5)
+    assert watertight(m)
+
+
+def test_revolve_half_turn_is_half_the_full_turn_at_the_same_step():
+    """Semantics: a half turn of 16 has the facets of a full turn of
+    32 - half its volume exactly, half its bounds across the cut, and
+    a volume no longer proportional to the arc at equal `segments`."""
+    full = revolve.evaluate([], {"profile": FLANGE, "segments": 32}, None)
+    half = revolve.evaluate([], {"profile": FLANGE, "segments": 16, "arc_deg": 180.0}, None)
+    assert volume(half) == pytest.approx(volume(full) / 2.0, rel=1e-6)
+    assert half.stats()["bounds"]["min"] == [-0.5, 0.0, -0.5]
+    assert half.stats()["bounds"]["max"] == [0.5, 0.6, 0.0]
+    coarse = revolve.evaluate([], {"profile": FLANGE, "segments": 4, "arc_deg": 180.0}, None)
+    square = revolve.evaluate([], {"profile": FLANGE, "segments": 4}, None)
+    assert volume(coarse) / volume(square) == pytest.approx(math.sqrt(0.5), rel=1e-5)
+
+
+def test_revolve_turn_starts_at_x_and_runs_toward_minus_z():
+    """Semantics: the turn starts at angle 0 (+X) and runs toward -Z,
+    and each cut face looks back out of the solid - +Z at the start,
+    and -X where a quarter turn ends."""
+    m = revolve.evaluate([], {"profile": DRUM, "segments": 8, "arc_deg": 90.0}, None)
+    start, end = m.normals[-8:-4], m.normals[-4:]
+    assert np.allclose(start, [0.0, 0.0, 1.0])
+    assert np.allclose(end, [-1.0, 0.0, 0.0], atol=1e-6)
+    assert np.allclose(m.vertices[-8:-4, 2], 0.0)
+    assert np.allclose(m.vertices[-4:, 0], 0.0, atol=1e-6)
+
+
+def test_revolve_thin_profile_builds_full_and_never_caps_wrongly():
+    """Semantics: a turn of less than 360 degrees is refused where the
+    profile is too thin to cap; the full turn takes neither check - so
+    one profile builds turned all the way, and cut short is refused or
+    capped soundly, whichever the installed triangulator allows."""
+    thin = [[2, 0], [2, 1e-14], [1, 5e-15], [0, 1e-14]]
+    assert len(revolve.evaluate([], {"profile": thin}, None).faces) == 192
+    try:
+        cut = revolve.evaluate([], {"profile": thin, "arc_deg": 180.0}, None)
+    except OpError as exc:
+        assert exc.code == "bad_param"
+    else:
+        assert watertight(cut)
+
+
+def _grooved(mouth: float) -> list[list[float]]:
+    """A ring between radius 33 and 35, from 32 m up to 34 m, with a
+    groove in its rim at 33 m."""
+    return [[33.0, 32.0], [35.0, 32.0], [35.0, 33.0 - mouth / 2], [34.5, 33.0],
+            [35.0, 33.0 + mouth / 2], [35.0, 34.0], [33.0, 34.0]]
+
+
+def test_revolve_part_turn_refuses_a_profile_float32_closes():
+    """Semantics: a turn of less than 360 degrees is refused where the
+    profile does not survive its vertices rounding to float32; the
+    full turn takes neither check - 33 m up, the lips of a groove
+    2e-7 m wide land on one coordinate, and a millimeter builds."""
+    assert np.float32(33 - 1e-7) == np.float32(33 + 1e-7)
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], {"profile": _grooved(2e-7), "segments": 6, "arc_deg": 90.0}, None)
+    assert exc.value.code == "bad_param" and "float32" in exc.value.message
+    assert watertight(
+        revolve.evaluate([], {"profile": _grooved(1e-3), "segments": 6, "arc_deg": 90.0}, None)
+    )
+    assert len(revolve.evaluate([], {"profile": _grooved(2e-7), "segments": 6}, None).faces) > 0
+
+
+def _notched(mouth: float) -> list[list[float]]:
+    """A flange 40 m out, a notch in its top face `mouth` wide where
+    it opens."""
+    r = 40.000149
+    return [[r + 1, 0], [r + 1, 0.2], [r + mouth, 0.2], [r + mouth, 0.12], [r + 0.1, 0.1],
+            [r - 0.1, 0.1], [r, 0.12], [r, 0.2], [r - 1, 0.2]]
+
+
+def test_revolve_coarse_part_turn_refuses_walls_that_cross_between_columns():
+    """Semantics: a turn of less than 360 degrees is refused where two
+    walls round onto each other - across a step of 119 degrees the
+    chord shows the profile at half its width, so a notch float32
+    keeps open at every column closes between two of them, and a
+    millimeter builds."""
+    mouth = 4.32e-6
+    assert np.float32(40.000149) != np.float32(40.000149 + mouth)
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], {"profile": _notched(mouth), "segments": 3, "arc_deg": 357.0}, None)
+    assert exc.value.code == "bad_param"
+    assert "two walls round onto each other" in exc.value.message
+    assert watertight(
+        revolve.evaluate([], {"profile": _notched(1e-3), "segments": 3, "arc_deg": 357.0}, None)
+    )
+
+
+@pytest.mark.parametrize(
+    "arc_deg,fragment", [(0, "> 0"), (-90, "> 0"), (360.5, "<= 360"), ("half", "finite number")]
+)
+def test_revolve_arc_refusals(arc_deg, fragment):
+    """Semantics: `arc_deg` is above 0 and at most 360."""
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], {"profile": DRUM, "arc_deg": arc_deg}, None)
+    assert exc.value.code == "bad_param" and exc.value.detail["param"] == "arc_deg"
+    assert fragment in exc.value.message

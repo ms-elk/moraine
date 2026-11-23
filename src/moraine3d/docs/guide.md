@@ -36,10 +36,10 @@ cylinder, sphere, grid) shaped by displacement, extrusion,
 revolution, booleans, chamfers, and instancing. Check the subject
 against what has **no operator** before committing to it:
 
-- Partial revolutions have no op: `revolve` turns an open
-  `[radius, y]` polyline a full 360° around +Y (cones, tapers,
-  turned profiles). A drawn outline runs along a line or a polyline
-  with `sweep`; an outline with a hole is two solids and a `boolean`.
+- A drawn outline turns around +Y with `revolve` (cones, tapers,
+  turned profiles, a part turn by `arc_deg`) and runs along a line
+  or a polyline with `sweep`; neither takes an outline with a hole,
+  which is two solids and a `boolean`.
 - Outputs must be closed solids: an open surface (a `grid`, a
   displaced sheet) cannot be an output, so terrain is a displaced
   sheet **plus the `extrude` that closes it**; a scatter *target*
@@ -65,7 +65,7 @@ the plan commits (each row's limit changes plans, not parameters):
 | repeat parts | `array` / `scatter` | transform frame; an `array` of `count` 0 leaves its output absent; stochastic outputs cannot become knobs |
 | terrain / relief | `grid`, `noise_displace`, `extrude`, `boolean` | open surfaces cannot be outputs |
 | chamfer edges | `bevel` | convex solids only |
-| turn a rotational part | `revolve` | the solid always contains the axis — a ring / torus has no op |
+| turn a rotational part | `revolve` | the solid always contains the axis — a ring / torus has no op; `segments` steps span `arc_deg`, not the circle |
 | run a profile along a path | `sweep` | the section never twists about the path, so a loop must bring it back unturned (a planar one does); the solid may not touch itself away from a bend |
 | texture a surface | *patterns* + `unwrap` | box/planar projection only; one source per slot |
 | assign materials | `material` | name is the export identity; a factor knob on a shared name is never live |

@@ -268,27 +268,6 @@ def test_sweep_wall_test_reads_a_gap_at_its_own_scale():
         assert watertight(m)
 
 
-def test_sweep_wall_test_sets_a_bounded_number_of_walls_at_once(monkeypatch):
-    """DESIGN 5: tessellation ceilings are absurdity guards, so a
-    profile at its ceiling is judged in passes of bounded size - one
-    segment and twenty thousand pairs of edges reach the triangle test
-    a pass at a time, never all at once."""
-    seen = []
-
-    def count(a, b):
-        seen.append(len(a))
-        return np.zeros(len(a), dtype=bool)
-
-    monkeypatch.setattr(sweep, "triangles_meet", count)
-    q = 400
-    ring = np.zeros((1, q, 3), dtype=np.float32)
-    k = np.arange(20000)
-    pairs = np.stack([k % 100, 150 + k % 200], axis=1)
-    assert not sweep._walls_meet(ring, ring, pairs)
-    assert sum(seen) == 4 * len(pairs)
-    assert max(seen) <= sweep._WALL_PAIRS < len(pairs)
-
-
 def test_sweep_rounding_along_the_path_closes_no_wall():
     """Semantics: a section does not survive where two walls of the
     profile round onto each other, and only there - 800 m along +Z the

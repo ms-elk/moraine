@@ -102,10 +102,11 @@ KERNEL_MODULES = (
     "core.mating", "core.predicates", "core.rand", "core.mesh", "core.profile",
 )
 KERNEL_DISTS = ("manifold3d", "trimesh")
-# Kernel modules whose functions are traced to the distributions they
-# call, so an op declares a distribution only where a function it uses
-# reaches one. `core.mesh` is not traced this way: it imports trimesh
-# for its value classes, and KERNEL_HELPERS names what counts.
+# Kernel modules whose functions are traced to the kernels they call -
+# a distribution, or another kernel module's function - so an op
+# declares one only where a function it uses reaches it. `core.mesh` is
+# not traced this way: it imports trimesh for its value classes, and
+# KERNEL_HELPERS names what counts.
 TRACED_KERNEL_MODULES = ("core.profile",)
 
 
@@ -160,19 +161,25 @@ def _common_kernels() -> dict[str, set[str]]:
     return out
 
 
-def _traced_dists(module: str) -> dict[str, set[str]]:
-    """Per function of a traced kernel module: the distributions it
-    calls, directly or through another function of the module."""
+def _traced_kernels(module: str) -> dict[str, set[str]]:
+    """Per function of a traced kernel module: the kernels it calls -
+    a distribution, or a function it imports from a sibling kernel
+    module - directly or through another function of the module."""
     path = Path(importlib.import_module(f"moraine3d.{module}").__file__)
-    fns = {
-        fn.name: fn for fn in ast.parse(path.read_text(encoding="utf-8")).body
-        if isinstance(fn, ast.FunctionDef)
-    }
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    bound = {dist: dist for dist in KERNEL_DISTS}
+    for node in tree.body:
+        sibling = f"core.{node.module}" if isinstance(node, ast.ImportFrom) else None
+        if sibling in KERNEL_MODULES and node.level == 1:
+            for a in node.names:
+                if sibling != "core.mesh" or a.name in mesh_mod.KERNEL_HELPERS:
+                    bound[a.asname or a.name] = sibling
+    fns = {fn.name: fn for fn in tree.body if isinstance(fn, ast.FunctionDef)}
     names = {
         name: {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)}
         for name, fn in fns.items()
     }
-    out = {name: used & set(KERNEL_DISTS) for name, used in names.items()}
+    out = {name: {bound[n] for n in used if n in bound} for name, used in names.items()}
     changed = True
     while changed:
         changed = False
@@ -195,7 +202,7 @@ def test_kernels_declaration_matches_imports():
     int KERNEL_VERSION and every declared distribution is installed.
     numpy is never declared (its arithmetic is bit-tolerant, DESIGN 4.4)."""
     common = _common_kernels()
-    traced = {m.split(".")[1]: _traced_dists(m) for m in TRACED_KERNEL_MODULES}
+    traced = {m.split(".")[1]: _traced_kernels(m) for m in TRACED_KERNEL_MODULES}
     direct: dict[str, set[str]] = {}
     edges: dict[str, set[str]] = {}
     for name in ops.names():

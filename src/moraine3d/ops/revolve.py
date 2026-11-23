@@ -2,8 +2,13 @@
 
 Semantics: emits the solid of revolution of ``profile`` - a list of two
 or more [radius, y] points (m) forming an open polyline in the +X
-half-plane - swept a full 360 degrees around the +Y axis with
-``segments`` steps (default 32, 3..4096). Order the profile so the
+half-plane - turned around the +Y axis through ``arc_deg`` degrees
+(default 360, above 0) in ``segments`` steps (default 32, 3..4096).
+The turn starts at angle 0 (+X) and runs toward -Z, and below 360
+both cut faces are closed with flat caps. ``segments`` counts the
+steps across the arc, so a half turn of 16 has the facets of a full
+turn of 32, and at equal ``segments`` the volume is not proportional
+to the arc. Order the profile so the
 solid lies on its left (bottom-to-top along the outside); a profile
 that would face the surface inward is refused naming the fix (reverse
 the point order). Ends close automatically: an end with radius 0
@@ -20,12 +25,19 @@ Circumferential shading is smooth (shared ring vertices); a profile
 joint bending by more than ``angle_max_deg`` (default 30) is hard
 (duplicated rings), a gentler one smooth (shared ring, half-plane
 bisector normal). Vertex 0 of each ring sits at angle 0 (+X); winding
-is CCW from outside. Deterministic.
+is CCW from outside. A turn of less than 360 degrees is refused where
+the profile is too thin to cap, and where it does not survive its
+vertices rounding to float32 (a triangle collapses or turns over, the
+vertices weld into an open surface, or two walls round onto each
+other); the full turn takes neither check. Deterministic.
 """
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
+import trimesh
 
 from ..core import numbers, profile
 from ..core.mesh import Mesh
@@ -38,12 +50,13 @@ OP_IMPL_VERSION = 1
 # resolves at any size the tool builds. It is read as 0. Nothing that
 # was accepted before reads differently, so the version stands.
 RADIUS_NOISE = 1e-9
-KERNELS = ("core.profile",)
+KERNELS = ("core.mesh", "core.profile", "manifold3d", "trimesh")
 INPUT_ARITY = (0, 0)
 PARAM_KINDS = {
     "profile": numbers.FLOAT,
     "segments": numbers.INT,
     "angle_max_deg": numbers.FLOAT,
+    "arc_deg": numbers.FLOAT,
 }
 PARAMS = frozenset(PARAM_KINDS)
 # Documented ceilings on tessellation: beyond them the count is a typo,
@@ -56,6 +69,24 @@ ATTRIBUTE_POLICY = "preserved"  # source op
 
 def _bad(message: str) -> OpError:
     return OpError("bad_param", message, param="profile")
+
+
+def _lost(what: str) -> OpError:
+    return _bad(
+        f"revolve 'profile' does not survive rounding to float32 at this "
+        f"arc_deg: {what}; enlarge the profile, or draw it nearer the origin"
+    )
+
+
+def _generating(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """The generating polygon: the profile closed to the axis at the
+    end heights (a pole end already sits on the axis)."""
+    poly = list(pts)
+    if pts[-1][0] > 0:
+        poly.append((0.0, pts[-1][1]))
+    if pts[0][0] > 0 and (0.0, pts[0][1]) != poly[-1]:
+        poly.append((0.0, pts[0][1]))
+    return poly
 
 
 def _profile(params: dict) -> list[tuple[float, float]]:
@@ -101,16 +132,10 @@ def _profile(params: dict) -> list[tuple[float, float]]:
             f"revolve 'profile' doubles back exactly at point {k} - "
             "a zero-thickness fin; drop or move the point"
         )
-    # The generating polygon: the profile closed to the axis at the end
-    # heights (a pole end already sits on the axis). Its edges must not
-    # cross or touch - a self-intersecting polygon sweeps an ill-defined
-    # solid that only looks watertight.
-    poly = list(pts)
-    if pts[-1][0] > 0:
-        poly.append((0.0, pts[-1][1]))
-    if pts[0][0] > 0 and (0.0, pts[0][1]) != poly[-1]:
-        poly.append((0.0, pts[0][1]))
-    hit = profile.self_intersection(poly)
+    # The generating polygon's edges must not cross or touch - a
+    # self-intersecting polygon sweeps an ill-defined solid that only
+    # looks watertight.
+    hit = profile.self_intersection(_generating(pts))
     if hit is not None:
         names = [
             f"the segment from point {e}" if e < len(pts) - 1 else "the end closure"
@@ -146,6 +171,11 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
         "revolve", params, "angle_max_deg",
         common.CREASE_ANGLE_DEG_DEFAULT, positive=True, maximum=180.0,
     )
+    arc = common.num("revolve", params, "arc_deg", 360.0, positive=True, maximum=360.0)
+    # A full turn joins its last column to its first; a part turn has
+    # one column more and two cut faces.
+    full = arc == 360.0
+    cols = seg if full else seg + 1
 
     n_pts = len(pts)
     # Rings: (radius, y, half-plane normal), one per normal a point
@@ -169,7 +199,7 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
     # Hard joints duplicate rings, so the rings x segments product can
     # exceed what the per-param ceilings admit alone - refuse before
     # allocating, per the ceilings' own rationale.
-    if len(rings) * seg > common.TESSELLATION_CELLS_MAX:
+    if len(rings) * cols > common.TESSELLATION_CELLS_MAX:
         raise OpError(
             "bad_param",
             f"revolve tessellation is too large: {len(rings)} rings x "
@@ -178,17 +208,24 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
             param="segments",
         )
 
-    ang = np.arange(seg) * (2.0 * np.pi / seg)
+    if full:
+        ang = np.arange(seg) * (2.0 * np.pi / seg)
+    else:
+        ang = np.arange(cols) * (math.radians(arc) / seg)
     cos, sin = np.cos(ang), np.sin(ang)
+    # +Z runs against the turn. A part turn starts on the +X axis, and
+    # there subtracting from zero keeps its first column at z = 0.0
+    # where negating would write -0.0.
+    back = -sin if full else 0.0 - sin
     i = np.arange(seg)
-    j = (i + 1) % seg
+    j = (i + 1) % cols
 
     def ring_xyz(r: float, y: float) -> np.ndarray:
-        return np.stack([r * cos, np.full(seg, y), -r * sin], axis=1)
+        return np.stack([r * cos, np.full(cols, y), r * back], axis=1)
 
     verts = [ring_xyz(r, y) for r, y, _ in rings]
     normals = [
-        np.stack([nr * cos, np.full(seg, ny), -nr * sin], axis=1)
+        np.stack([nr * cos, np.full(cols, ny), nr * back], axis=1)
         for _, _, (nr, ny) in rings
     ]
     faces: list[np.ndarray] = []
@@ -206,14 +243,14 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
     for k in range(n_pts - 1):
         if k == 0 and pole_start:
             p = emit(np.array([[0.0, pts[0][1], 0.0]]), np.array([[0.0, -1.0, 0.0]]))
-            b = band_hi[0] * seg
+            b = band_hi[0] * cols
             faces.append(np.stack([np.full(seg, p), b + j, b + i], axis=1))
         elif k == n_pts - 2 and pole_end:
             p = emit(np.array([[0.0, pts[-1][1], 0.0]]), np.array([[0.0, 1.0, 0.0]]))
-            a = band_lo[k] * seg
+            a = band_lo[k] * cols
             faces.append(np.stack([a + i, a + j, np.full(seg, p)], axis=1))
         else:
-            a, b = band_lo[k] * seg, band_hi[k] * seg
+            a, b = band_lo[k] * cols, band_hi[k] * cols
             faces.append(np.stack([a + i, a + j, b + j], axis=1))
             faces.append(np.stack([a + i, b + j, b + i], axis=1))
 
@@ -226,13 +263,67 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
             continue
         base = emit(
             np.concatenate([ring_xyz(r, y), [[0.0, y, 0.0]]]),
-            np.tile([0.0, ny, 0.0], (seg + 1, 1)),
+            np.tile([0.0, ny, 0.0], (cols + 1, 1)),
         )
-        cols = [base + i, base + j, np.full(seg, base + seg)]
-        faces.append(np.stack(cols if ny > 0 else cols[::-1], axis=1))
+        fan = [base + i, base + j, np.full(seg, base + cols)]
+        faces.append(np.stack(fan if ny > 0 else fan[::-1], axis=1))
+
+    if full:
+        return Mesh(
+            vertices=np.concatenate(verts).astype(np.float32),
+            faces=np.concatenate(faces).astype(np.int32),
+            normals=np.concatenate(normals).astype(np.float32),
+        )
+
+    # Cut faces: the generating polygon in the half-planes of the first
+    # and the last column. Counter-clockwise in [radius, y], it faces
+    # back along the turn - outward at the first column, so the last
+    # takes the triangles reversed.
+    poly = _generating(pts)
+    cap = profile.triangulate(poly)
+    if cap is None:
+        raise _bad(
+            "revolve 'profile' is too thin to cap where arc_deg cuts it - its "
+            "triangles would overlap; widen it"
+        )
+    flat = np.array(poly)
+    # Adding zero leaves a point on the axis at 0.0, not at the -0.0
+    # its radius times a negative cosine comes to.
+    stations = np.stack(
+        [flat[None, :, 0] * cos[:, None] + 0.0, np.broadcast_to(flat[:, 1], (cols, len(poly))),
+         flat[None, :, 0] * back[:, None] + 0.0],
+        axis=2,
+    )  # (cols, q, 3)
+    for col, outward, tris in ((0, 1.0, cap), (seg, -1.0, cap[:, ::-1])):
+        base = emit(
+            stations[col],
+            np.tile([outward * sin[col], 0.0, outward * cos[col]], (len(poly), 1)),
+        )
+        faces.append(base + tris)
+
+    exact = np.concatenate(verts)
+    vertices = exact.astype(np.float32)
+    tris = np.concatenate(faces)
+    lost = profile.rounded_faces_lost(exact, tris)
+    if lost:
+        raise _lost(f"{lost} triangle(s) collapse or turn over")
+    # The weld `validate` judges a surface by: vertices it merges must
+    # leave every edge to two faces.
+    welded = trimesh.Trimesh(vertices=vertices, faces=tris, process=False)
+    welded.merge_vertices()
+    if not welded.is_watertight:
+        raise _lost("its vertices weld into an open surface")
+    # Between two columns every wall runs along the chord, the tangent
+    # at the angle halfway. Each column stands half a step askew of it,
+    # so end on the chord shows the polygon that much narrower.
+    mid = 0.5 * (ang[:-1] + ang[1:])
+    chord = np.stack([-np.sin(mid), np.zeros(seg), -np.cos(mid)], axis=1)
+    narrow = math.cos(0.5 * math.radians(arc) / seg)
+    if profile.rounded_walls_meet(stations, chord, [(r * narrow, y) for r, y in poly]):
+        raise _lost("two walls round onto each other")
 
     return Mesh(
-        vertices=np.concatenate(verts).astype(np.float32),
-        faces=np.concatenate(faces).astype(np.int32),
+        vertices=vertices,
+        faces=tris.astype(np.int32),
         normals=np.concatenate(normals).astype(np.float32),
     )

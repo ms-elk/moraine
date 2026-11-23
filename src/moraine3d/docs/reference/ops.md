@@ -73,12 +73,17 @@ Example: `examples/scatter_field`.
 
 ## revolve (op_impl_version 1)
 
-Recipe: `mo.revolve(id = ..., profile = ..., segments = int, angle_max_deg = ...)`
+Recipe: `mo.revolve(id = ..., profile = ..., segments = int, angle_max_deg = ..., arc_deg = ...)`
 
 Emits the solid of revolution of `profile`, a list of two or more
 `[radius, y]` points (m) forming an open polyline in the +X half-plane,
-swept a full 360 deg around the +Y axis with `segments` steps (default
-32, 3..4096). Order the profile so the solid lies on its left
+turned around the +Y axis through `arc_deg` (default 360, above 0) in
+`segments` steps (default 32, 3..4096). The turn starts at angle 0
+(+X) and runs toward -Z, and below 360 both cut faces are closed with
+flat caps. `segments` counts the steps across the arc: a half turn of
+16 has the facets of a full turn of 32, and at equal `segments` the
+volume is not proportional to the arc. Order the profile so the solid
+lies on its left
 (bottom-to-top along the outside); a profile that would face the
 surface inward is an error naming the fix (reverse the point order).
 A radius within 1e-9 below zero, as an interpolation leaves at the
@@ -97,7 +102,12 @@ smooth (shared ring vertices); a profile joint bending by more than
 smooth (shared ring, half-plane bisector normal). The default keeps a
 dome's meridians smooth and a flange's steps crisp with no param
 written. Vertex 0 of each ring sits at angle 0 (+X); winding is CCW
-from outside. Deterministic. Example: `examples/turned_column`.
+from outside. A turn of less than 360 deg is an error where the
+profile is too thin to cap, and where it does not survive its vertices
+rounding to float32: a triangle collapses or turns over, the vertices
+weld into an open surface, or two walls round onto each other (enlarge
+the profile, or draw it nearer the origin). The full turn takes
+neither check. Deterministic. Example: `examples/turned_column`.
 
 ## sweep (op_impl_version 1)
 
