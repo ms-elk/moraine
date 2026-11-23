@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "moraine3d"
-version = "0.3.0.dev2"
+version = "0.3.0.dev3"
 description = "AI-native procedural modeling tool for real-time 3D assets"
 readme = "README.md"
 requires-python = ">=3.12"
