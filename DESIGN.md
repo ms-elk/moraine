@@ -2033,7 +2033,9 @@ below adds only its measurement and judgment:
   distance. Material separation stays the guard's domain and
   enclosure `not_enclosed`'s. Both take two named outputs, never a
   universal scope on both sides (universal contact is contradictory;
-  universal clearance outlaws flush assembly). Clearance rejects
+  universal clearance outlaws flush assembly).
+
+  Clearance rejects
   `min: 0` (vacuously true). Its pair form takes an optional `max`
   above `min`: the closest approach then lies in the band, a gap that
   must exist and stay bounded (a lamp 0.3 to 0.5 m from its railing).
@@ -2059,6 +2061,7 @@ below adds only its measurement and judgment:
   `distance`, and `detail.failing_partners`. `self` composes over
   `a`'s copies. If there are no other geometry outputs, the
   one-vs-rest check passes vacuously. Contact refuses the key.
+
   A contact side may name one copy of an instanced output, `[output,
   copy]` with the 0-based index `mated`'s face takes: a part resting
   on one copy of an arrayed partner (an end deck on the end crossbeam)
@@ -2068,6 +2071,7 @@ below adds only its measurement and judgment:
   bearing 0.4 m² on each of two beams meets `min_area` 0.6 against
   the beams by name and against neither beam by index. `every` names
   no output a side indexes. Clearance takes names alone.
+
   *Tolerance ownership:* contact's `tol` is a numerics floor owned by
   the tool. Above ~16 m one float32 ulp exceeds 1e-6 and a
   correctly flush contact reads as a gap; 1e-5 keeps every ≤ 160 m
@@ -2079,6 +2083,7 @@ below adds only its measurement and judgment:
   the opposite of "at least 5 cm apart". A default was rejected with
   it: a design value an entry need not write moves the verdict with
   no diff in the file.)
+
   *The bearing form.* Distance alone cannot tell a seat from a graze:
   an edge or a corner on a face is distance 0 like a face on a face,
   so instanced steps meeting their stringers along an edge pass every
