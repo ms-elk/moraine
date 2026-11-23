@@ -2439,7 +2439,7 @@ moraine query [PROJECT] [--output NAME] [--select '{...}'] [--tag NAME] [--insta
 moraine export [PROJECT] [--profile gltf] [-o exports/] [--bake-instances] [--recompute]   # validate, then write GLB + manifest; a workspace root exports every project
 moraine serve [PROJECT] [--no-open]         # HTTP+WS server + viewer, watches recipe files and params (workspace root: all projects, viewer picker); opens the viewer unless a tab is already connected (§7.1)
 moraine screenshot [PROJECT] [--view front|iso|... | --azimuth DEG --elevation DEG] [--distance M] [--target X,Y,Z] [--size WxH] [--param ID=VALUE] -o shot.png   # via running server; shoots PROJECT (default: cwd's); --param shoots it under a knob value and writes nothing
-moraine docs [SECTION]                      # shipped reference: recipe API, asset format, op contracts, textures, checks, assertions, CLI, journal, examples, and the generated `mo` namespace; a section prints alone, as text, naming the sections under it and the examples it cites; SECTION = examples/<name> prints one
+moraine docs [SECTION]                      # shipped reference: recipe API, asset format, op contracts, textures, checks, assertions, CLI, journal, examples, and the generated `mo` namespace; a section prints alone, as text, naming the sections under it, the examples it cites and, off an operator's section, the requirements files beside them; SECTION = examples/<name> prints one
 moraine mcp                                 # MCP server over stdio: stats, validate, query, export, screenshot, docs as tools (§8.4)
 moraine sessions [PATH] [--gap MIN] [--last N | --all]   # session-log summary: sessions, per-project rounds, command counts
 moraine pins list|add|clear [PROJECT]       # deixis pins on the running server (§7.2): read the human's, place the agent's
@@ -3578,7 +3578,12 @@ contract. Normative recipe: the guide's authoring-loop section.
   declaration refuses (§4.6).
 - An on-demand reply is one contract: `moraine docs SECTION` answers
   with that section alone and names the sections under it and the
-  examples it cites (§6). What an agent reads before its first recipe
+  examples it cites (§6). It names the requirements file beside an
+  example too, where an example's human-owned asserts are declared
+  (§5.2) and the root recipe does not show them, except on an
+  operator's section: no requirements file calls an operator (§4.8),
+  so the line missing there says nothing of whether the file exists.
+  What an agent reads before its first recipe
   line is mostly the reference, so a reply carrying its neighbors or
   its examples whole would be paid by every reader of one contract.
 - Guide residency: know-how consumed only during a specific working

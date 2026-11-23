@@ -67,11 +67,38 @@ def test_docs_section_reply_carries_the_cited_assets():
     rc, asset = _docs("examples/scatter_field")
     assert rc == 0 and "mo.scatter(" in asset
     rc, reply = _docs("Asset assertions")
-    assert reply.splitlines()[-1].startswith(
+    assert reply.splitlines()[-2].startswith(
         "examples: examples/shelf_pair, examples/scatter_field, examples/pallet  "
     )
     rc, reply = _docs("checks")
     assert rc == 0 and "examples: " not in reply
+
+
+def test_docs_section_reply_names_the_requirements_files_beside_its_examples():
+    """DESIGN 6: a section's reply names the requirements files beside
+    the examples it cites, as the next call asks for them: an example's
+    human-owned asserts are declared there (DESIGN 5.2), so the root
+    recipe alone does not show the kind the section documents. An
+    example without the file adds none, and an operator's section names
+    none, a requirements file calling no operator (DESIGN 4.8)."""
+    rc, reply = _docs("extent")
+    assert rc == 0
+    assert reply.splitlines()[-2:] == [
+        "examples: examples/flange_pipe, examples/stairs  (moraine docs examples/<name>)",
+        "requirements: examples/flange_pipe/requirements, examples/stairs/requirements"
+        "  (moraine docs examples/<name>/requirements)",
+    ]
+    for path in ("examples/flange_pipe", "examples/stairs"):
+        assert "mo.assert_extent(" not in _docs(path)[1]
+        assert "mo.assert_extent(" in _docs(f"{path}/requirements")[1]
+    rc, reply = _docs("embedded")
+    assert "examples/brick_building" in reply.splitlines()[-2]
+    assert reply.splitlines()[-1] == (
+        "requirements: examples/scatter_field/requirements"
+        "  (moraine docs examples/<name>/requirements)"
+    )
+    rc, reply = _docs("scatter")
+    assert rc == 0 and "requirements: " not in reply
 
 
 def test_docs_examples_index_and_examples_slash_name():

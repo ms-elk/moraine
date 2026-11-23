@@ -5,8 +5,8 @@ agent from a one-paragraph request, kept validate-green by the test
 suite. The assets live in the package, under
 [src/moraine3d/docs/examples/](../src/moraine3d/docs/examples/), so
 every install ships them (`moraine docs examples` prints this index
-without the pictures, `moraine docs examples/<name>` an asset, and an
-op's section the asset it cites). To run one, copy it into the
+without the pictures, `moraine docs examples/<name>` an asset, and a
+section's reply names the assets it cites). To run one, copy it into the
 repository's ignored working area, `scratch/`, since serving and
 exporting write beside the asset:
 

@@ -752,8 +752,7 @@ echoes (`value`/`tol`, or the band with the omitted edge as `null`),
 pass or fail, and a failing one says where each side stands; image,
 empty, and non-finite subjects fail with the reason.
 
-Examples: `examples/brick_shed` (the entry is in its requirements
-file, `moraine docs examples/brick_shed/requirements`).
+Examples: `examples/brick_shed`.
 
 ### count (assert kind)
 

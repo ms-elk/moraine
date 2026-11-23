@@ -1431,6 +1431,19 @@ def _cited_examples(text: str) -> list[str]:
     ]
 
 
+def _cited_requirements(cited: list[str]) -> list[str]:
+    """The requirements files the cited examples hold, as the
+    `examples/<name>/requirements` a reader asks for: an example's
+    human-owned asserts are in that file, not in the root recipe the
+    citation prints."""
+    return [
+        f"{example}/requirements" for example in cited
+        if _example_exists(
+            f"{example}/{example.split('/')[1]}{sources_mod.REQUIREMENTS_EXT}"
+        )
+    ]
+
+
 def _print_example(query: str) -> int:
     """`moraine docs examples/<name>` / `examples/<name>/subassets/<sub>`
     / `examples/<name>/requirements` (the human's file beside the
@@ -1568,6 +1581,14 @@ def _cmd_docs(args) -> int:
         cited = _cited_examples(text)
         if cited:
             tail.append("examples: " + ", ".join(cited) + "  (moraine docs examples/<name>)")
+        # An operator's use is in the recipe: a requirements file
+        # calls none (DESIGN 4.8), so its section names none.
+        beside = [] if _operator_source(names[hit[0]]) else _cited_requirements(cited)
+        if beside:
+            tail.append(
+                "requirements: " + ", ".join(beside)
+                + "  (moraine docs examples/<name>/requirements)"
+            )
         _print_text(text + ("\n\n" + "\n".join(tail) if tail else ""))
         return 0
     # A command the reference holds no section for answers with its own
@@ -1605,23 +1626,30 @@ def _command_parsers() -> dict[str, argparse.ArgumentParser]:
     return {}
 
 
+def _operator_source(section: str):
+    """The source file of the operator a section documents, or None
+    for any other section."""
+    from importlib import resources
+
+    # By the directory's own spelling: a path lookup would match
+    # another case on a case-insensitive filesystem.
+    name = f"{section}.py"
+    return next(
+        (f for f in (resources.files("moraine3d") / "ops").iterdir() if f.name == name),
+        None,
+    )
+
+
 def _number_types(section: str) -> dict:
     """The number params of the operator a section documents, each
     with its type; empty for any other section. The declaration is
     read from the operator's source, where it is a literal: importing
     the module would load its kernels to print one line."""
     import ast
-    from importlib import resources
 
     from ..core import numbers
 
-    # By the directory's own spelling: a path lookup would match
-    # another case on a case-insensitive filesystem.
-    name = f"{section}.py"
-    source = next(
-        (f for f in (resources.files("moraine3d") / "ops").iterdir() if f.name == name),
-        None,
-    )
+    source = _operator_source(section)
     if source is None:
         return {}
     for node in ast.parse(source.read_text(encoding="utf-8")).body:

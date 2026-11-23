@@ -4,8 +4,13 @@
 
 The shipped example projects. `moraine docs examples/<name>` prints
 one's root recipe, `examples/<name>/requirements` the human's file
-beside it, `examples/<name>/subassets/<sub>` a sub-asset, and an
-op's section prints the recipe its `Example:` line cites. Each is a
+beside it, `examples/<name>/subassets/<sub>` a sub-asset, and a
+section's reply names the examples it cites. Off an operator's
+section it names the requirements files beside them too. An
+operator's section names none, no requirements file calling an
+operator, so there the missing line does not say an example lacks
+the file: `examples/<name>/requirements` prints it, or says the
+example ships none. Each is a
 complete project authored from a one-paragraph request. To build or
 serve one, copy its directory into a workspace: the package tree is a
 delivery, and a build writes beside the recipe.

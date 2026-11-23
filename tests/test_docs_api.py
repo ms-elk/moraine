@@ -92,7 +92,9 @@ def test_docs_answers_each_kind_by_name(capsys):
         rc, reply = _docs(kind, capsys)
         assert rc == 0, kind
         assert reply.startswith(f"### {kind} (assert kind)\n\nRecipe: `mo.assert_{kind}(")
-        assert reply.splitlines()[-1].startswith("examples: examples/"), kind
+        assert any(
+            line.startswith("examples: examples/") for line in reply.splitlines()[-2:]
+        ), kind
         assert "### " not in reply[4:]
     rc, reply = _docs("Asset assertions", capsys)
     assert rc == 0 and "quantifier" in reply.lower()
