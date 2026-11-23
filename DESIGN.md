@@ -2357,6 +2357,18 @@ threshold with the values of the nodes it judges was rejected:
 thresholds and params share values such as 0 and 1 by chance far
 more often than by a shared constant.)
 
+**What only a requirements file has is admitted last.** Each limit
+on the file (no recipe value, above; no number for a knob and no
+branch on one, §4.8) invites a mechanism that works around it. One is
+admitted, as `mo.optional` and the transform on `mo.param_value`
+were, where no assert over the evaluated geometry can hold what the
+human said: a width stated against a knob is not met by a shelf and
+its posts built narrow together, which every measure between the
+parts passes. Of such a mechanism the IR carries what a reader acts
+on (the knob an entry follows, the outputs a knob excuses), never a
+copy of what the file computes, which a loader would have to keep
+true to the file.
+
 The built-in overlap guard's owner is `human` by **spec assignment**,
 because "no part may interpenetrate another" is a standing human
 requirement, not a tool invariant. The assignment is load-bearing.

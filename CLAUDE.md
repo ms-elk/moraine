@@ -103,6 +103,10 @@ converted at the edges (the +Z-forward flip is the precedent).
    one audited choke point, and Moraine stays structurally unable to
    delete anything it did not itself write — read §4.5 before
    touching any deletion path.
+10. **The requirements file grows by assert vocabulary.** A builtin or
+    rule that only a requirements file has is admitted last (§5.2):
+    where no assert over the evaluated geometry can hold what the
+    human said. If a request appears to need one, say so and stop.
 
 ## Document rules
 
