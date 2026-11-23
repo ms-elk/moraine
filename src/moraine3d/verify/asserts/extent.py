@@ -27,18 +27,6 @@ _REPAIR = "resize or move the geometry"
 _WEAKEN = "state the intended dimension (value/tol or the band)"
 
 
-def _read(lo: np.ndarray, hi: np.ndarray, what: str, ax: int) -> np.ndarray:
-    """One ``measure`` along axis ``ax`` of boxes ``lo``/``hi`` — ``(k, 3)``
-    arrays give ``(k,)`` numbers, one box gives one."""
-    if what == "size":
-        return hi[..., ax] - lo[..., ax]
-    if what == "min":
-        return lo[..., ax]
-    if what == "max":
-        return hi[..., ax]
-    return (lo[..., ax] + hi[..., ax]) / 2.0
-
-
 def _face_group(a: dict, value, face, instance):
     """The tagged face set's local triangles ``(g, 3, 3)`` and, when a
     copy is named, its world matrix — or the resolver's reason, its
@@ -130,7 +118,7 @@ def check(entry: dict, a: dict, ctx: common.Context) -> None:
         return
     lo = np.minimum.reduce([b[1][0] for b in boxes])
     hi = np.maximum.reduce([b[2][0] for b in boxes])
-    measured = float(_read(lo, hi, what, ax))
+    measured = float(common.read_bound(lo, hi, what, ax))
     entry["measured"] = round(measured, 12) + 0.0
     miss = common.dimension_verdict(entry, measured, " m")
     entry["ok"] = miss is None
@@ -163,7 +151,7 @@ def _every(entry: dict, a: dict, ctx: common.Context, what: str, ax: int) -> Non
     if not labels:
         entry["ok"] = True  # no copy to judge: vacuous, like a plain mesh's one
         return
-    numbers = np.concatenate([_read(lo, hi, what, ax) for _, lo, hi in boxes])
+    numbers = np.concatenate([common.read_bound(lo, hi, what, ax) for _, lo, hi in boxes])
     entry["measured_range"] = [
         round(float(numbers.min()), 12) + 0.0, round(float(numbers.max()), 12) + 0.0,
     ]

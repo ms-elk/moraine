@@ -87,6 +87,7 @@ _MINIMAL = {
     "mated": {"faces": [["a", "top"], ["b", "top"]]},
     "embedded": {"outputs": ["a", "b"]},
     "extent": {"outputs": ["a"], "measure": "size_x", "value": 1.0},
+    "offset": {"outputs": ["a", "b"], "measure": "max_x", "value": 3.0},
     "count": {"outputs": ["a"], "value": 1},
 }
 
@@ -146,8 +147,8 @@ def test_key_refusals_name_the_owners_from_the_modules():
     )
     assert parse_side.key_refusal("contact", "min") == (
         "'min' is a bound for clearance (the least surface distance, m), "
-        "embedded (penetration depth, m), extent (m), and count (copies); "
-        "contact takes 'tol'"
+        "embedded (penetration depth, m), extent (m), offset (m), and count "
+        "(copies); contact takes 'tol'"
     )
     for kind, mod in parse_side.KINDS.items():
         if not _authorable(mod):

@@ -36,7 +36,9 @@ from __future__ import annotations
 from ...core import asserts as vocab
 from ...core.mesh import Value
 from ...core.sites import where
-from . import clearance, common, contact, count, embedded, extent, mated, no_overlap
+from . import (
+    clearance, common, contact, count, embedded, extent, mated, no_overlap, offset,
+)
 from .common import HONESTY_KEYS
 
 __all__ = ["HONESTY_KEYS", "check_asserts", "warnings"]
@@ -49,6 +51,7 @@ KINDS = {
     "extent": extent,
     "mated": mated,
     "no_overlap": no_overlap,
+    "offset": offset,
 }
 
 

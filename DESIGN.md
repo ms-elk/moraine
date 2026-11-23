@@ -2230,11 +2230,14 @@ below adds only its measurement and judgment:
   re-seats a kit is re-making its joints. The same trace runs inside
   every per-identity bundle, so a kit that itself references an
   embedding kit keeps that cede.
-- *`extent` and `count` — the dimension kinds*: `query`'s own
-  measurements made gating. A requirement that states a number — a
-  total rise, a diameter, a height off the ground, a copy count — is
-  otherwise read back interactively and written into prose, where it
-  rots the moment the geometry changes. *`extent`*: one subject,
+- *`extent`, `offset`, and `count` — the dimension kinds*: `query`'s
+  own measurements made gating. A requirement that states a number —
+  a total rise, a diameter, a height off the ground, a height above
+  another part, a copy count — is otherwise read back interactively
+  and written into prose, where it rots the moment the geometry
+  changes.
+
+  *`extent`*: one subject,
   `"outputs": [a]`, the output's world-space vertex bounds with its
   copies united (actual transformed vertices, never transformed box
   corners, so a tilted copy of a curved prototype reads true where
@@ -2253,7 +2256,27 @@ below adds only its measurement and judgment:
   different requirements (a
   flight's total rise vs. every leg reaching the ground), so an entry
   without `every` over an instanced output is not a weakened one and
-  carries no `unchecked`. *`count`*: `"outputs": [a]`, the output's
+  carries no `unchecked`.
+
+  *`offset`*: two subjects, `"outputs": [a, b]`, the reference first
+  as `mated` names its anchor first: the position of `b` less the
+  position of `a` along one axis, each read from the output's
+  world-space vertex bounds with its copies united, as `extent`'s
+  output form reads them. `"outputs": ["deck", "railing"], "measure":
+  "max_y", "value": 1.1` states a railing top 1.1 m above the deck
+  top. `measure` is one position token, `min|max|center` × `x|y|z`,
+  read on both sides, or a pair of different tokens in the order of
+  `outputs`, both along one axis: `["center_x", "max_x"]` is an arm's
+  reach from its pole's axis. A `size_*` is refused: an offset moves
+  when either part moves and a difference of sizes does not, so a
+  size matched to another's is a different sentence, left unspelled.
+  The judgment is `extent`'s, the default `tol` included. The entry
+  takes no `faces` and no `every` (the table): a face set's position
+  against another's and each copy's own offset have no spelling. It
+  is a kind and not a key of `extent` because the subject differs
+  (the rule `mated`'s modes follow).
+
+  *`count`*: `"outputs": [a]`, the output's
   copy count (a plain mesh counts one) against `value` or an integer
   `min`/`max` band (`min` equal to `max` is refused: that band is
   `value`). It is the check `array` and `scatter` are paired with,
@@ -2274,6 +2297,7 @@ below adds only its measurement and judgment:
   | `embedded` | pair form on the unions (all-pairs embed is unsatisfiable, like contact's ∀) | `self` — band over every overlapping pair; `connected` — the band plus one body | pair form: the union's intersection depth; `self`/`connected` refused |
   | `mated` | one indexed copy per face; `every` judges every copy of the named outputs, two named outputs paired by index | — | refused: a group has no faces |
   | `extent` | no partner: the output form measures the union of the copies, the face form one indexed copy | `every` — each copy's own bounds or face set against the judgment | output form: the members' united bounds, `every` every member's copies; face form refused |
+  | `offset` | each side's copies united, read at its own position; `every` refused | — | either side: the members' united bounds |
   | `count` | no partner: the copies are the measure | — | refused: a sum of copy counts is no output's count |
 
 **Ownership.** Every asset may have a requirements file beside it,

@@ -24,7 +24,7 @@ delivery, and a build writes beside the recipe.
 | `bolt_plate` | Eight bolt holes: rotational array -> `bake_instances` -> boolean difference. | array, bake_instances, boolean |
 | `pipe_tee` | Two cylinders unioned, then angle-threshold auto-smoothed. | boolean, smooth_normals |
 | `turned_column` | Revolved column profile; the capital tagged on the prototype, a colonnade of four, an architrave placed on copy 0 and asserted to rest on every column. | revolve, tag, array, place |
-| `brick_shed` | Hollow brick walls placed on a concrete slab by its tagged top face; procedural brick albedo with a height-derived normal map, noise-based concrete; declared parameters. | brick_texture, normal_map, colorize, noise_texture, place, material |
+| `brick_shed` | Hollow brick walls placed on a concrete slab by its tagged top face, the slab's edge held 0.2 m past the wall face (`offset`); procedural brick albedo with a height-derived normal map, noise-based concrete; declared parameters. | brick_texture, normal_map, colorize, noise_texture, place, material |
 | `steel_door` | Louvred steel door in a frame; painted steel from a ramped noise and streak roughness; every slat asserted to be held by the frame. | ramp, streaks, noise_texture, material, array |
 | `anchored_crate` | A crate placed on a pallet's tagged deck, a smaller crate on its lid; both rests asserted as `contact`. | tag, place |
 | `shelf_row` | Items placed on one copy of an instanced shelf by `instance` index. | tag, place, array |

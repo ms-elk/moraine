@@ -44,7 +44,9 @@ from __future__ import annotations
 
 from ...errors import AssetError
 from .. import numbers
-from . import clearance, common, contact, count, embedded, extent, mated, no_overlap
+from . import (
+    clearance, common, contact, count, embedded, extent, mated, no_overlap, offset,
+)
 
 # Registry order is the order refusals list a key's owners in.
 KINDS = {
@@ -53,6 +55,7 @@ KINDS = {
     "mated": mated,
     "embedded": embedded,
     "extent": extent,
+    "offset": offset,
     "count": count,
     "no_overlap": no_overlap,
 }
@@ -184,8 +187,8 @@ def key_refusal(kind: str, key: str) -> str:
 def output_names(a: dict) -> set[str] | str:
     """The output names an assert entry references: ``"all"`` for the
     built-in guard's blanket form, else the set of names — from
-    ``outputs`` (contact, clearance, embedded, count, extent's output
-    form; a contact side that names one copy counts by its output) or
+    ``outputs`` (contact, clearance, embedded, offset, count, extent's
+    output form; a contact side that names one copy counts by its output) or
     from ``faces`` (mated's two specs; extent's one flat spec). The one
     reader of the entry shapes."""
     if a.get("kind") == "mated":

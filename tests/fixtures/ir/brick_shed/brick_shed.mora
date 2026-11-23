@@ -31,6 +31,7 @@
 "walls": "mt02"
 },
 "asserts": [
-{"id": "walls_on_slab", "kind": "contact", "outputs": ["base", "walls"], "owner": "agent"}
+{"id": "walls_on_slab", "kind": "contact", "outputs": ["base", "walls"], "owner": "agent"},
+{"id": "slab_overhang", "kind": "offset", "outputs": ["walls", "base"], "measure": "max_x", "value": 0.2, "owner": "human"}
 ]
 }

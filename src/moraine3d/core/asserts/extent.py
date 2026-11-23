@@ -45,7 +45,7 @@ SUBJECT = "measures one subject, copies united"
 # read along an axis (`center_y` is a face-predicate field already) —
 # one key, and no band key called `min` beside a measure called `min`.
 MEASURES = tuple(
-    f"{what}_{axis}" for what in ("size", "min", "max", "center") for axis in "xyz"
+    f"{what}_{axis}" for what in ("size", *common.POSITIONS) for axis in common.AXES
 )
 
 

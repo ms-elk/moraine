@@ -218,10 +218,10 @@ while failing ones and green ones carrying `unchecked`, `ceded`, or
 `stronger` stay listed). Each entry is one recipe call,
 `mo.assert_<kind>(id = ..., <key> = ...)`, and each kind's section
 opens with its call and its keys (`contact`, `clearance`, `mated`,
-`embedded`, `extent`, `count`). The report names an entry by that id
-under the key `assert` (`"assert": "<id>"`), a failing one always and
-a green one under `validate --full`. An output name in a call
-may be a group's (see *groups*). The IR writes an entry as one
+`embedded`, `extent`, `offset`, `count`). The report names an entry by
+that id under the key `assert` (`"assert": "<id>"`), a failing one
+always and a green one under `validate --full`. An output name in a
+call may be a group's (see *groups*). The IR writes an entry as one
 JSON object per line under `"asserts"`, the same keys with `kind`
 and `owner` beside them (see *A complete minimal asset*). `tol`, `min`, `max`, and
 `value` carry the kind's own measure (meters on every length kind,
@@ -264,6 +264,7 @@ bar takes none.
   | `embedded` | pair form on the unions | `self = True`, band over overlapping pairs; `connected = True`, the band plus one body | pair form: the union's intersection depth; `self`/`connected` refused |
   | `mated` | a copy index per face. `every = [name]` judges every copy of the named outputs, two named outputs paired by index | - | refused (a group has no faces) |
   | `extent` | `outputs` form: the union of the copies; `faces` form: one indexed copy | `every = True`, each copy's own bounds or face set | `outputs` form: the members' united bounds, `every` every member's copies; `faces` form refused |
+  | `offset` | each side is the union of its copies, read at its own position; `every` refused | - | either side: the members' united bounds |
   | `count` | the copies are the measure | - | refused (a sum of copy counts is no output's count) |
 
   Without the opt-in an entry names what it did not quantify under
@@ -695,7 +696,8 @@ value = 2.1`; a flange diameter `measure = "size_x", value =
 0.05` (a per-output ground statement the asset-level `grounded`
 check does not make); a bore `faces = ["pipe", "bore"], measure =
 "size_x"`. A diameter is a `size_*`, so halve it yourself for a
-radius.
+radius. A position stated from another output (a railing top above
+its deck) is `offset`.
 **`every = True` reads each copy on its own** instead of the union:
 every leg on the ground `outputs = ["legs"], measure = "min_y",
 every = True, value = 0`; every post cap level `faces =
@@ -715,6 +717,43 @@ pass or fail; image, empty, and non-finite subjects, an unknown tag,
 or a missing copy index fail with the reason.
 
 Examples: `examples/flange_pipe`, `examples/stairs`.
+
+### offset (assert kind)
+
+Recipe: `mo.assert_offset(id = ..., outputs = ..., measure = ..., value = ..., tol = ..., min = ..., max = ...)`
+
+**A position stated from another part**: how far the second named
+output stands from the first, the reference, along one axis. An
+absolute `extent` stops stating such a requirement the moment the
+reference moves. `outputs = [reference, part]`, and the number is the
+part's position less the reference's: `outputs = ["deck",
+"railing"], measure = "max_y", value = 1.1` is a railing top 1.1 m
+above the deck top, and a negative number is a position before the
+reference (below it, behind it). Each side is read from its
+world-space vertex bounds with its copies united (a group: its
+members united), on actual transformed vertices as in `extent`.
+`measure` is one position token read on both sides, `min_x|y|z`,
+`max_x|y|z`, `center_x|y|z`, or a pair in the order of `outputs`
+where the sides read different positions, both along one axis: an
+arm's reach from its pole's axis `outputs = ["pole", "arm"],
+measure = ["center_x", "max_x"]`; a gap along x `measure =
+["max_x", "min_x"]`. A pair of one token is refused (write it
+once), and so is a `size_*`: one output's own size is `extent`, and
+no kind compares the sizes of two outputs.
+The judgment is `value` within `tol` (default 1e-3, your allowance)
+**or** a `min`/`max` band with at least one edge, never both in one
+entry. The two names stand for outputs with no member in common.
+There is no `every` and no `faces`: each copy's own offset and one
+face set's position against another's have no spelling, so hold
+the copies or the face set to an absolute position with `extent`
+and say which requirement that substitutes.
+Every evaluable entry reports `measured` beside the requirement it
+echoes (`value`/`tol`, or the band with the omitted edge as `null`),
+pass or fail, and a failing one says where each side stands; image,
+empty, and non-finite subjects fail with the reason.
+
+Examples: `examples/brick_shed` (the entry is in its requirements
+file, `moraine docs examples/brick_shed/requirements`).
 
 ### count (assert kind)
 

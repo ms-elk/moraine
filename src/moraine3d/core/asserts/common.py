@@ -44,6 +44,11 @@ DEPTH_BAR = 1e-5
 # free of the geometry import).
 FACE_TAG_RE = re.compile(rf"^{PORTABLE_NAME_FRAGMENT}$")
 
+# The positions a `measure` token reads along an axis (extent, offset):
+# the face predicates' spelling, `center_y` being a predicate field.
+POSITIONS = ("min", "max", "center")
+AXES = "xyz"
+
 
 def is_number(val) -> bool:
     return numbers.is_finite(val)
@@ -75,20 +80,24 @@ def group_refusal(aid: str, kind: str, name: str, groups: dict, how: str) -> Ass
     )
 
 
-def disjoint_subjects(aid: str, kind: str, outs, groups: dict) -> None:
+def disjoint_subjects(
+    aid: str, kind: str, outs, groups: dict,
+    why: str = "an output measured against itself is always touching",
+) -> None:
     """The two names a relating kind takes must stand for disjoint sets
     of outputs (DESIGN 5.2). Distinct names stopped being enough once a
     name can be a group: an output on both sides is measured against
-    itself, so the entry's verdict is fixed before the geometry."""
+    itself, so the entry's verdict is fixed before the geometry.
+    ``why`` says so in the kind's own measure."""
     x, y = outs
     shared = sorted(set(groups.get(x, [x])) & set(groups.get(y, [y])))
     if shared:
         raise AssetError(
             "bad_assert_outputs",
             f"assert '{aid}': '{x}' and '{y}' both stand for {shared}; "
-            f"{kind} relates two disjoint subjects - an output measured "
-            f"against itself is always touching. Name the outputs outside "
-            f"the overlap, or write the relation over member names",
+            f"{kind} relates two disjoint subjects - {why}. Name the "
+            f"outputs outside the overlap, or write the relation over "
+            f"member names",
         )
 
 
@@ -141,8 +150,8 @@ def check_one_output(
 
 def check_judgment(aid: str, a: dict, kind: str, unit: str, number, band_word: str) -> None:
     """The judgment half the dimension kinds share (DESIGN 5.2): exactly
-    one of ``value`` (with an optional ``tol``, extent only — the key table
-    keeps it off count) or a ``min``/``max`` band with at least one edge and
+    one of ``value`` (with an optional ``tol`` on the length kinds — the key
+    table keeps it off count) or a ``min``/``max`` band with at least one edge and
     ``max`` above ``min``. ``number`` validates one literal (a finite
     length, or a non-negative integer count) and ``unit`` names it."""
     has_value = "value" in a

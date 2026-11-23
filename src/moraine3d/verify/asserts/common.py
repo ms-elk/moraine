@@ -216,6 +216,18 @@ def face_triangles(values: dict[str, Value], spec):
     return mating.group_triangles(tf.mesh, tf.faces, tf.matrix), None
 
 
+def read_bound(lo, hi, what: str, ax: int):
+    """One ``measure`` along axis ``ax`` of boxes ``lo``/``hi`` — ``(k, 3)``
+    arrays give ``(k,)`` numbers, one box gives one."""
+    if what == "size":
+        return hi[..., ax] - lo[..., ax]
+    if what == "min":
+        return lo[..., ax]
+    if what == "max":
+        return hi[..., ax]
+    return (lo[..., ax] + hi[..., ax]) / 2.0
+
+
 def dimension_requirement(entry: dict, a: dict, default_tol) -> None:
     """Echo the judgment a dimension entry states (DESIGN 5.2): the
     resolved ``value``/``tol``, or the band with the omitted edge as
