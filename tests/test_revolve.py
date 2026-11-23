@@ -243,7 +243,7 @@ def test_revolve_full_turn_result_hash_frozen(params, faces, frozen):
     mesh = revolve.evaluate([], params, None)
     assert len(mesh.faces) == faces
     assert mesh.result_hash() == frozen
-    turned = revolve.evaluate([], {**params, "arc_deg": 360.0}, None)
+    turned = revolve.evaluate([], {**params, "arc_deg": 360.0, "closed": False}, None)
     assert turned.result_hash() == frozen
 
 
@@ -380,3 +380,163 @@ def test_revolve_arc_refusals(arc_deg, fragment):
         revolve.evaluate([], {"profile": DRUM, "arc_deg": arc_deg}, None)
     assert exc.value.code == "bad_param" and exc.value.detail["param"] == "arc_deg"
     assert fragment in exc.value.message
+
+
+RING = [[1.0, 0.0], [1.5, 0.0], [1.5, 0.4], [1.0, 0.4]]
+RING_BANDS = (1.5**2 - 1.0**2) * 0.4  # the section's integral of r^2 dy
+
+
+def test_revolve_closed_profile_is_a_ring_without_caps():
+    """Semantics: `closed` joins the last point to the first, and the
+    turn carries the section around the axis as a ring with no end
+    caps - a rectangle in 32 steps is its four hard corners' 8 rings
+    and 4 bands, watertight, clear of the axis."""
+    seg = 32
+    m = revolve.evaluate([], {"profile": RING, "closed": True, "segments": seg}, None)
+    assert len(m.vertices) == 8 * seg
+    assert len(m.faces) == 4 * 2 * seg
+    assert m.stats()["bounds"]["min"] == [-1.5, 0.0, -1.5]
+    assert m.stats()["bounds"]["max"] == [1.5, 0.4, 1.5]
+    assert volume(m) == pytest.approx(_polygon_factor(seg) * RING_BANDS, rel=1e-5)
+    assert watertight(m)
+    assert np.hypot(m.vertices[:, 0], m.vertices[:, 2]).min() == pytest.approx(1.0)
+
+
+def test_revolve_closed_circle_is_a_torus():
+    """Semantics: a circle of points makes a torus - 16 points bend
+    22.5 degrees at each, under the default threshold, so every point
+    is one smooth ring whose normals leave the section's center line,
+    and the volume is the turn's polygon factor times 2 R A."""
+    big, small, n, seg = 2.0, 0.5, 16, 24
+    turn = np.arange(n) * 2.0 * math.pi / n
+    circle = np.stack([big + small * np.cos(turn), small * np.sin(turn)], axis=1).tolist()
+    m = revolve.evaluate([], {"profile": circle, "closed": True, "segments": seg}, None)
+    assert len(m.vertices) == n * seg
+    assert len(m.faces) == n * 2 * seg
+    area = 0.5 * n * small**2 * math.sin(2.0 * math.pi / n)
+    assert volume(m) == pytest.approx(_polygon_factor(seg) * 2.0 * big * area, rel=1e-5)
+    assert watertight(m)
+    v = m.vertices.astype(np.float64)
+    out = np.hypot(v[:, 0], v[:, 2])
+    center = np.stack([big * v[:, 0] / out, np.zeros(len(v)), big * v[:, 2] / out], axis=1)
+    assert np.all(((v - center) * m.normals).sum(axis=1) > 0.9 * small)
+
+
+def test_revolve_closed_part_turn_caps_the_section():
+    """Semantics: below 360 both cut faces are closed with flat caps,
+    for a `closed` profile the section itself - a half ring in 16
+    steps is 17 columns of 8 rings and the rectangle on each cut face,
+    watertight, half the full ring of 32."""
+    seg = 16
+    full = revolve.evaluate([], {"profile": RING, "closed": True, "segments": 2 * seg}, None)
+    half = revolve.evaluate(
+        [], {"profile": RING, "closed": True, "segments": seg, "arc_deg": 180.0}, None,
+    )
+    assert len(half.vertices) == 8 * (seg + 1) + 2 * 4
+    assert len(half.faces) == 4 * 2 * seg + 2 * 2
+    assert half.stats()["bounds"]["min"] == [-1.5, 0.0, -1.5]
+    assert half.stats()["bounds"]["max"] == [1.5, 0.4, 0.0]
+    assert volume(half) == pytest.approx(volume(full) / 2.0, rel=1e-6)
+    assert watertight(half)
+
+
+@pytest.mark.parametrize(
+    "params,fragment",
+    [
+        ({"profile": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]], "closed": True}, "point 0 has radius 0"),
+        ({"profile": [[1.0, 0.0], [1.0, 1.0], [0.0, 0.5], [1.0, 2.0], [2.0, 1.0]], "closed": True},
+         "point 2 has radius 0"),
+        ({"profile": RING[::-1], "closed": True}, "counter-clockwise"),
+        ({"profile": RING[:2], "closed": True}, "3..4096"),
+        ({"profile": [[1, 0], [2, 1], [2, 0], [1, 1]], "closed": True}, "self-intersects"),
+        ({"profile": [[1, 0], [2, 0], [3, 0]], "closed": True}, "doubles back"),
+        ({"profile": RING, "closed": 1}, "boolean"),
+    ],
+)
+def test_revolve_closed_refusals(params, fragment):
+    """Semantics: a `closed` profile is three or more points, every
+    radius above 0, wound counter-clockwise around the section; the
+    shapes refused in an open profile are refused in the loop."""
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], params, None)
+    assert exc.value.code == "bad_param"
+    assert fragment in exc.value.message
+
+
+CONE = [[0.0, 0.0], [0.5, 0.5]]
+
+
+@pytest.mark.parametrize(
+    "refused,fragment,fixed",
+    [
+        ({"profile": [*CONE, CONE[0]]}, "drop the repeated last point", {"profile": CONE}),
+        ({"profile": [*CONE, CONE[0]], "closed": True}, "remove closed", {"profile": CONE}),
+        ({"profile": [*RING, RING[0]]}, "closed = True then makes a ring",
+         {"profile": RING, "closed": True}),
+        ({"profile": [*RING, RING[0]]}, "without it the ends close to the axis", {"profile": RING}),
+        ({"profile": [*RING, RING[0]], "closed": True}, "closed joins the ends",
+         {"profile": RING, "closed": True}),
+    ],
+)
+def test_revolve_repeated_end_point_names_a_fix_that_builds(refused, fragment, fixed):
+    """Semantics: the last point does not repeat the first, whatever
+    `closed` says, and the refusal names the fix for where the point
+    sits - on the axis the ends close to it, clear of it either a ring
+    or a solid can be meant - and the profile so fixed builds."""
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], refused, None)
+    assert exc.value.code == "bad_param"
+    assert "first and last points coincide" in exc.value.message
+    assert fragment in exc.value.message
+    assert watertight(revolve.evaluate([], fixed, None))
+
+
+def test_revolve_closed_takes_the_float32_checks_at_the_full_turn():
+    """Semantics: any turn of a `closed` profile is refused where the
+    profile does not survive its vertices rounding to float32, and the
+    full turn of an open profile takes neither check - the groove
+    whose lips land on one coordinate is refused as a ring all the way
+    around, and builds as the solid that closes to the axis."""
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], {"profile": _grooved(2e-7), "closed": True, "segments": 6}, None)
+    assert exc.value.code == "bad_param" and "float32" in exc.value.message
+    assert "arc_deg" not in exc.value.message
+    assert watertight(
+        revolve.evaluate([], {"profile": _grooved(1e-3), "closed": True, "segments": 6}, None)
+    )
+    assert len(revolve.evaluate([], {"profile": _grooved(2e-7), "segments": 6}, None).faces) > 0
+
+
+def test_revolve_closed_refuses_a_section_that_rounding_turns_over():
+    """Semantics: any turn of a `closed` profile is refused where the
+    profile turns over at a column when its vertices round to float32 -
+    a full ring has no cut face and a triangle no two walls apart, so
+    nothing else would tell this sliver from a sound section, and the
+    solid would come out inside out."""
+    sliver = [[32.0, 32.0], [35.0, 34.0], [34.0, 33.3333335]]
+    for seg in (4, 32):
+        with pytest.raises(OpError) as exc:
+            revolve.evaluate([], {"profile": sliver, "closed": True, "segments": seg}, None)
+        assert exc.value.code == "bad_param" and "turns over" in exc.value.message
+    sound = [[32.0, 32.0], [35.0, 34.0], [34.0, 33.5]]
+    m = revolve.evaluate([], {"profile": sound, "closed": True, "segments": 4}, None)
+    assert watertight(m) and volume(m) > 0.0
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"profile": [[2, 3], [1.2, 0.6], [1, 0]], "closed": True},
+        {"profile": [[1, 0], [2, 3], [1.2, 0.6]]},
+    ],
+    ids=["closed", "open"],
+)
+def test_revolve_smooth_joint_with_no_bisector_is_a_double_back(params):
+    """Semantics: an exact double-back is refused, and so is one the
+    exact test misses by rounding where the joint is smooth - its two
+    normals cancel, and the refusal names the point, never a raw
+    arithmetic failure (CLAUDE.md: errors are actionable)."""
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate([], {**params, "angle_max_deg": 180.0}, None)
+    assert exc.value.code == "bad_param"
+    assert "doubles back at point" in exc.value.message

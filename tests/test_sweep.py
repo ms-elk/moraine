@@ -446,3 +446,34 @@ def test_sweep_result_hash_frozen():
     assert m.result_hash() == (
         "86d8c5977e56fab1e4ce63967f6c6b8cc188ad53fcd6077af09b999383d8046f"
     )
+
+
+def test_sweep_refuses_a_section_that_rounding_turns_over():
+    """Semantics: a section that does not survive its vertices
+    rounding to float32 is refused where it turns over at a ring -
+    around a closed path there is no cap to turn over and a triangle
+    has no two walls apart, so the loop would come out inside out."""
+    sliver = [[0.0, 0.0], [3.0, 2.0], [2.0, 1.3333335]]
+    loop = [[32.0, 32.0, 0.0], [40.0, 32.0, 0.0], [40.0, 32.0, 8.0], [32.0, 32.0, 8.0]]
+    with pytest.raises(OpError) as exc:
+        sweep.evaluate([], {"profile": sliver, "path": loop, "closed": True}, None)
+    assert exc.value.code == "bad_param" and "turns over" in exc.value.message
+    sound = [[0.0, 0.0], [3.0, 2.0], [2.0, 1.5]]
+    m = sweep.evaluate([], {"profile": sound, "path": loop, "closed": True}, None)
+    assert len(m.faces) == 24
+
+
+def test_sweep_smooth_joint_with_no_bisector_is_a_double_back():
+    """Semantics: an exact double-back in the profile is refused, and
+    so is one the exact test misses by rounding where the joint is
+    smooth - the refusal names the point, never a raw arithmetic
+    failure."""
+    with pytest.raises(OpError) as exc:
+        sweep.evaluate(
+            [],
+            {"profile": [[2, 3], [1.2, 0.6], [1, 0]], "path": [[0, 0, 0], [0, 0, 5]],
+              "angle_max_deg": 180.0},
+            None,
+        )
+    assert exc.value.code == "bad_param"
+    assert "doubles back at point" in exc.value.message

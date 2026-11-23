@@ -27,9 +27,9 @@ profile; coinciding consecutive path points, or a first and last one
 that coincide; a bend beyond 150 degrees; a segment too short for the
 miters at its ends; two segments not adjacent whose solids overlap or
 touch; a profile too thin to cap; a section that does not survive
-its vertices rounding to float32 (a triangle collapses or turns over,
-two walls of the profile round onto each other, or the vertices weld
-into an open surface); and a rings x profile vertices product beyond
+its vertices rounding to float32 (it turns over or flattens at a
+ring, a triangle collapses or turns over, two walls of the profile
+round onto each other, or the vertices weld into an open surface); and a rings x profile vertices product beyond
 the shared 4096 x 4096 cell budget. No UVs. Deterministic.
 """
 
@@ -355,6 +355,13 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
 
     # Ring vertices: one per normal a profile point carries.
     carried = profile.corners(section, angle_max, closed=True)
+    for k, normals_at in enumerate(carried):
+        if not normals_at:
+            raise _bad(
+                "profile",
+                f"sweep 'profile' doubles back at point {k} - a "
+                "zero-thickness fin; drop or move the point",
+            )
     held = np.array([len(c) for c in carried])
     first = np.concatenate([[0], np.cumsum(held)[:-1]])
     vert_point = np.repeat(np.arange(q), held)
@@ -442,6 +449,9 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
         norms += [np.tile(-t[0], (q, 1)), np.tile(t[-1], (q, 1))]
         faces += [base + cap[:, ::-1], base + q + cap]
 
+    turned = profile.rounded_outlines_turned(rings)
+    if turned:
+        raise _lost(f"it turns over or flattens at {turned} ring(s)")
     exact = np.concatenate(verts)
     vertices = exact.astype(np.float32)
     tris = np.concatenate(faces)

@@ -22,7 +22,7 @@ from .mesh import degenerate_tri_count, tri_cross, triangles_meet
 # it in KERNELS and this integer joins their cache keys. Bump on ANY
 # output-semantics change of a function an op consumes, bug fixes
 # included - like OP_IMPL_VERSION.
-KERNEL_VERSION = 1
+KERNEL_VERSION = 2
 
 Point = tuple[float, float]
 
@@ -247,6 +247,28 @@ def rounded_faces_lost(exact: np.ndarray, faces: np.ndarray) -> int:
     return turned or thin
 
 
+def _area(outlines: np.ndarray) -> np.ndarray:
+    """Twice the area vector of each planar outline, (s, q, 3) to
+    (s, 3), measured from its first point."""
+    rel = outlines[:, 1:] - outlines[:, :1]
+    return np.cross(rel[:, :-1], rel[:, 1:]).sum(axis=1)
+
+
+def rounded_outlines_turned(stations: np.ndarray) -> int:
+    """How many of the planar outlines a solid carries, (n, q, 3)
+    unrounded, turn over or lose all area when their vertices round to
+    float32. Walls between outlines that have turned over each keep
+    their side, weld shut, and need not meet: they bound the solid
+    inside out."""
+    rows = max(1, _FACES // stations.shape[1])
+    turned = 0
+    for at in range(0, len(stations), rows):
+        was = stations[at:at + rows]
+        now = was.astype(np.float32).astype(np.float64)
+        turned += int(((_area(was) * _area(now)).sum(axis=1) <= 0.0).sum())
+    return turned
+
+
 def corners(
     pts: list[Point], angle_max_deg: float, *, closed: bool = False,
 ) -> list[list[Point]]:
@@ -256,7 +278,9 @@ def corners(
     sharper joint is hard: two, the incoming segment's then the
     outgoing one's. An end of an open outline carries its one segment's
     normal. A segment running (da, db) has the normal (db, -da), outward
-    for a counter-clockwise outline."""
+    for a counter-clockwise outline. A smooth joint whose two normals
+    cancel has no bisector and carries none: the outline doubles back
+    there, by less than ``double_back`` resolves."""
     n = len(pts)
     dirs: list[Point] = []
     normals: list[Point] = []
@@ -274,7 +298,7 @@ def corners(
             return [normals[before], normals[after]]
         na, nb = normals[before][0] + normals[after][0], normals[before][1] + normals[after][1]
         length = math.hypot(na, nb)
-        return [(na / length, nb / length)]
+        return [(na / length, nb / length)] if length else []
 
     if closed:
         return [joint(k - 1, k) for k in range(n)]

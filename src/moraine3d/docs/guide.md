@@ -65,7 +65,7 @@ the plan commits (each row's limit changes plans, not parameters):
 | repeat parts | `array` / `scatter` | transform frame; an `array` of `count` 0 leaves its output absent; stochastic outputs cannot become knobs |
 | terrain / relief | `grid`, `noise_displace`, `extrude`, `boolean` | open surfaces cannot be outputs |
 | chamfer edges | `bevel` | convex solids only |
-| turn a rotational part | `revolve` | the solid always contains the axis — a ring / torus has no op; `segments` steps span `arc_deg`, not the circle |
+| turn a rotational part | `revolve` | an open profile closes to the axis, a ring / torus is `closed = True`; `segments` steps span `arc_deg`, not the circle |
 | run a profile along a path | `sweep` | the section never twists about the path, so a loop must bring it back unturned (a planar one does); the solid may not touch itself away from a bend |
 | texture a surface | *patterns* + `unwrap` | box/planar projection only; one source per slot |
 | assign materials | `material` | name is the export identity; a factor knob on a shared name is never live |

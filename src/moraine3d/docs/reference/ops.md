@@ -73,7 +73,7 @@ Example: `examples/scatter_field`.
 
 ## revolve (op_impl_version 1)
 
-Recipe: `mo.revolve(id = ..., profile = ..., segments = int, angle_max_deg = ..., arc_deg = ...)`
+Recipe: `mo.revolve(id = ..., profile = ..., segments = int, angle_max_deg = ..., arc_deg = ..., closed = ...)`
 
 Emits the solid of revolution of `profile`, a list of two or more
 `[radius, y]` points (m) forming an open polyline in the +X half-plane,
@@ -96,18 +96,26 @@ points, identical endpoints, interior zero radii, exact double-backs,
 self-intersections (the closure to the axis included), and profiles
 enclosing no area are errors, as is a rings x segments product beyond
 the 4096 x 4096 cell budget (hard joints duplicate rings, so the
-per-param ceilings alone do not bound it). Circumferential shading is
+per-param ceilings alone do not bound it). `closed` (default false)
+joins the last point to the first instead: three or more points, every
+radius above 0, wound counter-clockwise around the section, which the
+turn carries around the axis as a ring with no end caps (a circle of
+points makes a torus). The last point does not repeat the first.
+Circumferential shading is
 smooth (shared ring vertices); a profile joint bending by more than
 `angle_max_deg` (default 30) is hard (duplicated rings), a gentler one
 smooth (shared ring, half-plane bisector normal). The default keeps a
 dome's meridians smooth and a flange's steps crisp with no param
 written. Vertex 0 of each ring sits at angle 0 (+X); winding is CCW
 from outside. A turn of less than 360 deg is an error where the
-profile is too thin to cap, and where it does not survive its vertices
-rounding to float32: a triangle collapses or turns over, the vertices
-weld into an open surface, or two walls round onto each other (enlarge
-the profile, or draw it nearer the origin). The full turn takes
-neither check. Deterministic. Example: `examples/turned_column`.
+profile is too thin to cap. That turn, and any turn of a `closed`
+profile, is an error where the profile does not survive its vertices
+rounding to float32: the profile turns over or flattens at a column, a
+triangle collapses or turns over, the vertices weld into an open
+surface, or two walls round onto each other (enlarge
+the profile, or draw it nearer the origin). The full turn of an open
+profile takes neither check. Deterministic. Example:
+`examples/turned_column`.
 
 ## sweep (op_impl_version 1)
 
@@ -146,9 +154,10 @@ at its ends, where the section would pass through itself (lengthen it,
 ease its bends, or keep the profile off the inside of the bend); two
 segments not adjacent whose solids overlap or touch (move them apart);
 a profile too thin to cap; a section that does not survive its
-vertices rounding to float32, where a triangle collapses or turns
-over, two walls of the profile round onto each other, or the vertices
-weld into an open surface (enlarge the profile, or build nearer the
+vertices rounding to float32, where it turns over or flattens at a
+ring, a triangle collapses or turns over, two walls of the profile
+round onto each other, or the vertices weld into an open surface
+(enlarge the profile, or build nearer the
 origin); and a rings x profile vertices product beyond the 4096 x 4096
 cell budget. A hollow section is two sweeps and a
 `boolean` difference. No UVs. Deterministic.

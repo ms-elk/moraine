@@ -1679,7 +1679,7 @@ attribute policy — live in the shipped reference (`moraine docs`).
 | `transform` | numpy | TRS, instancing-aware |
 | `extrude` | numpy/trimesh | faces along their normal or a vector (a vector opposing every normal sweeps the flipped sheet; tangent or mixed-orientation vectors, and flat-shaded closed inputs, are actionable errors) |
 | `boolean` | manifold3d | union / difference / intersection; output is flat-shaded |
-| `revolve` | numpy/manifold3d | solid of revolution of an inline `[radius, y]` profile around +Y, always watertight: the profile closes to the axis at its ends. An `arc_deg` below the default 360 turns part of the circle and caps both cut faces |
+| `revolve` | numpy/manifold3d | solid of revolution of an inline `[radius, y]` profile around +Y, always watertight. An open profile closes to the axis at its ends, a `closed` one stays clear of the axis and makes a ring. An `arc_deg` below the default 360 turns part of the circle and caps both cut faces |
 | `sweep` | numpy/manifold3d | a closed inline `[x, y]` profile carried along an inline 3D polyline `path`, mitered at each bend and never twisting about the path, always watertight: an open path is capped at both ends, a `closed` one is a loop |
 | `array` / `scatter` | numpy | emit prototype + transforms (instanced) |
 | `noise_displace` | numpy | fBm displacement along normals; flat-shaded input is refused with the `smooth_normals` fix named, never welded (welding would merge the attributes `preserved` promises to keep) |
@@ -1773,9 +1773,9 @@ A profile that cannot be triangulated into a valid cap is an error
 wherever one is triangulated: every `sweep`, and a `revolve` of less
 than the full circle. A section that collapses, turns over, or
 closes on itself when its vertices round to float32 is an error in
-every `sweep` and in a `revolve` of less than the full circle, its
-fix a larger section or an asset nearer the origin. The full
-`revolve` takes neither check.
+every `sweep` and in a `revolve` that is `closed` or turns less than
+the full circle, its fix a larger section or an asset nearer the
+origin. The full `revolve` of an open profile takes neither check.
 
 Operators do not delegate to headless Blender: it ships no PyPI wheel
 (§3), it would make results depend on the host environment against

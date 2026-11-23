@@ -214,3 +214,28 @@ def test_face_check_reads_a_bounded_number_of_faces_at_once(monkeypatch):
     thin = sound.copy()
     thin[37] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 1e-10, 0.0]]
     assert profile.rounded_faces_lost(thin.reshape(-1, 3), faces) == 1
+
+
+def test_outline_check_counts_the_outlines_rounding_turns_over(monkeypatch):
+    """DESIGN 5: a section that turns over when its vertices round to
+    float32 is an error - a sliver 32 m out lands the other way around
+    while every wall between two such outlines keeps its side, so the
+    outlines themselves are read, a bounded number at a pass."""
+    sliver = np.array([[32.0, 32.0, 0.0], [35.0, 34.0, 0.0], [34.0, 33.3333335, 0.0]])
+    sound = np.array([[32.0, 32.0, 0.0], [35.0, 34.0, 0.0], [34.0, 33.5, 0.0]])
+    stations = np.stack([sound + [0.0, 0.0, k] for k in range(10)])
+    monkeypatch.setattr(profile, "_FACES", 6)
+    assert profile.rounded_outlines_turned(stations) == 0
+    stations[7] = sliver + [0.0, 0.0, 7.0]
+    assert profile.rounded_outlines_turned(stations) == 1
+
+
+def test_corners_carry_none_where_a_smooth_joint_has_no_bisector():
+    """Kernel contract: a smooth joint whose two normals cancel has no
+    bisector and carries none - these three points lie on one line, and
+    the loop turns back at its ends by less than the exact test
+    resolves; as a hard joint each carries its two normals."""
+    line = [(2.0, 3.0), (1.2, 0.6), (1.0, 0.0)]
+    assert profile.double_back(line, closed=True) is None
+    assert [] in profile.corners(line, 180.0, closed=True)
+    assert [len(c) for c in profile.corners(line, 30.0, closed=True)] == [2, 1, 2]
