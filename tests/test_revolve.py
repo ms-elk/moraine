@@ -198,3 +198,48 @@ def test_revolve_reads_a_rounding_sized_negative_radius_as_the_axis():
         [], {"profile": [[0.5, 0.0], [0.3, 0.4], [1e-12, 0.5]], "segments": 16}, None,
     )
     assert len(capped.vertices) > len(want.vertices)
+
+
+@pytest.mark.parametrize(
+    "params,faces,frozen",
+    [
+        # Capped ends, hard and smooth joints (the turned_column example).
+        (
+            {
+                "profile": [
+                    [0.3, 0.0], [0.3, 0.05], [0.24, 0.09], [0.2, 0.13], [0.16, 0.18],
+                    [0.13, 2.2], [0.18, 2.26], [0.24, 2.3], [0.24, 2.36],
+                ],
+                "segments": 48,
+            },
+            864,
+            "69d96d32756430a353c39a9ba948a10805e1f8492a2138ab7fdc6213d00da1a6",
+        ),
+        # Pole ends.
+        (
+            {
+                "profile": [[0, 0], [0.5, 0], [0.5, 0.2], [0.2, 0.2], [0.2, 0.6], [0, 0.6]],
+                "segments": 32,
+            },
+            256,
+            "cbb3f17ea4741836eedaec83e293ad7fa55ba5d0670b70b40bda62bb62eb9542",
+        ),
+        # A profile too thin to triangulate, which a full turn never does.
+        (
+            {"profile": [[2, 0], [2, 1e-14], [1, 5e-15], [0, 1e-14]]},
+            192,
+            "ab4f2755cf6561a6e028b288a0e1f34cec4394ef69644628b88f925faee25291",
+        ),
+    ],
+)
+def test_revolve_full_turn_result_hash_frozen(params, faces, frozen):
+    """DESIGN 5: extending an operator changes nothing an asset already
+    builds, so the full `revolve` of an open profile keeps its result,
+    op_impl_version stays 1 (DESIGN 4.5) and these hashes pin that
+    identity. The ring angles pass through sin and cos in float64
+    before the float32 cast, so a platform whose last bit differs
+    reaches the hash only at a rounding boundary."""
+    assert revolve.OP_IMPL_VERSION == 1
+    mesh = revolve.evaluate([], params, None)
+    assert len(mesh.faces) == faces
+    assert mesh.result_hash() == frozen

@@ -26,8 +26,10 @@ Each operator module exposes:
   versions join the cache key (DESIGN 4.5) — an installed distribution
   by name (``"manifold3d"``, ``"trimesh"``), or a shared in-package
   kernel module by its dotted path (``"core.mating"``,
-  ``"core.predicates"``, ``"core.rand"``, ``"core.mesh"``), resolved to
-  its ``KERNEL_VERSION``. numpy is never declared: its arithmetic is
+  ``"core.predicates"``, ``"core.rand"``, ``"core.mesh"``,
+  ``"core.profile"``), resolved to its ``KERNEL_VERSION``; a
+  distribution that kernel module calls is declared beside it by the
+  ops whose functions reach it. numpy is never declared: its arithmetic is
   bit-tolerant (DESIGN 4.4). Empty for a pure op. A test pins the
   declaration to the module's imports in both directions.
 - ``ATTRIBUTE_POLICY``: ``"preserved"`` or ``"dropped"`` — what happens to

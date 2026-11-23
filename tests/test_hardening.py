@@ -98,8 +98,15 @@ def test_node_salted_streams_declare_uses_node_id():
         assert salted == bool(getattr(ops.get(name), "USES_NODE_ID", False)), name
 
 
-KERNEL_MODULES = ("core.mating", "core.predicates", "core.rand", "core.mesh")
+KERNEL_MODULES = (
+    "core.mating", "core.predicates", "core.rand", "core.mesh", "core.profile",
+)
 KERNEL_DISTS = ("manifold3d", "trimesh")
+# Kernel modules whose functions are traced to the distributions they
+# call, so an op declares a distribution only where a function it uses
+# reaches one. `core.mesh` is not traced this way: it imports trimesh
+# for its value classes, and KERNEL_HELPERS names what counts.
+TRACED_KERNEL_MODULES = ("core.profile",)
 
 
 def _kernel_imports(tree: ast.AST) -> tuple[set[str], set[str], dict[str, str]]:
@@ -153,21 +160,61 @@ def _common_kernels() -> dict[str, set[str]]:
     return out
 
 
+def _traced_dists(module: str) -> dict[str, set[str]]:
+    """Per function of a traced kernel module: the distributions it
+    calls, directly or through another function of the module."""
+    path = Path(importlib.import_module(f"moraine3d.{module}").__file__)
+    fns = {
+        fn.name: fn for fn in ast.parse(path.read_text(encoding="utf-8")).body
+        if isinstance(fn, ast.FunctionDef)
+    }
+    names = {
+        name: {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)}
+        for name, fn in fns.items()
+    }
+    out = {name: used & set(KERNEL_DISTS) for name, used in names.items()}
+    changed = True
+    while changed:
+        changed = False
+        for name, used in names.items():
+            for callee in used & set(fns):
+                if not out[callee] <= out[name]:
+                    out[name] |= out[callee]
+                    changed = True
+    return out
+
+
 def test_kernels_declaration_matches_imports():
     """DESIGN 4.5: an op's KERNELS declaration equals the kernels its
     module imports, in both directions — a distribution (manifold3d,
     trimesh) or a shared in-package kernel module, reached directly,
-    through the ``common`` helpers it calls, or through a sibling op it
-    imports — so a consumed kernel cannot go undeclared and a declared
+    through the ``common`` helpers it calls, through a sibling op it
+    imports, or through the kernel-module functions it calls — so a
+    consumed kernel cannot go undeclared and a declared
     one cannot be stale; every declared in-package kernel carries an
     int KERNEL_VERSION and every declared distribution is installed.
     numpy is never declared (its arithmetic is bit-tolerant, DESIGN 4.4)."""
     common = _common_kernels()
+    traced = {m.split(".")[1]: _traced_dists(m) for m in TRACED_KERNEL_MODULES}
     direct: dict[str, set[str]] = {}
     edges: dict[str, set[str]] = {}
     for name in ops.names():
         tree = ast.parse(Path(ops.get(name).__file__).read_text(encoding="utf-8"))
         kernels, siblings, _ = _kernel_imports(tree)
+        for n in ast.walk(tree):
+            if (
+                isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name)
+                and n.value.id in traced
+            ):
+                kernels |= traced[n.value.id].get(n.attr, set())
+            elif (
+                isinstance(n, ast.ImportFrom)
+                and n.level == 2
+                and n.module in TRACED_KERNEL_MODULES
+            ):
+                for a in n.names:
+                    kernels |= traced[n.module.split(".")[1]].get(a.name, set())
         if "common" in siblings:
             for n in ast.walk(tree):
                 if (

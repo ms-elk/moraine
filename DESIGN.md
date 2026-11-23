@@ -800,7 +800,8 @@ which to read and diff the IR.
 - An operator declares the kernels its output depends on (`KERNELS`):
   an installed distribution by name (`manifold3d`, `trimesh`) or a
   shared in-package kernel module by dotted path (`core.mating`,
-  `core.predicates`, `core.rand`, `core.mesh`). The key folds each
+  `core.predicates`, `core.rand`, `core.mesh`, `core.profile`). The
+  key folds each
   one's resolved version: the installed version, or the module's
   `KERNEL_VERSION`, bumped like `op_impl_version` on any
   output-semantics change of a function operators consume. So

@@ -25,11 +25,9 @@ is CCW from outside. Deterministic.
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
-from ..core import numbers
+from ..core import numbers, profile
 from ..core.mesh import Mesh
 from ..errors import OpError
 from . import common
@@ -40,7 +38,7 @@ OP_IMPL_VERSION = 1
 # resolves at any size the tool builds. It is read as 0. Nothing that
 # was accepted before reads differently, so the version stands.
 RADIUS_NOISE = 1e-9
-KERNELS = ()
+KERNELS = ("core.profile",)
 INPUT_ARITY = (0, 0)
 PARAM_KINDS = {
     "profile": numbers.FLOAT,
@@ -58,55 +56,6 @@ ATTRIBUTE_POLICY = "preserved"  # source op
 
 def _bad(message: str) -> OpError:
     return OpError("bad_param", message, param="profile")
-
-
-def _cross2(u, v):
-    """z-component of the 2D cross product, broadcast over leading axes
-    (numpy dropped 2D support from np.cross)."""
-    u = np.asarray(u)
-    v = np.asarray(v)
-    return u[..., 0] * v[..., 1] - u[..., 1] * v[..., 0]
-
-
-def _on_segment(p1, p2, q):
-    """Given q collinear with segment [p1, p2], is q within its bounds?
-    Vectorized over the leading axis of any argument."""
-    lo = np.minimum(p1, p2)
-    hi = np.maximum(p1, p2)
-    return np.all((lo <= q) & (q <= hi), axis=-1)
-
-
-def _self_intersection(poly: list[tuple[float, float]]) -> tuple[int, int] | None:
-    """First pair of non-adjacent edges of the closed polygon that cross
-    or touch (exact arithmetic; a shared vertex between non-adjacent
-    edges is a pinch and counts). None when the polygon is simple."""
-    n = len(poly)
-    if n < 4:
-        return None
-    pts = np.array(poly, dtype=float)
-    a = pts
-    b = np.vstack([pts[1:], pts[:1]])
-    for k in range(n - 2):
-        m0 = k + 2
-        m1 = n - 1 if k == 0 else n  # the wrap edge is adjacent to edge 0
-        if m0 >= m1:
-            continue
-        p1, p2 = a[k], b[k]
-        q1, q2 = a[m0:m1], b[m0:m1]
-        r = p2 - p1
-        s = q2 - q1
-        d1 = _cross2(r, q1 - p1)
-        d2 = _cross2(r, q2 - p1)
-        d3 = _cross2(s, p1 - q1)
-        d4 = _cross2(s, p2 - q1)
-        bad = ((d1 > 0) != (d2 > 0)) & ((d3 > 0) != (d4 > 0))
-        bad |= (d1 == 0) & _on_segment(p1, p2, q1)
-        bad |= (d2 == 0) & _on_segment(p1, p2, q2)
-        bad |= (d3 == 0) & _on_segment(q1, q2, p1)
-        bad |= (d4 == 0) & _on_segment(q1, q2, p2)
-        if bad.any():
-            return k, m0 + int(np.argmax(bad))
-    return None
 
 
 def _profile(params: dict) -> list[tuple[float, float]]:
@@ -134,29 +83,24 @@ def _profile(params: dict) -> list[tuple[float, float]]:
                 "pinch at the axis; radius 0 is allowed only at the ends"
             )
         pts.append((r, y))
-    for k in range(len(pts) - 1):
-        if pts[k] == pts[k + 1]:
-            raise _bad(
-                f"revolve 'profile' points {k} and {k + 1} coincide - remove "
-                "the duplicate"
-            )
+    k = profile.duplicate(pts)
+    if k is not None:
+        raise _bad(
+            f"revolve 'profile' points {k} and {k + 1} coincide - remove "
+            "the duplicate"
+        )
     if pts[0] == pts[-1]:
         raise _bad(
             "revolve 'profile' first and last points coincide - the ends "
             "close automatically; leave the polyline open (or compose "
             "solids with boolean)"
         )
-    # Exact double-backs (adjacent segments exactly opposite) are a
-    # zero-thickness fin, and the one joint whose bisector normal is
-    # undefined.
-    for k in range(len(pts) - 2):
-        d0 = (pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1])
-        d1 = (pts[k + 2][0] - pts[k + 1][0], pts[k + 2][1] - pts[k + 1][1])
-        if d0[0] * d1[1] - d0[1] * d1[0] == 0 and d0[0] * d1[0] + d0[1] * d1[1] < 0:
-            raise _bad(
-                f"revolve 'profile' doubles back exactly at point {k + 1} - "
-                "a zero-thickness fin; drop or move the point"
-            )
+    k = profile.double_back(pts)
+    if k is not None:
+        raise _bad(
+            f"revolve 'profile' doubles back exactly at point {k} - "
+            "a zero-thickness fin; drop or move the point"
+        )
     # The generating polygon: the profile closed to the axis at the end
     # heights (a pole end already sits on the axis). Its edges must not
     # cross or touch - a self-intersecting polygon sweeps an ill-defined
@@ -166,7 +110,7 @@ def _profile(params: dict) -> list[tuple[float, float]]:
         poly.append((0.0, pts[-1][1]))
     if pts[0][0] > 0 and (0.0, pts[0][1]) != poly[-1]:
         poly.append((0.0, pts[0][1]))
-    hit = _self_intersection(poly)
+    hit = profile.self_intersection(poly)
     if hit is not None:
         names = [
             f"the segment from point {e}" if e < len(pts) - 1 else "the end closure"
@@ -177,7 +121,9 @@ def _profile(params: dict) -> list[tuple[float, float]]:
             f"{names[1]}; the swept solid would be ill-defined"
         )
     # Orientation gate: the generating polygon must have positive signed
-    # area, so the authored winding is outward by construction.
+    # area, so the authored winding is outward by construction. The last
+    # term is the closure through the axis, from the last point across
+    # to its height on the axis, along it, and out to the first.
     area2 = sum(
         pts[k][0] * pts[k + 1][1] - pts[k + 1][0] * pts[k][1]
         for k in range(len(pts) - 1)
@@ -202,43 +148,23 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
     )
 
     n_pts = len(pts)
-    # Per-segment direction and half-plane band normal (rotate by -90):
-    # for segment direction (dr, dy) the outward normal is (dy, -dr).
-    dirs = []
-    band_n2 = []
-    for k in range(n_pts - 1):
-        dr = pts[k + 1][0] - pts[k][0]
-        dy = pts[k + 1][1] - pts[k][1]
-        length = math.hypot(dr, dy)
-        dirs.append((dr / length, dy / length))
-        band_n2.append((dy / length, -dr / length))
-
-    # Rings: (radius, y, half-plane normal). A shared ring joins two
-    # bands with the bisector normal; a hard joint duplicates the ring.
+    # Rings: (radius, y, half-plane normal), one per normal a point
+    # carries - a hard joint has two. A band runs from the last ring of
+    # its lower point to the first ring of its upper one; a pole end has
+    # no ring.
+    pole_start = pts[0][0] == 0
+    pole_end = pts[-1][0] == 0
     rings: list[tuple[float, float, tuple[float, float]]] = []
     band_lo = [0] * (n_pts - 1)  # ring index at pts[k] for band k
     band_hi = [0] * (n_pts - 1)  # ring index at pts[k + 1] for band k
-    pole_start = pts[0][0] == 0
-    pole_end = pts[-1][0] == 0
-    if not pole_start:
-        band_lo[0] = len(rings)
-        rings.append((*pts[0], band_n2[0]))
-    for k in range(1, n_pts - 1):
-        d0, d1 = dirs[k - 1], dirs[k]
-        bend = math.degrees(math.acos(max(-1.0, min(1.0, d0[0] * d1[0] + d0[1] * d1[1]))))
-        if bend <= angle_max:
-            nr, ny = band_n2[k - 1][0] + band_n2[k][0], band_n2[k - 1][1] + band_n2[k][1]
-            length = math.hypot(nr, ny)
-            band_hi[k - 1] = band_lo[k] = len(rings)
-            rings.append((*pts[k], (nr / length, ny / length)))
-        else:
+    for k, carried in enumerate(profile.corners(pts, angle_max)):
+        if (k == 0 and pole_start) or (k == n_pts - 1 and pole_end):
+            continue
+        if k > 0:
             band_hi[k - 1] = len(rings)
-            rings.append((*pts[k], band_n2[k - 1]))
-            band_lo[k] = len(rings)
-            rings.append((*pts[k], band_n2[k]))
-    if not pole_end:
-        band_hi[-1] = len(rings)
-        rings.append((*pts[-1], band_n2[-1]))
+        rings.extend((*pts[k], normal) for normal in carried)
+        if k < n_pts - 1:
+            band_lo[k] = len(rings) - 1
 
     # Hard joints duplicate rings, so the rings x segments product can
     # exceed what the per-param ceilings admit alone - refuse before
