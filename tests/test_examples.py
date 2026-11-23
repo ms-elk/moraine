@@ -155,7 +155,7 @@ def test_every_operator_appears_in_an_example():
 
 
 def test_every_fixture_has_its_example_and_no_other():
-    """The shipped examples and the IR corpus are the same twenty-one
+    """The shipped examples and the IR corpus are the same twenty-two
     projects: a fixture without its recipe is an example not yet
     written, a recipe without its fixture an example no measure holds."""
     assert [p.name for p in EXAMPLES] == sorted(

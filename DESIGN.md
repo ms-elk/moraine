@@ -1679,7 +1679,8 @@ attribute policy — live in the shipped reference (`moraine docs`).
 | `transform` | numpy | TRS, instancing-aware |
 | `extrude` | numpy/trimesh | faces along their normal or a vector (a vector opposing every normal sweeps the flipped sheet; tangent or mixed-orientation vectors, and flat-shaded closed inputs, are actionable errors) |
 | `boolean` | manifold3d | union / difference / intersection; output is flat-shaded |
-| `revolve` | numpy | solid of revolution of an inline `[radius, y]` profile around +Y, always watertight (ends auto-close); inward-facing and degenerate profiles are actionable errors; joint shading crease-thresholded like `smooth_normals`. The inline profile retrofits to the curve value type when it lands (Future Work: Operator extensions) |
+| `revolve` | numpy | solid of revolution of an inline `[radius, y]` profile around +Y, always watertight (ends auto-close); inward-facing and degenerate profiles are actionable errors; joint shading crease-thresholded like `smooth_normals` |
+| `sweep` | numpy/manifold3d | a closed inline `[x, y]` profile carried along an inline 3D polyline `path`, mitered at each bend and never twisting about the path, always watertight: an open path is capped at both ends, a `closed` one is a loop |
 | `array` / `scatter` | numpy | emit prototype + transforms (instanced) |
 | `noise_displace` | numpy | fBm displacement along normals; flat-shaded input is refused with the `smooth_normals` fix named, never welded (welding would merge the attributes `preserved` promises to keep) |
 | `bevel` | own | single-segment chamfer; `segments > 1` is refused until a multi-segment kernel lands. No matching edge is a `no_effect` error, and manifold/degeneracy/volume post-conditions gate the result with `broken_result` — never a silent pass-through |
@@ -1740,8 +1741,34 @@ Tessellation ceilings are absurdity guards, not quality bars. Asset
 quality is owned by the asset's declared budgets (§4.1). Each
 tessellation parameter caps at 4096, and the product of two such
 dimensions is bounded by a shared cell budget (4096 × 4096). An op
-whose tessellation can multiply past it (`revolve`, whose hard joints
-duplicate rings) refuses before allocating.
+whose tessellation can multiply past it (`revolve` and `sweep`, whose
+hard joints duplicate rings) refuses before allocating.
+
+**Profiles and paths.** `revolve` and `sweep` take their section as
+an inline list of points under one contract. The points run
+counter-clockwise around the area they enclose, and a profile wound
+the other way is refused. A joint bending by more than
+`angle_max_deg` is hard and a gentler one smooth, the threshold of
+`smooth_normals`, and in `sweep` the same threshold decides each bend
+of the path. The inline lists retrofit to the curve value type when
+it lands (Future Work: Operator extensions).
+
+`sweep` stands its first section by the upright rule (§5.1), the
+segment's direction taken as the normal, and carries it across each
+bend by the smallest rotation that turns one segment onto the next.
+Its volume is the profile's area times the length the profile's
+centroid travels, and the profile's origin rides the path. A bend is
+the angle between the directions of two consecutive segments, 0 where
+the path runs straight, and one beyond 150° is refused. A closed path
+is accepted where the section carried once around stands within 0.01°
+of its start, which every planar path does. A segment too short for
+its miters and two segments not adjacent that overlap or touch are
+refused.
+
+A profile that cannot be triangulated into a valid cap is an error
+in every `sweep`. So is a section that collapses, turns over, or
+closes on itself when its vertices round to float32, its fix a larger
+section or an asset nearer the origin.
 
 Operators do not delegate to headless Blender: it ships no PyPI wheel
 (§3), it would make results depend on the host environment against
@@ -4267,14 +4294,16 @@ wired into validation. Candidates beyond the shipped core (§5.1,
 **Curve-typed group (design together, not piecemeal):**
 
 - A 2D profile / curve value type — the second non-mesh value type.
-  The Light precedent (Future Work: Lights) applies. `revolve`'s
-  inline `profile` retrofits to it when it lands (§5).
-- `sweep` — profile along a polyline/helix: pipes, railings,
-  moldings, threads, springs. A polyline sweep is numpy-native and is
-  the likelier route to the edge quality `bevel`'s `segments > 1`
-  defers (§5).
+  The Light precedent (Future Work: Lights) applies. It is wanted
+  when an operator works on the profile itself: a 2D fillet or
+  offset, the likelier route to the edge quality `bevel`'s
+  `segments > 1` defers (§5), and a 2D boolean for a profile with
+  holes.
+- `sweep` extensions — a frame locked to an axis (threads), a param
+  that turns the section about the path, and a closed path whose
+  section comes back turned, the turn spread along the loop.
 - `wireframe` — mesh edges → beams/pipes (trusses, bracing, cages,
-  railings). Expressible over `sweep`.
+  railings). Expressible over `sweep` (§5).
 
 **Engine-readiness group:**
 

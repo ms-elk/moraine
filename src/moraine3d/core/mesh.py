@@ -52,7 +52,7 @@ from .paths import PORTABLE_NAME_FRAGMENT
 KERNEL_VERSION = 1
 KERNEL_HELPERS = frozenset({
     "tri_cross", "degenerate_tri_count", "vertex_normals",
-    "divergent_duplicates", "flat_shaded",
+    "divergent_duplicates", "flat_shaded", "triangles_meet",
 })
 
 # Extra attribute slots allowed in ``Mesh.attributes`` — glTF semantics
@@ -466,6 +466,46 @@ def tri_cross(tri: np.ndarray) -> np.ndarray:
 # a triangle clearing this bar keeps clearing it when an asset_ref consumer
 # transforms the mesh, so producing-asset green survives reuse (DESIGN 4.6).
 DEGEN_HEIGHT_TOL = 1e-9
+
+
+def triangles_meet(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Row by row over (k, 3, 3) corner triples: do the two triangles
+    share a point? Touching counts, at a corner, along an edge, or in a
+    common plane.
+
+    Two triangles are apart exactly when some axis separates them, and
+    one of seventeen always does: either normal, a cross product of one
+    edge from each, or, for triangles in one plane, an edge of either
+    crossed with its normal. Along each axis a gap counts only beyond
+    what rounding could have put into the two projections it lies
+    between, so the test never passes a contact, and never takes for
+    one a gap that the corners' own coordinates along that axis resolve.
+    """
+    a = np.asarray(a, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
+    origin = a[:, :1]
+    a = a - origin
+    b = b - origin
+    ea = np.roll(a, -1, axis=1) - a
+    eb = np.roll(b, -1, axis=1) - b
+    na = np.cross(ea[:, 0], ea[:, 1])
+    nb = np.cross(eb[:, 0], eb[:, 1])
+    axes = np.concatenate([
+        na[:, None], nb[:, None],
+        np.cross(ea[:, :, None, :], eb[:, None, :, :]).reshape(len(a), 9, 3),
+        np.cross(na[:, None, :], ea), np.cross(nb[:, None, :], eb),
+    ], axis=1)  # (k, 17, 3)
+    pa = np.einsum("kad,kpd->kap", axes, a)
+    pb = np.einsum("kad,kpd->kap", axes, b)
+    # A projection sums three products; each is off by at most a few
+    # units in the last place of its own size.
+    spread = np.maximum(
+        np.einsum("kad,kpd->kap", np.abs(axes), np.abs(a)).max(axis=2),
+        np.einsum("kad,kpd->kap", np.abs(axes), np.abs(b)).max(axis=2),
+    )
+    tol = 16.0 * np.finfo(np.float64).eps * spread
+    apart = (pa.min(axis=2) > pb.max(axis=2) + tol) | (pb.min(axis=2) > pa.max(axis=2) + tol)
+    return ~apart.any(axis=1)
 
 
 def degenerate_tri_count(vertices: np.ndarray, faces: np.ndarray) -> int:

@@ -99,6 +99,51 @@ dome's meridians smooth and a flange's steps crisp with no param
 written. Vertex 0 of each ring sits at angle 0 (+X); winding is CCW
 from outside. Deterministic. Example: `examples/turned_column`.
 
+## sweep (op_impl_version 1)
+
+Recipe: `mo.sweep(id = ..., profile = ..., path = ..., closed = ..., angle_max_deg = ...)`
+
+Emits the solid of `profile`, a list of 3 to 4096 `[x, y]` points (m)
+forming a closed polygon wound counter-clockwise (the last point joins
+the first; do not repeat it), carried along `path`, a list of 2 to
+4096 `[x, y, z]` points (m). The profile's origin rides the path. The
+first section stands upright: its +y is world +Y projected into the
+plane across the first segment, +Z where that segment runs within 1
+deg of vertical, and its +x is +y cross the segment's direction
+(looking back down the path, +x is right and +y up). Each bend carries
+the section by the smallest rotation that turns one segment onto the
+next, so the section never twists about the path; turn the profile's
+points to roll it. Bends are mitered: the ring at a bend lies in the
+plane bisecting its two segments, every segment's cross-section is the
+profile itself, and the volume is the profile's area times the length
+its centroid travels (the path's length when the centroid sits on the
+origin). An open path is capped flat at both ends, so a 2-point path
+extrudes the profile. `closed` (default false) joins the last path
+point to the first and makes a loop without caps, of 3 points or more,
+accepted where the section carried once around stands within 0.01 deg
+of its start, as on every planar path; a loop that brings the section
+back turned is an error. The result is always watertight. A profile
+joint or a path bend turning by more than `angle_max_deg` (default 30)
+is hard (duplicated vertices), a gentler one smooth; a bend is the
+angle between two consecutive segments' directions, 0 where the path
+runs straight. Errors, each naming its fix: a clockwise profile
+(reverse the point order); coinciding consecutive points, an exact
+double-back, a self-intersection, or no enclosed area in the profile;
+coinciding consecutive path points, or a first and last one that
+coincide (drop the last, and set `closed` for a loop); a bend beyond
+150 deg (add a point to split it); a segment too short for the miters
+at its ends, where the section would pass through itself (lengthen it,
+ease its bends, or keep the profile off the inside of the bend); two
+segments not adjacent whose solids overlap or touch (move them apart);
+a profile too thin to cap; a section that does not survive its
+vertices rounding to float32, where a triangle collapses or turns
+over, two walls of the profile round onto each other, or the vertices
+weld into an open surface (enlarge the profile, or build nearer the
+origin); and a rings x profile vertices product beyond the 4096 x 4096
+cell budget. A hollow section is two sweeps and a
+`boolean` difference. No UVs. Deterministic.
+Example: `examples/handrail`.
+
 ## grid (op_impl_version 1)
 
 Recipe: `mo.grid(id = ..., size = ..., segments = int)`

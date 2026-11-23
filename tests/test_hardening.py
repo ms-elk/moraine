@@ -279,8 +279,9 @@ def test_tessellation_ceilings_within_shared_budget():
     """DESIGN 5: per-dimension tessellation ceilings are absurdity
     guards, and the shared cell budget bounds their product - grid and
     sphere satisfy it structurally (their maximum product equals it),
-    so raising a per-op ceiling must confront the budget here; revolve,
-    whose hard joints duplicate rings past it, enforces it at runtime."""
+    so raising a per-op ceiling must confront the budget here; revolve
+    and sweep, whose hard joints duplicate rings past it, enforce it at
+    runtime."""
     from moraine3d.ops import common, grid, revolve, sphere
 
     assert common.TESSELLATION_CELLS_MAX == 4096 * 4096
@@ -296,6 +297,10 @@ def test_tessellation_ceilings_within_shared_budget():
     # check is reachable, not dead code.
     worst_rings = revolve.PROFILE_MAX - 2 + (revolve.PROFILE_MAX - 2) + 2
     assert worst_rings * revolve.SEGMENTS_MAX > common.TESSELLATION_CELLS_MAX
+    # sweep's does too: every path joint and every profile joint hard.
+    from moraine3d.ops import sweep
+
+    assert (2 * sweep.PATH_MAX - 2) * 2 * sweep.PROFILE_MAX > common.TESSELLATION_CELLS_MAX
 
 
 def test_runtime_strings_are_ascii():

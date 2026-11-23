@@ -2,10 +2,13 @@
 take an inline profile refuse on, the normals a joint carries, and the
 triangles that cap a profile."""
 
+import math
+
 import numpy as np
 import pytest
 
 from moraine3d.core import profile
+from moraine3d.core.mesh import triangles_meet
 
 SQUARE = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)]
 
@@ -29,6 +32,10 @@ def test_facts_read_an_open_outline_and_a_loop():
     # Clear of both axes, so no term vanishes, and from every start.
     tri = [(2.0, 1.0), (2.0, 0.0), (3.0, 0.0)]
     assert [profile.area2(tri[k:] + tri[:k]) for k in range(3)] == [1.0, 1.0, 1.0]
+    # A 1e-5 m square 1000 m out keeps its area and its tiling.
+    far = [(1000.0, 1000.0), (1000.00001, 1000.0), (1000.00001, 1000.00001), (1000.0, 1000.00001)]
+    assert profile.area2(far) == pytest.approx(2e-10, rel=1e-3)
+    assert profile.triangulate(far) is not None
     bowtie = [(0.0, 0.0), (2.0, 2.0), (2.0, 0.0), (0.0, 2.0)]
     assert profile.self_intersection(SQUARE) is None
     assert profile.self_intersection(bowtie) == (0, 2)
@@ -47,6 +54,22 @@ def test_corners_carry_one_normal_when_smooth_and_two_when_hard():
     ends = profile.corners(SQUARE[:3], 30.0)
     assert [len(c) for c in ends] == [1, 2, 1]
     assert ends[0] == [(0.0, -1.0)] and ends[2] == [(1.0, 0.0)]
+
+
+def test_clearance_is_how_near_the_outline_comes_to_itself():
+    """DESIGN 5: a section that closes on itself when its vertices
+    round is an error, and what closes is two edges that share no
+    point - a square's opposite sides, the mouth of a notch."""
+    assert profile.clearance(SQUARE) == 2.0
+    assert profile.clearance(SQUARE[:3]) == float("inf")
+    notch = [(0.0, 0.0), (3.0, 0.0), (3.0, 0.9), (2.5, 1.0), (3.0, 1.1), (3.0, 2.0), (0.0, 2.0)]
+    # From one lip to the far wall of the notch, square to that wall.
+    mouth = 0.2 * 0.5 / math.hypot(0.5, 0.1)
+    assert profile.clearance(notch) == pytest.approx(mouth)
+    assert profile.clearance(notch[3:] + notch[:3]) == pytest.approx(mouth)
+    # The lip's edge and the far wall of the notch, and no pair beyond.
+    assert [b.tolist() for b in profile.close_edges(notch, 0.2)] == [[[1, 3]], [[2, 4]]]
+    assert list(profile.close_edges(notch, 0.1)) == []
 
 
 @pytest.mark.parametrize(
@@ -101,3 +124,23 @@ def test_triangulate_never_returns_an_invalid_cap():
     thin = [(0.0, 0.0), (2.0, 0.0), (2.0, t), (1.0, t / 2), (0.0, t)]
     tris = profile.triangulate(thin)
     assert tris is None or profile.valid_cap(thin, tris)
+
+
+def test_triangles_meet_where_they_share_a_point():
+    """DESIGN 5: walls that close on each other are an error, and two
+    triangles close on each other where they share a point - crossing,
+    touching at a corner or along an edge, or overlapping in one
+    plane - and not where any axis holds them apart."""
+    flat = [[0, 0, 0], [2, 0, 0], [0, 2, 0]]
+
+    def meet(other) -> bool:
+        return bool(triangles_meet(np.array([flat], float), np.array([other], float))[0])
+
+    assert meet([[0.5, 0.5, -1], [0.5, 0.5, 1], [3, 3, 1]])      # pierces
+    assert meet([[0, 0, 0], [0, 0, 1], [-1, 0, 1]])              # shares a corner
+    assert meet([[1, 0, 0], [1, 0, 1], [1, -1, 1]])              # touches an edge
+    assert meet([[1, 1, 0], [3, 1, 0], [1, 3, 0]])               # overlaps in the plane
+    assert not meet([[0.5, 0.5, 1e-6], [0.5, 0.5, 1], [3, 3, 1]])   # ends just above
+    assert not meet([[0, 0, 1e-6], [2, 0, 1e-6], [0, 2, 1e-6]])     # parallel, just above
+    assert not meet([[2.1, 0, 0], [4, 0, 0], [2.1, 2, 0]])          # beside it in the plane
+    assert not meet([[1.01, 1.01, -1], [1.01, 1.01, 1], [3, 3, 0]])  # passes its long edge

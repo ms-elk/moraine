@@ -103,12 +103,64 @@ def double_back(pts: list[Point], *, closed: bool = False) -> int | None:
 
 def area2(poly: list[Point]) -> float:
     """Twice the signed area of the closed polygon: positive when its
-    points run counter-clockwise, whichever point the list starts at."""
-    n = len(poly)
+    points run counter-clockwise, whichever point the list starts at.
+    Measured from the first point, so a small polygon far from the
+    origin keeps its area."""
+    a0, b0 = poly[0]
+    rel = [(a - a0, b - b0) for a, b in poly]
     return sum(
-        poly[k][0] * poly[(k + 1) % n][1] - poly[(k + 1) % n][0] * poly[k][1]
-        for k in range(n)
+        rel[k][0] * rel[k + 1][1] - rel[k + 1][0] * rel[k][1]
+        for k in range(1, len(rel) - 1)
     )
+
+
+def _to_segments(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Distance from each point of p to its segment [a, b], row by row."""
+    ab = b - a
+    along = ((p - a) * ab).sum(axis=-1) / (ab * ab).sum(axis=-1)
+    return np.linalg.norm(p - (a + np.clip(along, 0.0, 1.0)[..., None] * ab), axis=-1)
+
+
+def _edge_gaps(poly: list[Point]):
+    """Per edge k of the simple closed polygon: the first later edge
+    that shares no point with it, and its distance to that edge and
+    each one after."""
+    n = len(poly)
+    pts = np.array(poly, dtype=np.float64)
+    pts = pts - pts[0]
+    a = pts
+    b = np.vstack([pts[1:], pts[:1]])
+    for k in range(n - 2):
+        m0 = k + 2
+        m1 = n - 1 if k == 0 else n  # the wrap edge is adjacent to edge 0
+        if m0 >= m1:
+            continue
+        p1 = np.broadcast_to(a[k], (m1 - m0, 2))
+        p2 = np.broadcast_to(b[k], (m1 - m0, 2))
+        q1, q2 = a[m0:m1], b[m0:m1]
+        # Edges that do not cross are nearest at an end of one of them.
+        yield k, m0, np.minimum.reduce([
+            _to_segments(p1, q1, q2), _to_segments(p2, q1, q2),
+            _to_segments(q1, p1, p2), _to_segments(q2, p1, p2),
+        ])
+
+
+def clearance(poly: list[Point]) -> float:
+    """The least distance between two edges of the simple closed
+    polygon that share no point: how close its outline comes to
+    itself. Infinite for a triangle, whose edges all meet."""
+    return min((float(gaps.min()) for _, _, gaps in _edge_gaps(poly)), default=math.inf)
+
+
+def close_edges(poly: list[Point], within: float):
+    """The pairs of edges of the simple closed polygon that share no
+    point and stand no farther apart than ``within``, as (p, 2) blocks:
+    one per edge that has any, holding its pairs with later edges. Edge
+    k runs from point k to the next."""
+    for k, m0, gaps in _edge_gaps(poly):
+        at = np.flatnonzero(gaps <= within)
+        if len(at):
+            yield np.stack([np.full(len(at), k), m0 + at], axis=1)
 
 
 def corners(
@@ -174,8 +226,8 @@ def triangulate(poly: list[Point]) -> np.ndarray | None:
     """Index triples, counter-clockwise, tiling the simple
     counter-clockwise polygon: the same triples cap every affine image
     of it. None where the kernel returns no valid tiling (a polygon
-    thinner than its triangulator resolves)."""
-    tris = np.asarray(
-        manifold3d.triangulate([np.array(poly, dtype=np.float64)]), dtype=np.int64
-    ).reshape(-1, 3)
+    thinner than its triangulator resolves). Handed over from its first
+    point, so the triangulator sees the polygon's own size."""
+    pts = np.array(poly, dtype=np.float64)
+    tris = np.asarray(manifold3d.triangulate([pts - pts[0]]), dtype=np.int64).reshape(-1, 3)
     return tris if valid_cap(poly, tris) else None
