@@ -498,7 +498,7 @@ take just the project directory (§4.2).
   checked deterministically at eval time and reported through
   `validate` — gating, never waivable. Each entry carries the `site`
   of the recipe call that declared it, and under `from_param` the
-  knob a threshold was taken from, where one was (§4.8). The format
+  knob a threshold follows, where it follows one (§4.8). The format
   rule ends here; the semantics live in §5.2.
 - **Root `"budgets"`:** asset-declared acceptance budgets, one inline
   object after `asserts` — `"budgets": {"materials": N}`. Acceptance
@@ -1461,11 +1461,19 @@ vocabulary and the IR's are one:
 - *In a requirements file:* the assert functions, `mo.budget`,
   `mo.optional`, `mo.group` for a group its asserts name (§5.2), and
   `mo.param_value(id)`, an opaque handle to one of that asset's
-  declared knobs, usable whole as a threshold (`value`, `tol`,
-  `min`, `max`, or `min_area`) and nowhere else. Arithmetic on a
+  declared knobs, usable as a threshold (`value`, `tol`,
+  `min`, `max`, or `min_area`) and nowhere else. `scale` and
+  `offset`, constants of the file passed by keyword, make the
+  threshold `scale` times the knob's value plus `offset` (a shelf as
+  wide as the cart less two posts). A threshold follows one knob,
+  and a `scale` of 0, which follows none, is refused. An integer key
+  takes an integer knob with an integer `scale` and `offset`: a
+  fraction would pass or fail with the knob's parity. Any other
+  arithmetic on a
   handle, or a
   comparison by size, is refused (`param_value_arithmetic`) with the
-  fix of writing the derived quantity as a constant, since a handle
+  fix of the two keywords, or of the derived quantity as a constant,
+  since a handle
   resolves only after the asset has declared its knobs. Equality and
   truth the language gives every value (a handle equals no number
   and is true), so a condition on a handle cannot be refused where
@@ -1474,7 +1482,9 @@ vocabulary and the IR's are one:
   was read some other way, and a requirements file cannot branch on
   a knob's value. The
   knob is a number, and the entry names it (`from_param`, §4.1), so
-  a requirement an accepted value moved says which knob moved it. No
+  a requirement an accepted value moved says which knob moved it. A
+  threshold its kind refuses once resolved (a `min` that came out
+  negative) fails the build at the requirement. No
   operator, no declaration that creates a node, and no `load()` (the
   reason is §5.2).
 - *Language-level names stay bare:* `range`, `struct`, `load`, and
@@ -2321,8 +2331,10 @@ mistake and the entry can never fail. The guard is structural, not
 syntactic. A requirements file loads nothing and no builtin in it
 returns a recipe value (§4.8), so its thresholds can only be its own
 constants and the arithmetic and loops it writes over them, or a
-knob's resolved value (`mo.param_value`, human-owned data through the
-viewer) used whole (§4.8). A list of six roof widths written there
+knob's value scaled and offset by such constants (`mo.param_value`,
+§4.8): the file owns which knob and what transform, not the knob's
+value, which resolves as any knob's does. A list of six roof widths
+written there
 and iterated into six asserts is the human's enumeration, not a
 measurement. The dependency runs the other way by design. An asset
 may `load()` the requirement constants and build against them, so a

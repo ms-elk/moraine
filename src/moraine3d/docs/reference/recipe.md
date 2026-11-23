@@ -104,7 +104,7 @@ arguments.
   [outputs])`, `mo.param(id, default, ...)`, `mo.waive(output,
   check)`, `mo.waive_asset(check)`, `mo.vendored(source, hash)`, and
   in a requirements file `mo.budget(materials = N)`,
-  `mo.optional(outputs, knob)`, `mo.param_value(id)`, and `mo.group` for a group its asserts name
+  `mo.optional(outputs, knob)`, `mo.param_value(id, scale = ..., offset = ...)`, and `mo.group` for a group its asserts name
   (see *requirements*).
 - **Asserts.** `mo.assert_<kind>(id = ..., <key> = ...)`, one function
   per kind, keywords only, with the IR's keys (`outputs`, `faces`,
@@ -259,14 +259,25 @@ constant with its `fix`, in `build` and among `validate`'s warnings.
 
 A threshold may follow a knob: `max = mo.param_value("<param_id>")`
 takes the value the knob resolved to, so a requirement moves with
-what the human accepts. The handle stands whole as `value`, `tol`,
+what the human accepts. `scale` and `offset`, constants of this
+file, make it a function of the knob, `scale` times the value plus
+`offset`: `value = mo.param_value("width", offset = -2 * POST)` is
+"the width less two posts", `mo.param_value("width", scale = 0.5,
+offset = STANDOFF)` half the width plus a standoff. One knob per
+threshold and no other arithmetic; on `count` the knob, the scale,
+and the offset are integers. A threshold its kind refuses once
+resolved (a `min` that came out negative) fails the build at the
+requirement, with the knob's value and the result. The handle stands
+as `value`, `tol`,
 `min`, or `max` of an assert in this file and nowhere else, and names
 a number knob of this file's asset. It holds no number while the file
 runs, so arithmetic and `<` on it fail the build (see *refusals*).
 `==` and `if` on it learn nothing (a handle equals no number and is
 true), and a handle that ends up no assert's threshold fails the
 build (`param_value_unused`): a requirements file cannot branch on a
-knob's value. The entry's `from_param` names the knob.
+knob's value. The entry's `from_param` names the knob the threshold
+follows, whose value it need not equal: the scale and the offset
+are read in this file, from the entry's `site`.
 
 A part the human made optional is declared so, once:
 `mo.optional(["lamp_base", "lantern"], "lamp")` names the outputs, or
@@ -355,7 +366,7 @@ the spelling to write instead. What Python habit meets most often:
 | a float for an integer param, `count = n / 2` | `bad_param` | `n // 2`, or `int(x)` |
 | `fail(...)` at a file's top level | `fail_at_top_level` | `mo.assert_<kind>(...)`; inside a function `fail` is the function's own refusal (`recipe_failed`) |
 | `mo.budget` in an asset file | `budget_outside_requirements` | the requirements file |
-| `mo.param_value(...) + 0.1`, `< 2` | `param_value_arithmetic` | the derived quantity as a constant of the requirements file |
+| `mo.param_value(...) + 0.1`, `< 2` | `param_value_arithmetic` | `scale` / `offset` in the call for a factor and a constant term; any other derived quantity as a constant of the requirements file |
 | `mo.param_value` in an asset, or anywhere but a threshold | `param_value_outside_requirements`, `param_value_misplaced` | in an asset, the value `mo.param` returned |
 | `if mo.param_value(...):`, `== 2`, a handle no assert takes | `param_value_unused` | requirements that hold at every value of the knob, `mo.optional` for a part the human made optional, the handle as the threshold that moves |
 | `mo.optional` in an asset file | `optional_outside_requirements` | `if` around the part, and the declaration in the requirements file where the human made the part optional |

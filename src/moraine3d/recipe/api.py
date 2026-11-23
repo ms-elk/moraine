@@ -32,7 +32,7 @@ DECLARATIONS = {
     "waive": "mo.waive(output, check)",
     "waive_asset": "mo.waive_asset(check)",
     "vendored": "mo.vendored(source, hash)",
-    "param_value": "mo.param_value(id)",
+    "param_value": "mo.param_value(id, scale = ..., offset = ...)",
 }
 
 

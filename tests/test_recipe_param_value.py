@@ -40,12 +40,12 @@ def _entry(doc: dict, aid: str) -> dict:
     return next(a for a in doc["asserts"] if a["id"] == aid)
 
 
-# -- a threshold taken whole ---------------------------------------------------
+# -- a threshold that is the knob's value ---------------------------------------------------
 
 
 def test_a_threshold_takes_the_knobs_resolved_value(tmp_path):
     """DESIGN 4.8: `mo.param_value(id)` is an opaque handle to one of
-    that asset's declared knobs, usable whole as a threshold (`value`,
+    that asset's declared knobs, usable as a threshold (`value`,
     `tol`, `min`, or `max`). DESIGN 5.2: every assert carries its
     owner, and the entry declared in a requirements file is
     human-owned."""
@@ -63,7 +63,7 @@ def test_a_threshold_takes_the_knobs_resolved_value(tmp_path):
 
 
 def test_a_clearance_gap_follows_a_knob_and_is_judged_once_resolved(tmp_path):
-    """DESIGN 4.8: a handle stands whole as `min`; DESIGN 5.2: clearance's
+    """DESIGN 4.8: a handle stands as `min`; DESIGN 5.2: clearance's
     `min` is required and positive, judged where the knob resolves, so a
     knob at zero refuses the requirement at the reference's site."""
     asset = ASSET + 'g = mo.param("gap", 0.02, min = 0.0, max = 0.1)\n'
@@ -80,9 +80,9 @@ def test_a_clearance_gap_follows_a_knob_and_is_judged_once_resolved(tmp_path):
 
 
 def test_the_threshold_follows_an_accepted_value(tmp_path):
-    """DESIGN 5.2: a threshold is a knob's resolved value, human-owned
-    data through the viewer. DESIGN 4.8: values resolve in the order
-    default, accepted, override."""
+    """DESIGN 5.2: the file owns which knob a threshold follows, not
+    the knob's value, which resolves as any knob's does. DESIGN 4.8:
+    values resolve in the order default, accepted, override."""
     requirements = (
         'mo.assert_extent(id = "tall", outputs = ["main"], measure = "size_y",\n'
         '                 max = mo.param_value("height"))\n'
@@ -197,9 +197,9 @@ def test_the_record_passes_the_loader_and_the_report(tmp_path):
 ])
 def test_arithmetic_on_a_handle_is_refused(tmp_path, expr):
     """DESIGN 4.8: arithmetic on a handle is refused
-    (`param_value_arithmetic`) with the fix of writing the derived
-    quantity as a constant, since a handle resolves only after the
-    asset has declared its knobs."""
+    (`param_value_arithmetic`) with the fix of the two keywords, or
+    of the derived quantity as a constant, since a handle resolves
+    only after the asset has declared its knobs."""
     err = _refused(tmp_path, (
         f'limit = {expr}\n'
         'mo.assert_extent(id = "tall", outputs = ["main"], measure = "size_y", max = limit)\n'
@@ -244,7 +244,7 @@ def test_a_handle_no_threshold_took_is_refused(tmp_path, lines):
      ' max = mo.param_value(3))\n', "bad_declaration"),
 ])
 def test_a_handle_anywhere_but_a_threshold_is_refused(tmp_path, line, code):
-    """DESIGN 4.8: a handle is usable whole as a threshold and nowhere
+    """DESIGN 4.8: a handle is usable as a threshold and nowhere
     else, and it names one of that asset's declared knobs. A threshold
     is one number."""
     err = _refused(tmp_path, line)
@@ -300,3 +300,208 @@ def test_what_the_interpreter_does_not_refuse_is_stated(tmp_path):
         'mo.assert_extent(id = "c", outputs = ["main"], measure = "size_z", max = held)\n'
     )))
     assert (_entry(doc, "b")["max"], _entry(doc, "c")["max"]) == (2.0, 3.0)
+
+
+# -- a threshold as scale times the knob plus offset ---------------------------
+
+CART = (
+    'load("asset.requirements.star", "POST")\n'
+    'w = mo.param("width", 1.2, min = 0.6, max = 2.4)\n'
+    'n = mo.param("posts", 3, min = 1, max = 6)\n'
+    'mo.output("shelf", mo.box(id = "shelf", size = [w - 2 * POST, 0.02, 0.4]))\n'
+    'post = mo.box(id = "post", size = [POST, 0.8, POST])\n'
+    'mo.output("row", mo.array(post, id = "row", count = 2 * n + 1,'
+    ' step_translate = [1, 0, 0]))\n'
+)
+SHELF = (
+    'POST = 0.04\n'
+    'mo.assert_extent(id = "shelf_w", outputs = ["shelf"], measure = "size_x",\n'
+    '                 value = mo.param_value("width", offset = -2 * POST))\n'
+)
+
+
+def test_a_threshold_is_the_knob_scaled_and_offset(tmp_path):
+    """DESIGN 4.8: `scale` and `offset` are constants of the
+    requirements file, and the threshold is `scale` times the knob's
+    resolved value plus `offset`. The entry names the knob it follows,
+    as one that takes the knob's value does, and such a knob reaches
+    the graph through a rebuild (DESIGN 7.2)."""
+    doc = ir(_built(tmp_path, SHELF + (
+        'mo.assert_extent(id = "half", outputs = ["shelf"], measure = "max_x",\n'
+        '                 max = mo.param_value("width", scale = 0.5, offset = 1))\n'
+        'mo.assert_extent(id = "twice", outputs = ["shelf"], measure = "size_x",\n'
+        '                 max = mo.param_value("width", scale = 2))\n'
+        'mo.assert_extent(id = "same", outputs = ["shelf"], measure = "size_x",\n'
+        '                 max = mo.param_value("width", scale = 1.0, offset = 0))\n'
+    ), CART))
+    shelf = _entry(doc, "shelf_w")
+    assert shelf["value"] == 1.2 + -0.08 and shelf["from_param"] == {"value": "width"}
+    half = _entry(doc, "half")
+    assert half["max"] == 0.5 * 1.2 + 1 and half["from_param"] == {"max": "width"}
+    assert _entry(doc, "twice")["max"] == 2.4
+    assert _entry(doc, "same")["max"] == 1.2
+    assert "node" not in next(p for p in doc["params"] if p["id"] == "width")
+
+
+def test_an_integer_key_follows_an_integer_knob_by_integers(tmp_path):
+    """DESIGN 4.8: an integer key takes an integer knob with an integer
+    scale and offset, and the result is an integer. A float is refused
+    whatever it holds, 1.0 as 2.0 is, since a fraction would pass or
+    fail with the knob's parity."""
+    line = (
+        'POST = 0.04\n'
+        'mo.assert_count(id = "posts", outputs = ["row"],'
+        ' value = mo.param_value("posts", {call}))\n'
+    )
+    posts = _entry(ir(_built(tmp_path / "a", line.format(call='scale = 2, offset = 1'), CART)),
+                   "posts")
+    assert posts["value"] == 7 and isinstance(posts["value"], int)
+    assert posts["from_param"] == {"value": "posts"}
+    same = _entry(ir(_built(tmp_path / "b", line.format(call='scale = 1, offset = 0'), CART)),
+                  "posts")
+    assert same["value"] == 3 and isinstance(same["value"], int)
+    for i, call in enumerate((
+        'scale = 0.5', 'scale = 2.0', 'offset = 1.0', 'scale = 1.0', 'offset = 0.0',
+    )):
+        err = _refused(tmp_path / str(i), line.format(call=call), CART)
+        assert err.code == "bad_assert" and "integer scale and offset" in err.message
+        assert err.detail["site"] == "asset.requirements.star:2"
+
+
+def test_a_float_key_takes_an_integer_knob_by_a_fraction(tmp_path):
+    """DESIGN 4.8: only an integer key holds the scale and the offset
+    to integers. On a length an integer knob scales by a fraction, and
+    the IR the build wrote is one the loader reads."""
+    result = _built(tmp_path, (
+        'POST = 0.04\n'
+        'mo.assert_extent(id = "half", outputs = ["row"], measure = "size_x",\n'
+        '                 value = mo.param_value("posts", scale = 0.5))\n'
+        'mo.assert_extent(id = "past", outputs = ["row"], measure = "size_x",\n'
+        '                 max = mo.param_value("posts", offset = 0.25))\n'
+    ), CART)
+    doc = ir(result)
+    assert _entry(doc, "half")["value"] == 1.5
+    assert _entry(doc, "half")["from_param"] == {"value": "posts"}
+    assert _entry(doc, "past")["max"] == 3.25
+    asset_mod.loads(result.target.text)
+
+
+@pytest.mark.parametrize("call, needle", [
+    ('mo.param_value("width", scale = 0)', "follows no knob"),
+    ('mo.param_value("width", scale = "half")', "'scale' is a finite number"),
+    ('mo.param_value("width", offset = [0.1])', "'offset' is a finite number"),
+    ('mo.param_value("width", offset = True)', "'offset' is a finite number"),
+    ('mo.param_value("width", offset = mo.param_value("posts"))', "follows one knob"),
+    ('mo.param_value("width", 0.5)', "too many values"),
+    ('mo.param_value("width", times = 2)', "unexpected 'times'"),
+])
+def test_a_scale_and_an_offset_are_constants_of_the_file(tmp_path, call, needle):
+    """DESIGN 4.8: `scale` and `offset` go by keyword and are finite
+    numbers written in the requirements file. A threshold follows one
+    knob, and a scale of 0 follows none."""
+    err = _refused(tmp_path, (
+        'POST = 0.04\n'
+        'mo.assert_extent(id = "w", outputs = ["shelf"], measure = "size_x",'
+        f' max = {call})\n'
+    ), CART)
+    assert err.code == "bad_declaration" and needle in err.message
+    assert err.detail["site"] == "asset.requirements.star:2"
+
+
+def test_a_resolved_threshold_the_kind_refuses_says_how_it_was_reached(tmp_path):
+    """DESIGN 4.8: a threshold its kind refuses once resolved fails the
+    build at the requirement. DESIGN 8.2: the error states what
+    failed, here the knob's value and the transform, since a negative
+    offset is no error in itself."""
+    requirements = (
+        'POST = 0.04\n'
+        'mo.assert_clearance(id = "apart", outputs = ["shelf", "row"],\n'
+        '                    min = mo.param_value("width", offset = -1.5))\n'
+    )
+    err = _refused(tmp_path / "a", requirements, CART)
+    assert err.code == "bad_assert" and "finite number > 0" in err.message
+    assert "'min' is 1 * width + -1.5 = " in err.message
+    assert "at width = 1.2" in err.message
+    assert err.detail["site"] == "asset.requirements.star:2"
+    wide = CART.replace('"width", 1.2', '"width", 2.0')
+    assert _entry(ir(_built(tmp_path / "b", requirements, wide)), "apart")["min"] == 0.5
+    whole = requirements.replace(', offset = -1.5', '')
+    zero = CART.replace('"width", 1.2, min = 0.6', '"width", 0.0, min = 0.0')
+    err = _refused(tmp_path / "c", whole, zero.replace("w - 2 * POST", "1"))
+    assert "'min' is the knob 'width', which holds 0.0" in err.message
+
+
+def test_integers_are_computed_exactly_before_the_key_types_them(tmp_path):
+    """DESIGN 4.8: the threshold is computed in the numbers as written,
+    as the recipe's own arithmetic over the knob is, and the result
+    takes the key's type: an integer knob less an integer offset is
+    exact where their floats would cancel to nothing."""
+    asset = (
+        'n = mo.param("big", 9007199254740994, min = 0, max = 9007199254740999)\n'
+        'mo.output("box", mo.box(id = "b", size = [n - 9007199254740993, 1, 1]))\n'
+    )
+    doc = ir(_built(tmp_path, (
+        'mo.assert_extent(id = "w", outputs = ["box"], measure = "size_x",\n'
+        '                 value = mo.param_value("big", offset = -9007199254740993))\n'
+    ), asset))
+    wide = _entry(doc, "w")
+    assert wide["value"] == 1.0 and isinstance(wide["value"], float)
+    assert doc["nodes"][0]["params"]["size"][0] == wide["value"]
+
+
+@pytest.mark.parametrize("call", ['scale = 1 << 600, offset = 0.5', 'scale = 1 << 600',
+                                  'scale = 1.5e300'])
+def test_a_threshold_beyond_a_float_is_refused_at_its_requirement(tmp_path, call):
+    """DESIGN 4.8: a threshold its kind refuses once resolved fails the
+    build at the requirement. One no float holds is such a threshold
+    however the arithmetic overflows, and the refusal names the
+    transform and the knob's value in a line a reader can take in."""
+    asset = (
+        'n = mo.param("big", 1 << 600, min = 0, max = 1 << 601)\n'
+        'mo.output("box", mo.box(id = "b", size = [1, 1, 1]))\n'
+    )
+    err = _refused(tmp_path, (
+        'mo.assert_extent(id = "w", outputs = ["box"], measure = "size_x",'
+        f' max = mo.param_value("big", {call}))\n'
+    ), asset)
+    assert err.code == "bad_assert" and "'max' must be a finite number" in err.message
+    assert "beyond what a float holds" in err.message and len(err.message) < 240
+    assert err.detail["site"] == "asset.requirements.star:1"
+    assert err.detail["param"] == "big"
+
+
+def test_moving_the_knob_moves_the_threshold_and_the_report(tmp_path):
+    """DESIGN 5.2: the requirements file owns which knob a threshold
+    follows and by what transform; the build puts in the value the
+    knob resolved to. An accepted width moves the shelf, its threshold
+    and the report together, and the report names the knob that moved
+    the requirement."""
+    from moraine3d.engine import validation
+    from moraine3d.engine.evaluator import Evaluation
+    from moraine3d.recipe import target
+
+    write_files(tmp_path, {"asset.star": CART, "asset.requirements.star": SHELF})
+
+    def judged() -> dict:
+        opened = target.open_target(tmp_path / "asset.star", write=False)
+        assert asset_mod.dumps(asset_mod.loads(asset_mod.dumps(opened.asset))) == (
+            asset_mod.dumps(opened.asset)
+        )
+        report, _ = validation.report(
+            opened.asset, Evaluation(opened.asset, **opened.inputs),
+        )
+        return next(a for a in report["asserts"] if a["assert"] == "shelf_w")
+
+    at_default = judged()
+    assert at_default["ok"] and at_default["value"] == pytest.approx(1.12)
+    assert at_default["measured"] == pytest.approx(1.12)
+    write_files(tmp_path, {"params.json": '{\n"width": 2.0\n}\n'})
+    moved = judged()
+    assert moved["ok"] and moved["value"] == pytest.approx(1.92)
+    assert moved["measured"] == pytest.approx(1.92)
+    assert moved["from_param"] == {"value": "width"}
+    assert moved["site"] == "asset.requirements.star:2"
+    # The requirement is no echo of the geometry: a shelf built to the
+    # full width fails it at every width.
+    write_files(tmp_path, {"asset.star": CART.replace("w - 2 * POST", "w")})
+    assert judged()["ok"] is False

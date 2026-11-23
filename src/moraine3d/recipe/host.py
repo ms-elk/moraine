@@ -51,22 +51,43 @@ class Handle:
 
 class KnobValue:
     """What ``mo.param_value`` returns (DESIGN 4.8): one of the
-    asset's knobs, by its id, to stand whole as a threshold. It holds
-    no number, since the knob is resolved only once the asset has
-    declared it."""
+    asset's knobs, by its id, to stand as a threshold, with the
+    ``scale`` and ``offset`` the call gave it (``scale`` times the
+    knob's value, plus ``offset``). It holds no number, since the knob
+    is resolved only once the asset has declared it."""
 
-    __slots__ = ("id", "site")
+    __slots__ = ("id", "site", "scale", "offset")
 
-    def __init__(self, id: str, site: str):
+    def __init__(self, id: str, site: str, scale=1, offset=0):
         self.id = id
         self.site = site
+        self.scale = scale
+        self.offset = offset
+
+    @property
+    def whole(self) -> bool:
+        """Whether the threshold is the knob's value itself."""
+        return self.scale == 1 and self.offset == 0
+
+
+def _number(n) -> str:
+    """A number for an error's text: as written, an integer too long
+    to read at a glance by its leading digits and magnitude."""
+    text = repr(n)
+    if isinstance(n, float) or len(text) <= 24:
+        return text
+    sign, digits = ("-", text[1:]) if text[0] == "-" else ("", text)
+    return f"{sign}{digits[0]}.{digits[1:6]}e+{len(digits) - 1}"
 
 
 WHOLE = (
-    "it stands whole as a threshold of an assert in the requirements "
+    "it stands as a threshold of an assert in the requirements "
     f"file ({', '.join(vocab.THRESHOLDS[:-1])}, or {vocab.THRESHOLDS[-1]}) "
     "and nowhere else"
 )
+# The one arithmetic a threshold takes over its knob, written in the
+# call since the handle holds no number to compute with.
+TRANSFORM = 'mo.param_value("<param_id>", scale = 0.5, offset = 0.1)'
 
 
 @dataclass
@@ -125,6 +146,9 @@ class Session:
         # Every handle mo.param_value returned: one that reaches no
         # threshold was read some other way, which tells the file nothing.
         self.handles: list[KnobValue] = []
+        # How each followed threshold got its number, by assert id: what
+        # a refusal of the resolved entry says beside the kind's own rule.
+        self.derived: dict[str, str] = {}
         self._unnamed: dict[str, int] = {}
         self._assert_ids: dict[str, str] = {}
         self._param_ids: set[str] = set()
@@ -551,8 +575,11 @@ class Session:
     # -- handles --------------------------------------------------
 
     def handle(self, what: str, stack, /, *args, **kw):
-        """``mo.param_value(id)`` (DESIGN 4.8): an opaque handle to one
-        of the asset's knobs, for a requirements file."""
+        """``mo.param_value(id, scale = ..., offset = ...)`` (DESIGN
+        4.8): an opaque handle to one of the asset's knobs, for a
+        requirements file. ``scale`` and ``offset`` are constants of
+        that file, the threshold being ``scale`` times the knob's value
+        plus ``offset``."""
         found = self._frames(stack, what)
         at = sites.where(found)
         self._refuse_in_lib(found, what)
@@ -564,7 +591,9 @@ class Session:
                 f"what mo.param returned, so bind it to a name and use that",
                 at,
             )
-        given = self._arguments(what, ("id",), list(args), dict(kw), at)
+        given = self._arguments(
+            what, ("id",), list(args), dict(kw), at, optional=("scale", "offset"),
+        )
         if not isinstance(given["id"], str):
             raise self.fail(
                 "bad_declaration",
@@ -572,7 +601,32 @@ class Session:
                 f"mo.{what}(\"<param_id>\")",
                 at,
             )
-        knob = KnobValue(given["id"], at)
+        scale, offset = given.get("scale", 1), given.get("offset", 0)
+        for name, number in (("scale", scale), ("offset", offset)):
+            if isinstance(number, KnobValue):
+                raise self.fail(
+                    "bad_declaration",
+                    f"mo.{what} '{name}' is the knob '{number.id}': a threshold "
+                    f"follows one knob, and its {name} is a constant of this "
+                    f"file, as in {TRANSFORM}",
+                    at, param=number.id,
+                )
+            if not numbers.is_finite(number):
+                raise self.fail(
+                    "bad_declaration",
+                    f"mo.{what} '{name}' is a finite number, a constant of "
+                    f"this file, as in {TRANSFORM}",
+                    at,
+                )
+        if scale == 0:
+            raise self.fail(
+                "bad_declaration",
+                f"mo.{what}(\"{given['id']}\", scale = 0) follows no knob: the "
+                f"threshold would be the offset at every value the knob "
+                f"takes, so write that constant",
+                at, param=given["id"],
+            )
+        knob = KnobValue(given["id"], at, scale, offset)
         self.handles.append(knob)
         return sl.OpaquePythonObject(knob)
 
@@ -591,9 +645,11 @@ class Session:
         return BuildError(
             "param_value_arithmetic",
             f"a knob's value from mo.param_value is computed with "
-            f"({error.message}); {WHOLE}, since the knob is resolved only "
-            f"after the asset has declared it - write the derived quantity "
-            f"as a constant of this file",
+            f"({error.message}); it holds no number while the file runs, "
+            f"since the knob is resolved only after the asset has declared "
+            f"it - a factor and a constant term go in the call, as in "
+            f"{TRANSFORM}, and any other derived quantity is a constant of "
+            f"this file",
             **error.detail,
         )
 
@@ -855,11 +911,14 @@ class Session:
             return set()  # the entry's shape is refused by its own check
 
     def _resolve_following(self) -> None:
-        """Give each threshold that follows a knob the knob's resolved
-        value (DESIGN 4.8), in the number type its key declares, and
-        record the knob on the entry. A handle no threshold took is
-        refused: the language lets a file test one (`if`, `==`), and
-        the test would read the same at every value of the knob."""
+        """Give each threshold that follows a knob its number (DESIGN
+        4.8): the knob's resolved value, or ``scale`` times it plus
+        ``offset`` where the call gave them, in the number type its key
+        declares. The entry records the knob it follows; the transform
+        stays in the file. A handle no threshold took is refused: the
+        language lets a
+        file test one (`if`, `==`), and the test would read the same at
+        every value of the knob."""
         taken = {id(knob) for _, follows, _ in self.following for knob in follows.values()}
         for knob in self.handles:
             if id(knob) not in taken:
@@ -879,6 +938,7 @@ class Session:
         knobs = {decl["id"]: decl for decl in self.params}
         for entry, follows, at in self.following:
             kinds = getattr(vocab.KINDS.get(entry["kind"]), "KEY_KINDS", {})
+            derived: list[str] = []
             for key, knob in follows.items():
                 decl = knobs.get(knob.id)
                 if decl is None:
@@ -893,8 +953,9 @@ class Session:
                         f"number, so name a number knob",
                         at, param=knob.id,
                     )
+                kind = kinds.get(key, numbers.OTHER)
                 try:
-                    entry[key] = numbers.typed(value, kinds.get(key, numbers.OTHER))
+                    held = numbers.typed(value, kind)
                 except numbers.FloatForInteger:
                     raise self.fail(
                         "bad_assert",
@@ -905,7 +966,50 @@ class Session:
                         f"{int(value)}, ...)",
                         at, param=knob.id,
                     ) from None
+                # The key's type holds for the scale and the offset
+                # however they were written, the knob's own value
+                # included: 1.0 on an integer key is refused as 2.0 is.
+                try:
+                    numbers.typed(knob.scale, kind)
+                    numbers.typed(knob.offset, kind)
+                except numbers.FloatForInteger as e:
+                    raise self.fail(
+                        "bad_assert",
+                        f"assert '{entry['id']}' '{key}' takes an integer, so "
+                        f"the knob '{knob.id}' takes an integer scale and "
+                        f"offset there, and got {e.value!r}; a fraction of a "
+                        f"knob passes or fails with the knob's parity, so a "
+                        f"count that follows one that way has no spelling",
+                        at, param=knob.id,
+                    ) from None
+                if knob.whole:
+                    entry[key] = held
+                    derived.append(f"'{key}' is the knob '{knob.id}', which holds {held!r}")
+                    continue
+                # Computed in the numbers as written, as the recipe's
+                # own arithmetic over the knob is: integers stay exact
+                # at any size, and the result alone takes the key's type.
+                how = f"{_number(knob.scale)} * {knob.id} + {_number(knob.offset)}"
+                try:
+                    exact = knob.scale * value + knob.offset
+                except OverflowError:
+                    exact = None
+                if not numbers.is_finite(exact):
+                    raise self.fail(
+                        "bad_assert",
+                        f"assert '{entry['id']}' '{key}' must be a finite "
+                        f"number, and {how} is beyond what a float holds at "
+                        f"{knob.id} = {_number(value)}",
+                        at, param=knob.id,
+                    )
+                result = numbers.typed(exact, kind)
+                entry[key] = result
+                derived.append(
+                    f"'{key}' is {how} = {_number(result)} at {knob.id} = "
+                    f"{_number(value)}"
+                )
             entry["from_param"] = {key: knob.id for key, knob in follows.items()}
+            self.derived[entry["id"]] = "; ".join(derived)
 
     def _unowned_groups(self, declared_at: dict[str, str]) -> list[dict]:
         """The ``group_not_owned`` warnings (DESIGN 5.2): a human-owned
@@ -1074,10 +1178,18 @@ class Session:
         declared = frozenset(outputs)
         for entry in self.asserts:
             at = sites.Where(entry["site"], entry.get("via", ()))
-            self._checked(
-                at, asset_mod.check_assert, f"assert at {at}", entry,
-                taken if entry["owner"] == "human" else declared, groups, seen,
-            )
+            try:
+                self._checked(
+                    at, asset_mod.check_assert, f"assert at {at}", entry,
+                    taken if entry["owner"] == "human" else declared, groups, seen,
+                )
+            except BuildError as e:
+                # A threshold a knob resolved is refused by the kind's
+                # rule for the number; the knob's value is the cause.
+                how = self.derived.get(entry["id"])
+                if how is None or e.code != "bad_assert":
+                    raise
+                raise BuildError(e.code, f"{e.message}; {how}", **e.detail) from None
 
         self.warnings = self._unowned_groups(declared_at)
 
