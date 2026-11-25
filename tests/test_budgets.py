@@ -10,7 +10,7 @@ import pytest
 
 from moraine3d.app.cli import main
 from moraine3d.core import asset as asset_mod
-from moraine3d.ops import array, box, transform
+from moraine3d.ops import array, box, material, transform
 from moraine3d.recipe.build import build
 from moraine3d.recipe.version import CONTRACT, build_version
 from moraine3d.verify.validate import compact, validate_outputs
@@ -51,7 +51,7 @@ def test_a_triangle_budget_gates_alone():
     assert (over["ok"], over["count"], over["limit"]) == (False, 60, 59)
     assert "60 rendered triangles exceed the declared budget of 59" in over["fix"]
     assert "'row' (36), 'lone' (12), 'slab' (12)" in over["fix"]
-    assert "ask the human to raise mo.budget(triangles = ...)" in over["fix"]
+    assert "ask the human to raise mo.budget(triangles = 60) in the requirements file" in over["fix"]
 
 
 def test_a_part_budget_gates_alone():
@@ -64,6 +64,7 @@ def test_a_part_budget_gates_alone():
     assert report["ok"] is False
     assert (over["ok"], over["count"], over["limit"]) == (False, 3, 2)
     assert "3 parts exceed the declared budget of 2" in over["fix"]
+    assert "ask the human to raise mo.budget(parts = 3) in the requirements file" in over["fix"]
 
 
 def test_the_report_lists_one_entry_per_declared_key_in_the_vocabulary_order():
@@ -75,6 +76,12 @@ def test_the_report_lists_one_entry_per_declared_key_in_the_vocabulary_order():
     assert [e["ok"] for e in entries] == [True, False, True]
     assert [i["outputs"] for i in entries[0]["identities"]] == [["lone", "row", "slab"]]
     assert all("identities" not in e for e in entries[1:])
+    # A failing entry's fix spells the declaration as the recipe does.
+    (over,) = validate_outputs(
+        {"a": _box(0.0), "b": material.evaluate([_box(3.0)], {"name": "steel"}, None)},
+        budgets={"materials": 1},
+    )["budgets"]
+    assert "ask the human to raise mo.budget(materials = 2) in the requirements file" in over["fix"]
     report = validate_outputs(_values(), budgets={"parts": 3, "triangles": 1, "materials": 1})
     small = compact(report)
     assert (small["budgets_total"], small["budgets_ok"]) == (3, 2)

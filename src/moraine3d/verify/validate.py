@@ -359,8 +359,8 @@ def _materials_budget(values: dict[str, Value], limit: int) -> dict:
         fix = (
             f"{count} distinct material identities exceed the declared budget "
             f"of {limit}; share one material name+params across parts where "
-            f"the look allows, or raise \"budgets\": {{\"materials\": {count}}} "
-            f"in the asset if the budget was wrong"
+            f"the look allows, or ask the human to raise mo.budget(materials = "
+            f"{count}) in the requirements file if the budget was wrong"
         )
         if structural:
             fix += (
@@ -393,7 +393,7 @@ def _triangles_budget(values: dict[str, Value], limit: int) -> dict:
             f"{count} rendered triangles exceed the declared budget of {limit}; "
             f"the outputs that carry the most: {listed}; lower their segment "
             f"or copy counts, or ask the human to raise mo.budget(triangles = "
-            f"...) in the requirements file if the budget was wrong"
+            f"{count}) in the requirements file if the budget was wrong"
         )
     return entry
 
@@ -409,7 +409,7 @@ def _parts_budget(values: dict[str, Value], limit: int) -> dict:
             f"{count} parts exceed the declared budget of {limit} (every "
             f"geometry output ships as one part, an instanced output as "
             f"one); put under one output what needs no part of its own, or "
-            f"ask the human to raise mo.budget(parts = ...) in the "
+            f"ask the human to raise mo.budget(parts = {count}) in the "
             f"requirements file if the budget was wrong"
         )
     return entry

@@ -507,7 +507,7 @@ def test_material_budget_counts_shipped_outputs():
     assert report["ok"] is False
     entry = report["budgets"][0]
     assert entry["count"] == 5 and entry["limit"] == 4 and entry["ok"] is False
-    assert "budgets" in entry["fix"]
+    assert "mo.budget(materials = 5)" in entry["fix"]
     report = validate_outputs(values, budgets={"materials": 5}, origins=ref_borne)
     assert report["ok"] is True and report["budgets"][0]["count"] == 5
 
