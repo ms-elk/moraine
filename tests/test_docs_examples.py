@@ -115,7 +115,7 @@ def test_docs_examples_index_and_examples_slash_name():
     assert reply == example_text("examples/shelf_pair/shelf_pair.star").rstrip() + "\n"
     # The human's file beside the root asset prints by name too.
     rc, reply = _docs("examples/shelf_pair/requirements")
-    assert rc == 0 and "mo.budget(materials = 2)" in reply
+    assert rc == 0 and "mo.budget(materials = 2, triangles = 200, parts = 4)" in reply
     assert 'mo.group("shelf_a", ["shelf_a_posts", "shelf_a_boards"])' in reply
     rc, reply = _docs("examples/box/requirements")
     assert rc == 1 and reply["error"]["code"] == "unknown_example"

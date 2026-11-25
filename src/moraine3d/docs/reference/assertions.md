@@ -818,19 +818,22 @@ Examples: `examples/stairs`, `examples/scatter_field` (copies), `examples/flange
 
 ### budgets (`mo.budget`, asset-declared acceptance budgets)
 
-Optional, declared as `mo.budget(materials = 4)`
-in the asset's requirements file. A declared budget gates `validate` like
-an assertion. The report counts the declared budgets (`budgets_total`
+Optional, declared as `mo.budget(materials = 4, triangles = 20000,
+parts = 12)` in the asset's requirements file, any of the three keys.
+A declared budget gates `validate` like an assertion, each key on its
+own. The report counts the declared budgets (`budgets_total`
 / `budgets_ok`) and lists a failing one under a top-level `budgets`;
-`validate --full` lists one entry per declared budget, so a green
-one's `count` and `limit` are read there (`budget`, `ok`, `count`,
-`limit`, and for `materials` the `identities`, each `{name, outputs,
-transparent, emissive}`, plus a `fix` on failure). `ok` is false above
-the limit; an undeclared budget is not checked at all (there is no built-in
-default; `moraine stats` always reports `asset.materials`, the
-identities this asset ships, by name, the same scope the budget
-counts, so headroom is visible before declaring one; the two counts
-agree whenever `material_name_unique` is green). Budgets are acceptance
+`validate --full` lists one entry per declared budget, in the order
+`materials`, `triangles`, `parts`, so a green one's `count` and
+`limit` are read there (`budget`, `ok`, `count`, `limit`, a `fix` on
+failure, and for `materials` the `identities`, each `{name, outputs,
+transparent, emissive}`). `ok` is false above the limit; an
+undeclared budget is not checked at all (there is no built-in
+default). `moraine stats` always reports the same counts over the
+same scope under `asset`, so headroom is visible before declaring
+one: `asset.materials` (the identities this asset ships, by name; the
+two counts agree whenever `material_name_unique` is green),
+`asset.tris`, and `asset.parts`. Budgets are acceptance
 criteria the human owns, so they live in the requirements file rather
 than in a tool flag. Raising one is an edit of that file the human
 approves, not a silenced warning. A budget counts what this asset's outputs
@@ -854,5 +857,14 @@ draw state in the engine and a submesh boundary that static/dynamic/GPU-
 instancing batching cannot cross; the budget is a per-asset
 discipline declared by the human who knows the target, not an engine
 hard limit.
-Example: `examples/kit_variants`.
+
+`triangles` counts the triangles this asset renders: every geometry
+output's triangles, an instanced output's prototype times its copies.
+The failure `fix` names the outputs that carry the most.
+
+`parts` counts the parts this asset exports: every geometry output is
+one, an instanced output one whatever its copies, an image output
+none. An absent output counts under no budget.
+
+Examples: `examples/kit_variants` (`materials`), `examples/shelf_pair` (all three).
 

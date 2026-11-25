@@ -780,7 +780,7 @@ def test_asset_budgets_rejections_are_actionable():
 
     for text, code in (
         ("[]", "bad_budgets"),
-        ('{"triangles": 5}', "unknown_budget"),
+        ('{"vertices": 5}', "unknown_budget"),
         ('{"materials": 0}', "bad_budget_value"),
         ('{"materials": 2.5}', "bad_budget_value"),
         ('{"materials": true}', "bad_budget_value"),

@@ -521,8 +521,8 @@ take just the project directory (§4.2).
   counts multiplied in (the `stats` number); `parts` — exportable
   parts (§9: mesh outputs; an instanced output is one part, an image
   output none; `objects` was rejected as naming nothing in the asset
-  format or glTF). `materials` is the kind `validate` checks.
-  `triangles` and `parts` are refused as unknown today, never
+  format or glTF). `validate` checks each declared key on its own,
+  and a key outside the vocabulary is refused as unknown, never
   silently unchecked. Evaluation ignores the key.
 - **Instancing is first-class:** scatter/array nodes emit
   `{prototype: <node-id>, transforms: [...]}`, never merged geometry.
@@ -2692,9 +2692,12 @@ error, mirrored so green never outruns `export`). The fix names the
 colliding outputs and, for a reference-borne collision, the `asset_ref`
 node and `material_rename` (§4.6). When the asset declares budgets
 (§4.1; counting rules §9.1), the report includes a top-level `budgets`
-list. Each entry contains `ok`, `count`, `limit`, `identities` with
-per-identity outputs and transparent/emissive flags, and `fix` on
-failure. When the asset declares knobs that carry a range (§7.2), the
+list, one entry per declared key in the vocabulary's order. Each
+entry contains `budget`, `ok`, `count`, `limit`, and `fix` on
+failure. The `materials` entry adds `identities` with per-identity
+outputs and transparent/emissive flags, and a failing `triangles`
+entry's `fix` names the outputs that carry the most. When the asset
+declares knobs that carry a range (§7.2), the
 report includes a top-level `params` list, one gating entry per knob
 in declaration order: `ok`, the `value` the evaluation used, its
 `from` (§4.1), `min`, `max`, and `fix` on failure. The `fix` of an

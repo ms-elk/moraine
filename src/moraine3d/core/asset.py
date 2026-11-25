@@ -91,9 +91,14 @@ KNOWN_ASSET_CHECKS = frozenset({"grounded"})
 # the human owns, kept in the reviewable recipe. ``materials`` caps the
 # distinct material identities the asset ships (content identities over
 # every mesh output, reference-borne identities included, the neutral
-# default counted once); declared budgets gate ``validate`` like asserts,
-# undeclared ones are not checked at all — there is no built-in default.
-KNOWN_BUDGETS = frozenset({"materials"})
+# default counted once), ``triangles`` the rendered triangle total with
+# instance counts multiplied in, ``parts`` the exportable parts (a mesh
+# output, an instanced output as one, an image output as none).
+# Declared budgets gate ``validate`` like asserts, undeclared ones are
+# not checked at all — there is no built-in default. The order is the
+# one the IR and the report list them in.
+BUDGET_ORDER = ("materials", "triangles", "parts")
+KNOWN_BUDGETS = frozenset(BUDGET_ORDER)
 
 # The knobs that switch an optional output (DESIGN 5.2), by kind: one
 # the recipe's own ``if`` reads as on or off.
@@ -1212,7 +1217,11 @@ def _dumps(asset: Asset) -> str:
             )
         )
     if asset.budgets is not None:
-        sections.append(_inline("budgets", asset.budgets))
+        # The vocabulary's order, whatever order the keys were declared
+        # or read in: one set of budgets is one line of bytes.
+        sections.append(_inline(
+            "budgets", {k: asset.budgets[k] for k in BUDGET_ORDER if k in asset.budgets},
+        ))
     if asset.provenance is not None:
         sections.append(_inline("provenance", asset.provenance))
     return "{\n" + ",\n".join(sections) + "\n}\n"

@@ -14,6 +14,7 @@ import numpy as np
 import trimesh
 
 from ..core import asserts as vocab
+from ..core.asset import BUDGET_ORDER, KNOWN_BUDGETS
 from ..core.mesh import (
     DEGEN_HEIGHT_TOL,
     NEUTRAL_MATERIAL_NAME,
@@ -306,9 +307,21 @@ def check_budgets(
     values: dict[str, Value],
     budgets: dict[str, int],
 ) -> list[dict]:
-    """Asset-declared budgets (DESIGN 4.1/9.1), gating like asserts.
+    """Asset-declared budgets (DESIGN 4.1/9.1), gating like asserts:
+    one entry per declared key, each judged on its own, in the
+    vocabulary's order. A budget counts what the asset's outputs ship,
+    reference-borne content included, and ``values`` holds no absent
+    output."""
+    unknown = set(budgets) - KNOWN_BUDGETS
+    if unknown:  # the loader rejects these; a direct caller must not get a silent pass
+        raise ValueError(f"unknown budget(s) {sorted(unknown)}")
+    return [
+        _BUDGETS[key](values, budgets[key]) for key in BUDGET_ORDER if key in budgets
+    ]
 
-    ``materials``: distinct material identities the asset ships —
+
+def _materials_budget(values: dict[str, Value], limit: int) -> dict:
+    """``materials``: distinct material identities the asset ships —
     content identities (name + params + textures) over every mesh
     output, identities arriving through a reference included (a budget
     bounds the exported asset, DESIGN 4.1; shared identities count
@@ -319,12 +332,6 @@ def check_budgets(
     (transparent or emissive materials cannot share with opaque ones),
     so the fix can tell "share these" from "this one cannot merge".
     """
-    unknown = set(budgets) - {"materials"}
-    if unknown:  # the loader rejects these; a direct caller must not get a silent pass
-        raise ValueError(f"unknown budget(s) {sorted(unknown)}")
-    limit = budgets.get("materials")
-    if limit is None:
-        return []
     by_hash: dict[str, dict] = {}
     for name, value in values.items():
         if isinstance(value, Image):
@@ -361,7 +368,58 @@ def check_budgets(
                 f"ones: {structural})"
             )
         entry["fix"] = fix
-    return [entry]
+    return entry
+
+
+# Outputs a failing ``triangles`` entry names, the ones carrying the most.
+_LISTED_OUTPUTS = 3
+
+
+def _triangles_budget(values: dict[str, Value], limit: int) -> dict:
+    """``triangles``: the rendered triangle total, each instanced
+    output's prototype multiplied by its copies (DESIGN 4.1) — the
+    number ``stats`` rolls up as ``asset.tris``."""
+    drawn = {
+        name: len(proto_of(value).faces)
+        * (len(value.transforms) if isinstance(value, Instances) else 1)
+        for name, value in values.items() if not isinstance(value, Image)
+    }
+    count = sum(drawn.values())
+    entry: dict = {"budget": "triangles", "ok": count <= limit, "count": count, "limit": limit}
+    if count > limit:
+        most = sorted(drawn.items(), key=lambda kv: (-kv[1], kv[0]))[:_LISTED_OUTPUTS]
+        listed = ", ".join(f"'{name}' ({tris})" for name, tris in most)
+        entry["fix"] = (
+            f"{count} rendered triangles exceed the declared budget of {limit}; "
+            f"the outputs that carry the most: {listed}; lower their segment "
+            f"or copy counts, or ask the human to raise mo.budget(triangles = "
+            f"...) in the requirements file if the budget was wrong"
+        )
+    return entry
+
+
+def _parts_budget(values: dict[str, Value], limit: int) -> dict:
+    """``parts``: the exportable parts (DESIGN 4.1, 9.1) — a mesh
+    output is one, an instanced output one, an image output none — the
+    number ``stats`` rolls up as ``asset.parts``."""
+    count = sum(1 for value in values.values() if not isinstance(value, Image))
+    entry: dict = {"budget": "parts", "ok": count <= limit, "count": count, "limit": limit}
+    if count > limit:
+        entry["fix"] = (
+            f"{count} parts exceed the declared budget of {limit} (every "
+            f"geometry output ships as one part, an instanced output as "
+            f"one); put under one output what needs no part of its own, or "
+            f"ask the human to raise mo.budget(parts = ...) in the "
+            f"requirements file if the budget was wrong"
+        )
+    return entry
+
+
+_BUDGETS = {
+    "materials": _materials_budget,
+    "triangles": _triangles_budget,
+    "parts": _parts_budget,
+}
 
 
 # Relative volume slack for "intersection == inner": the manifold round-trip

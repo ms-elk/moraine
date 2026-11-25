@@ -362,14 +362,14 @@ def test_a_budget_lives_in_the_requirements_file(tmp_path):
 
 
 @pytest.mark.parametrize("call,code", [
-    ("mo.budget(triangles = 100)", "unknown_budget"),
+    ("mo.budget(vertices = 100)", "unknown_budget"),
     ("mo.budget(materials = 0)", "bad_budget_value"),
     ('mo.budget("materials", 4)', "bad_declaration"),
     ("mo.budget(materials = 4)\nmo.budget(materials = 5)", "bad_declaration"),
 ])
 def test_a_budget_is_judged_as_its_ir_entry_is(tmp_path, call, code):
-    """DESIGN 4.1: `triangles` and `parts` are refused as unknown
-    today, never silently unchecked."""
+    """DESIGN 4.1: a key outside the vocabulary is refused as unknown,
+    never silently unchecked."""
     err = refusal(tmp_path, ASSET, files={"asset.requirements.star": call + "\n"})
     assert err.code == code
 

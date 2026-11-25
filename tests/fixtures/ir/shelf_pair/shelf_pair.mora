@@ -39,5 +39,5 @@
 {"id": "cap_height", "kind": "extent", "faces": ["shelf_a_posts", "cap_top", 0], "measure": "max_y", "value": 0.82, "owner": "human"},
 {"id": "two_boards", "kind": "count", "outputs": ["shelf_a_boards"], "value": 2, "owner": "agent"}
 ],
-"budgets": {"materials": 2}
+"budgets": {"materials": 2, "triangles": 200, "parts": 4}
 }

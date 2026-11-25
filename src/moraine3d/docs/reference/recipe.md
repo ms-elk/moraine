@@ -64,7 +64,7 @@ call:
 | assert `{"id": "rests", "kind": "contact", "outputs": ["slab", "crate"], "every": ["crate"], "owner": ...}` | `mo.assert_contact(id = "rests", outputs = ["slab", "crate"], every = ["crate"])`, in the file of its owner |
 | `"checks": {"slab": {"not_sunk": false}}` | `mo.waive("slab", "not_sunk")` |
 | `"asset_checks": {"grounded": false}` | `mo.waive_asset("grounded")` |
-| `"budgets": {"materials": 2}` | `mo.budget(materials = 2)`, in the requirements file |
+| `"budgets": {"materials": 2, "triangles": 200}` | `mo.budget(materials = 2, triangles = 200)`, in the requirements file |
 | `"optional": {"lamp": "lamp_on"}` | `mo.optional(["lamp"], "lamp_on")`, in the requirements file |
 | a `params` entry | `mo.param(...)` (see *knobs*) |
 
@@ -103,7 +103,7 @@ arguments.
 - **Declarations.** `mo.output(name, node)`, `mo.group(name,
   [outputs])`, `mo.param(id, default, ...)`, `mo.waive(output,
   check)`, `mo.waive_asset(check)`, `mo.vendored(source, hash)`, and
-  in a requirements file `mo.budget(materials = N)`,
+  in a requirements file `mo.budget(materials = N, triangles = N, parts = N)`,
   `mo.optional(outputs, knob)`, `mo.param_value(id, scale = ..., offset = ...)`, and `mo.group` for a group its asserts name
   (see *requirements*).
 - **Asserts.** `mo.assert_<kind>(id = ..., <key> = ...)`, one function
