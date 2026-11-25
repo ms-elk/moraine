@@ -880,3 +880,40 @@ def test_noise_displace_result_hash_frozen():
     assert m.result_hash() == (
         "b6ce47819c4b1350242f72e4d45b0913922c533a68fc141a40a4f3c0e1f5347d"
     )
+
+
+def _unwrap_subject(name: str):
+    """A box off the origin, whose six faces take the six projections,
+    and a displaced grid, whose faces change projection across shared
+    vertices."""
+    if name == "crate":
+        b = box.evaluate([], {"size": [1.0, 2.0, 3.0]}, None)
+        return transform.evaluate([b], {"translate": [0.25, 0.5, -0.75]}, None)
+    g = grid.evaluate([], {"size": [2.0, 2.0], "segments": [8, 8]}, None)
+    return noise_displace.evaluate([g], {"amplitude": 1.0, "frequency": 1.0, "seed": 7}, None)
+
+
+@pytest.mark.parametrize("subject,params,verts,frozen", [
+    ("crate", {}, 24,
+     "d6df3b6defbfc88176f5f6f77801aa97439629317c6156b69952311037248c36"),
+    ("crate", {"uv_scale": 2.0}, 24,
+     "64b830cb8e34d6c831974e7a36b854841fd991f2c02e6124ef759abc4227d3f7"),
+    ("crate", {"mode": "planar", "axis": "x", "uv_scale": 0.5}, 24,
+     "36eeb754aaabdcb5c800ac4800cef416d0d584cd0fe9d9ea64e9a6b9bb141ef6"),
+    ("hill", {}, 130,
+     "d1e402d202743e7c21fbf7b595faa4007aa7e9e0195c1d088f01e743a8d45a34"),
+    ("hill", {"uv_scale": 2.0}, 130,
+     "d8d9390e91cd792442a7c980e29b204ea9b39c4e07b3a1bebe82fa64086c7e59"),
+    ("hill", {"mode": "planar", "axis": "x", "uv_scale": 0.5}, 81,
+     "99e508a0fa078f7720a429ec577a2950ac9b663e4d6b494932a1eafe9a4f3776"),
+])
+def test_unwrap_result_hash_frozen(subject, params, verts, frozen):
+    """Frozen at unwrap op_impl_version 2 — a change here means bump
+    (DESIGN 4.5): what `box` and `planar` return under one number for
+    `uv_scale` is pinned, the split at a projection seam included. Same
+    platform caveat as the scatter hash: IEEE float arithmetic only,
+    reproduced bit-for-bit on any conformant platform."""
+    assert unwrap.OP_IMPL_VERSION == 2
+    m = unwrap.evaluate([_unwrap_subject(subject)], params, None)
+    assert len(m.vertices) == verts
+    assert m.result_hash() == frozen
