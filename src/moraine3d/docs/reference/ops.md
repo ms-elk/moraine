@@ -448,7 +448,9 @@ Example: `examples/crate`.
 Recipe: `mo.unwrap(a, id = ..., mode = ..., uv_scale = ..., axis = ...)`
 
 Assigns UVs to its single mesh input. `mode`, `"box"` (default) or
-`"planar"`; `uv_scale` UV units per meter (default 1); `axis`,
+`"planar"`; `uv_scale` UV units per meter (default 1), one number or
+`[x, y, z]`, a factor per object axis, every one finite and above 0
+(the axis a planar projection does not read included); `axis`,
 planar projection axis `"x" | "y" | "z"` (default `"y"`). Box mode
 projects each face along the dominant axis of its normal onto the two
 other axes, signed so the texture reads upright and un-mirrored from
@@ -460,6 +462,11 @@ shared. Planar mode projects every vertex along one axis; no splits.
 Projection UVs overlap by construction, fine for tiling materials.
 What `box` and `planar` return is fixed; a packed atlas arrives as a
 further `mode`.
+With three numbers, the UV coordinate a projection reads from an
+object axis is scaled by that axis's factor, on every face: `uv_scale
+= [0.1, 1, 1]` runs a map ten times longer along x than across it
+(wood grain, see *textures*). The axes are the input's own, so
+unwrap the member before the `transform` that rotates it into place.
 Geometry is otherwise unchanged:
 the face list is untouched (box mode splits vertices at projection
 seams only), so face groups survive `unwrap`. Tag before or after

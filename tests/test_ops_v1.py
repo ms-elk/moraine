@@ -620,6 +620,83 @@ def test_unwrap_planar_keeps_sharing():
     assert m.uv.max() == pytest.approx(1.0, abs=1e-5)  # radius 0.5 * scale 2
 
 
+@pytest.mark.parametrize("subject", ["crate", "hill"])
+@pytest.mark.parametrize("params", [
+    {"uv_scale": 2.0}, {"mode": "planar", "axis": "x", "uv_scale": 0.5},
+])
+def test_unwrap_one_factor_on_every_axis_is_the_one_number(subject, params):
+    """``unwrap``: `uv_scale` takes one number or a factor per object
+    axis, and what one number returns is fixed (DESIGN 4.5), so the
+    same factor on every axis is that number's result, bit for bit."""
+    mesh = _unwrap_subject(subject)
+    one = unwrap.evaluate([mesh], params, None)
+    three = unwrap.evaluate([mesh], {**params, "uv_scale": [params["uv_scale"]] * 3}, None)
+    assert three.result_hash() == one.result_hash()
+
+
+def test_unwrap_scales_the_uv_an_axis_feeds_by_that_axis_factor():
+    """``unwrap``: with three numbers, the UV coordinate a projection
+    reads from an object axis is scaled by that axis's factor, on every
+    face and in both modes, and the split at projection seams is the
+    one number's."""
+    sx, sy, sz = 0.5, 1.0, 2.0
+    crate = _unwrap_subject("crate")
+    m = unwrap.evaluate([crate], {"uv_scale": [sx, sy, sz]}, None)
+    v = m.vertices.astype(np.float64)
+    normal = tri_cross(v[m.faces])
+    for axis, sign, u, w in (
+        (0, 1, -v[:, 2] * sz, -v[:, 1] * sy),  # +X: u = -z, v = -y
+        (1, 1, v[:, 0] * sx, v[:, 2] * sz),  # +Y: u = +x, v = +z
+        (2, -1, -v[:, 0] * sx, -v[:, 1] * sy),  # -Z: u = -x, v = -y
+    ):
+        vi = np.unique(m.faces[normal[:, axis] * sign > 0])
+        assert np.allclose(m.uv[vi, 0], u[vi]) and np.allclose(m.uv[vi, 1], w[vi])
+    hill = _unwrap_subject("hill")
+    plain = unwrap.evaluate([hill], {}, None)
+    grained = unwrap.evaluate([hill], {"uv_scale": [sx, sy, sz]}, None)
+    assert np.array_equal(grained.faces, plain.faces)
+    assert np.array_equal(grained.vertices, plain.vertices)
+    flat = unwrap.evaluate([crate], {"mode": "planar", "axis": "y", "uv_scale": [sx, sy, sz]}, None)
+    assert np.allclose(flat.uv[:, 0], crate.vertices[:, 0] * sx)
+    assert np.allclose(flat.uv[:, 1], crate.vertices[:, 2] * sz)
+
+
+def test_unwrap_axis_factor_is_the_shrink_and_restore_of_a_box_member():
+    """``unwrap``: a low factor along a member's length stretches a map
+    along it on every face, what shrinking the member along its
+    length, unwrapping, and scaling it back gave a box member."""
+    rail = box.evaluate([], {"size": [2.0, 0.1, 0.1]}, None)
+    short = transform.evaluate([rail], {"scale": [0.1, 1.0, 1.0]}, None)
+    idiom = transform.evaluate(
+        [unwrap.evaluate([short], {}, None)], {"scale": [10.0, 1.0, 1.0]}, None,
+    )
+    one = unwrap.evaluate([rail], {"uv_scale": [0.1, 1.0, 1.0]}, None)
+    assert np.array_equal(one.faces, idiom.faces)
+    assert np.allclose(one.vertices, idiom.vertices, atol=1e-6)
+    assert np.allclose(one.uv, idiom.uv, atol=1e-6)
+    # Along the length the map runs ten times longer than across.
+    top = np.unique(one.faces[tri_cross(one.vertices[one.faces].astype(np.float64))[:, 1] > 0])
+    assert np.ptp(one.uv[top, 0]) == pytest.approx(0.2) and np.ptp(one.uv[top, 1]) == pytest.approx(0.1)
+
+
+@pytest.mark.parametrize("value,words", [
+    ([1.0, 2.0], "must be 3 finite numbers"),
+    ([1.0, 0.0, 1.0], "components must be > 0"),
+    ([1.0, "x", 1.0], "must be 3 finite numbers"),
+    (0.0, "must be > 0"),
+    ("wide", "must be a finite number"),
+])
+def test_unwrap_uv_scale_is_one_positive_number_or_three(value, words):
+    """``unwrap``: `uv_scale` is one number or three, every one finite
+    and above 0 whether or not a projection reads its axis, and
+    anything else is an actionable error naming the param."""
+    b = box.evaluate([], {}, None)
+    for mode in ("box", "planar"):  # planar reads two axes and checks three
+        with pytest.raises(OpError) as e:
+            unwrap.evaluate([b], {"mode": mode, "uv_scale": value}, None)
+        assert e.value.code == "bad_param" and words in str(e.value)
+
+
 def test_noise_displace_adjacent_seeds_decorrelate():
     """The field decorrelates via ``seed`` (noise_displace semantics):
     with a stride-1 octave derivation, seed s octave o+1 and seed s+1

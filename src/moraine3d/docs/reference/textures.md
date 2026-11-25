@@ -253,14 +253,15 @@ documented in their own sections.)
   the length on every long face. Decide this before choosing the
   map, not at the screenshot.
 - **Grain is a stretched isotropic map.** No texture op stretches
-  along one axis, and `uv_scale` is one number, so wood grain
-  comes from the UVs: scale the member to 0.1 along its length,
-  `unwrap` it (box), and scale it back by 10. UVs ride the
-  transform, so an isotropic `noise_texture` then runs ten times
-  longer along the member on every face parallel to its length,
-  and one material serves posts, rails, and rafters alike. Shrink
-  the member's own long axis, before it is rotated into place; the
-  wrong axis runs the grain across, and only a shot shows it.
+  along one axis, so wood grain comes from the UVs: `unwrap` the
+  member (box) with a low `uv_scale` factor on its long axis,
+  `uv_scale = [0.1, 1, 1]` for a member that runs along x. An
+  isotropic `noise_texture` then runs ten times longer along the
+  member on every face parallel to its length, and one material
+  serves posts, rails, and rafters alike. The factor is on the
+  member's own long axis, so unwrap before the member is rotated
+  into place; the wrong axis runs the grain across, and only a shot
+  shows it.
 
 ## Variation-grid (seed-sweep recipe)
 

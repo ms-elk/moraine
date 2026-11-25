@@ -2,8 +2,13 @@
 
 Semantics: assigns UVs to its single mesh input. Params (the full future
 signature): ``mode`` — ``"box"`` (default) or ``"planar"``;
-``uv_scale`` UV units per meter (default 1); ``axis`` — planar mode's
-projection axis, ``"x" | "y" | "z"`` (default "y"). Box mode projects
+``uv_scale`` UV units per meter (default 1), one number or three, a
+factor per object axis, every one finite and above 0 whether or not a
+projection reads its axis: the UV coordinate a projection reads from an
+axis is scaled by that axis's factor, so a low factor along a member's
+length stretches a map along it on every face (wood grain); ``axis`` —
+planar mode's projection axis, ``"x" | "y" | "z"`` (default "y"). Box
+mode projects
 each face along the dominant axis of its normal onto the two other axes,
 signed so the texture reads upright and un-mirrored from outside the
 surface under glTF's v-down texture origin (DESIGN 4.3): a side face maps
@@ -50,15 +55,26 @@ _PROJ = {
 }
 
 
-def _planar_uv(verts: np.ndarray, axis: int, scale: float) -> np.ndarray:
+def _uv_scale(params: dict) -> np.ndarray:
+    """``uv_scale`` as a factor per object axis. One number is that
+    number on every axis, and the products below then round as they
+    did when the op took one number alone."""
+    if isinstance(params.get("uv_scale"), (list, tuple)):
+        return common.vec3("unwrap", params, "uv_scale", [1.0, 1.0, 1.0], positive=True)
+    return np.full(3, common.num("unwrap", params, "uv_scale", 1.0, positive=True))
+
+
+def _planar_uv(verts: np.ndarray, axis: int, scale: np.ndarray) -> np.ndarray:
     ua, us, va, vs = _PROJ[(axis, 1)]
-    return np.stack([verts[:, ua] * us, verts[:, va] * vs], axis=1) * scale
+    return np.stack(
+        [verts[:, ua] * us * scale[ua], verts[:, va] * vs * scale[va]], axis=1,
+    )
 
 
 def evaluate(inputs: list, params: dict, ctx) -> Mesh:
     src = common.mesh_input("unwrap", inputs, 0)
     mode = common.choice("unwrap", params, "mode", "box", ("box", "planar"))
-    scale = common.num("unwrap", params, "uv_scale", 1.0, positive=True)
+    scale = _uv_scale(params)
     axis = "xyz".index(common.choice("unwrap", params, "axis", "y", ("x", "y", "z")))
 
     v = src.vertices.astype(np.float64)
@@ -87,8 +103,8 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
         mask = corner_proj == (ax * 2 + (sg < 0))
         if mask.any():
             pv = v[corner_vi[mask]]
-            corner_uv[mask, 0] = pv[:, ua] * us * scale
-            corner_uv[mask, 1] = pv[:, va] * vs * scale
+            corner_uv[mask, 0] = pv[:, ua] * us * scale[ua]
+            corner_uv[mask, 1] = pv[:, va] * vs * scale[va]
 
     key = np.column_stack([corner_vi, corner_proj])
     uniq, inverse = np.unique(key, axis=0, return_inverse=True)
