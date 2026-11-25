@@ -103,8 +103,8 @@ def disjoint_subjects(
 
 def check_face_spec(aid: str, f, raw_outputs, shape: str, groups: dict, kind: str) -> None:
     """One ``[output, tag]`` / ``[output, tag, instance]`` spec — the
-    shape mated's two faces and extent's one face set share; ``shape``
-    is the caller's whole-entry message. Tag presence and instance range
+    shape mated's two faces and the one face set of extent and count
+    share; ``shape`` is the caller's whole-entry message. Tag presence and instance range
     are evaluation facts, judged at validate time."""
     if (
         not isinstance(f, list) or len(f) not in (2, 3)

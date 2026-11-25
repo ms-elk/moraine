@@ -148,7 +148,7 @@ def test_key_refusals_name_the_owners_from_the_modules():
     assert parse_side.key_refusal("contact", "min") == (
         "'min' is a bound for clearance (the least surface distance, m), "
         "embedded (penetration depth, m), extent (m), offset (m), and count "
-        "(copies); contact takes 'tol'"
+        "(copies or patches); contact takes 'tol'"
     )
     for kind, mod in parse_side.KINDS.items():
         if not _authorable(mod):

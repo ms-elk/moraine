@@ -21,7 +21,7 @@ delivery, and a build writes beside the recipe.
 | `uv_check` | Checker texture on a box-unwrapped box, for reading the UV convention (v-down, top-left origin) in the viewer. | unwrap, checker_texture, material |
 | `crate` | Bevel -> box unwrap -> nested instanced arrays: a 3 x 2 crate kit from one prototype. | bevel, unwrap, array |
 | `pallet` | Stringer pallet, every board instanced. | box, array |
-| `flange_pipe` | Through-bored pipe with two bolted flanges, one watertight solid; length and flange diameter asserted (`extent`). | cylinder, boolean |
+| `flange_pipe` | Through-bored pipe with two bolted flanges, one watertight solid; length and flange diameter asserted (`extent`), the bolt holes counted by their tagged walls (`count`). | cylinder, boolean, tag |
 | `stairs` | Straight flight, instanced steps, stringers cut flush to the ground; rise, width, and riser count asserted (`extent`, `count`), and every step bearing on the stringers by face (`contact` with `min_area`). | array, boolean |
 | `arcade` | Wall with three semicircular arches and a coping band, one watertight mesh. | boolean, cylinder |
 | `water_tower` | Tank with a hemispherical dome on a rotational array of tilted legs, braced, with an instanced-rung ladder. | sphere, array, boolean |

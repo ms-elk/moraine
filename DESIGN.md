@@ -1925,8 +1925,9 @@ below adds only its measurement and judgment:
   none to carry: one failing over an absent output, one left
   unjudged over an optional one (both below).
 - **Units are the kind's own measure.** `tol`, `min`, `max`, and
-  `value` are meters on every length kind and copies on `count`,
-  never a unit that depends on which other keys are present: an
+  `value` are meters on every length kind. On `count`, `value`,
+  `min`, and `max` are integers of what the entry names, copies for
+  `outputs` and patches for `faces`. No other key changes a unit: an
   entry is readable on its face.
 - **Storage-noise floor.** Vertices are float32, so a gap built
   exactly 0.15 wide reads 0.149999973. Every length comparison
@@ -1953,8 +1954,10 @@ below adds only its measurement and judgment:
   fails with the name: a requirement about a part is not met by the
   asset losing the part. A group is absent with any one member and
   never narrows to the rest, since its members are the entry's reach
-  (ownership, below). `count` alone measures an output that is
-  declared and has no copies, as 0, optional or not.
+  (ownership, below). `count` over an output alone measures one that
+  is declared and has no copies, as 0, optional or not. Over a face
+  set it has nothing to read there, and is judged as every other
+  kind is.
 - **Optional outputs.** A part the human made optional is declared
   so once, in the requirements file: `mo.optional(["lamp_base",
   "lantern"], "lamp")` names the outputs, or groups, that may be
@@ -2316,16 +2319,32 @@ below adds only its measurement and judgment:
   is a kind and not a key of `extent` because the subject differs
   (the rule `mated`'s modes follow).
 
-  *`count`*: `"outputs": [a]`, the output's
-  copy count (a plain mesh counts one) against `value` or an integer
+  *`count`*: one subject, counted against `value` or an integer
   `min`/`max` band (`min` equal to `max` is refused: that band is
-  `value`). It is the check `array` and `scatter` are paired with,
-  read from the evaluated copies rather than the parameter. A
+  `value`). `"outputs": [a]` is the output's copy count (a plain
+  mesh counts one). It is the check `array` and `scatter` are paired
+  with, read from the evaluated copies rather than the parameter. A
   required count held only in a node parameter is agent-editable
   with no approval and no report line (the leak §8.3 measures). In a
   human-owned entry it is a requirement, and an output later baked
   or unioned into one mesh reads one and fails, where `contact`'s
   `every` would silently read stronger.
+
+  `"faces": [output, tag]` is the number of patches in one tagged
+  face set, a patch being the faces joined through shared edges with
+  vertices at one position taken as one vertex. Two patches that
+  meet at a point alone count two, and a face without area joins
+  nothing and is not counted. It states a number of features in one
+  entry (holes, by a tag over their walls), where an entry per
+  feature fails without saying the number. Tags ride the prototype
+  (§5.1), so an instanced output's set is counted once, on the
+  prototype: the number is one copy's and the same on every copy,
+  and a copy index and `every` are refused as naming nothing the
+  count depends on. An output baked into one mesh carries the set on
+  every copy, and its patches are counted across the whole mesh. A
+  set that holds no face with area is unevaluatable and the entry
+  fails with the reason, so the face form never measures 0 and no
+  entry passes on a tag that selected nothing.
 - *Quantifiers over instanced outputs, and groups* — the map the
   keys follow:
 
@@ -2338,7 +2357,7 @@ below adds only its measurement and judgment:
   | `mated` | one indexed copy per face; `every` judges every copy of the named outputs, two named outputs paired by index | — | refused: a group has no faces |
   | `extent` | no partner: the output form measures the union of the copies, the face form one indexed copy | `every` — each copy's own bounds or face set against the judgment | output form: the members' united bounds, `every` every member's copies; face form refused |
   | `offset` | each side's copies united, read at its own position; `every` refused | — | either side: the members' united bounds |
-  | `count` | no partner: the copies are the measure | — | refused: a sum of copy counts is no output's count |
+  | `count` | no partner: the output form's measure is the copies, and the face form counts the prototype's set once | — | refused: a sum of copy counts is no output's count, and a group has no faces |
 
 **Ownership.** Every asset may have a requirements file beside it,
 `<name>.requirements.star` for the asset `<name>.star`, root and

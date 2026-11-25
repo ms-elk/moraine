@@ -215,6 +215,28 @@ def _welded_boundary(tri: np.ndarray, live: np.ndarray) -> tuple[np.ndarray, np.
     return uniq, boundary[boundary[:, 0] != boundary[:, 1]]
 
 
+def patch_count(tri: np.ndarray) -> int:
+    """How many patches a face set ``(m, 3, 3)`` holds: its faces with
+    area, joined through shared edges over exact-position welded
+    vertices (the weld the frame's contour reads). Faces that meet at a
+    vertex alone stay apart, an edge three faces share joins all three,
+    and a set with no face that has area holds none."""
+    tri = np.asarray(tri, dtype=np.float64)
+    live = np.linalg.norm(tri_cross(tri), axis=1) > 0.0
+    m = int(live.sum())
+    if m == 0:
+        return 0
+    _, inv = np.unique(tri[live].reshape(-1, 3), axis=0, return_inverse=True)
+    fw = inv.reshape(-1, 3)
+    edges = np.stack([fw[:, [0, 1]], fw[:, [1, 2]], fw[:, [2, 0]]], axis=1).reshape(-1, 2)
+    _, edge_id = np.unique(np.sort(edges, axis=1), axis=0, return_inverse=True)
+    # Faces and edges as the two sides of one graph: a face is linked to
+    # each of its three edges, so faces sharing an edge share a label.
+    links = np.column_stack([np.repeat(np.arange(m), 3), m + edge_id.reshape(-1)])
+    labels = _components(m + int(edge_id.max()) + 1, links)
+    return int(len(np.unique(labels[:m])))
+
+
 def group_frame(tri: np.ndarray) -> Frame:
     """The mating frame of a planar face set (see module docstring)."""
     tri = np.asarray(tri, dtype=np.float64)

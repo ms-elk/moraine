@@ -140,8 +140,8 @@ def check_asserts(
         entry["owner"] = a["owner"]  # required by the parser; KeyError = unparsed
         entry.update(where(a))  # the recipe line that declared it
         gone = lost.get(a["id"])
-        counted = getattr(mod, "MEASURES_NO_COPIES", False)
-        if gone and counted and ctx.empty.issuperset(gone):
+        counts = getattr(mod, "measures_no_copies", None)
+        if gone and counts is not None and counts(a) and ctx.empty.issuperset(gone):
             mod.check(entry, a, ctx)
         elif gone and excused.issuperset(gone):
             common.leave_unjudged(entry, gone)

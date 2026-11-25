@@ -124,11 +124,10 @@ KEYS = frozenset(KEY_ORDER)  # derived: one literal per family
 THRESHOLDS = ("value", "tol", "min", "max", "min_area")
 # What every entry carries beside its kind's own keys.
 COMMON = frozenset({"id", "kind", "from_param", "owner", "site", "via"})
-# `tol`, `min`, `max`, and `value` carry the kind's own measure — meters
-# on every length kind, copies on `count` — and never a unit that depends
-# on which other keys are present: a key whose unit depended on its own
-# presence (or on a companion key) would make an entry unreadable on its
-# face (DESIGN 5.2).
+# `tol`, `min`, `max`, and `value` carry the kind's own measure: meters
+# on every length kind, and on `count` integers of what the entry names
+# (copies for `outputs`, patches for `faces`). No other key changes a
+# unit, which would make an entry unreadable on its face (DESIGN 5.2).
 # Overlap is not an authored kind: the built-in overlap guard
 # (no_overlap.ENTRY) checks every pair in every validate, and an
 # intended overlap is a declared `embedded`.
@@ -189,8 +188,8 @@ def output_names(a: dict) -> set[str] | str:
     built-in guard's blanket form, else the set of names — from
     ``outputs`` (contact, clearance, embedded, offset, count, extent's
     output form; a contact side that names one copy counts by its output) or
-    from ``faces`` (mated's two specs; extent's one flat spec). The one
-    reader of the entry shapes."""
+    from ``faces`` (mated's two specs; the one flat spec of extent's
+    and count's face forms). The one reader of the entry shapes."""
     if a.get("kind") == "mated":
         return {f[0] for f in a["faces"]}
     if "faces" in a:

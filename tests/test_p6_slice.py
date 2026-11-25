@@ -1899,10 +1899,10 @@ def test_distance_default_constants_pinned():
 
 
 def test_tol_keys_are_unit_stable_per_kind():
-    """`tol`, `min`, `max`, and `value` carry the kind's own measure —
-    meters on every length kind, copies on count — never a unit that
-    depends on which other keys are present (DESIGN 5.2): value errors
-    name the unit, and a misplaced key's refusal names the right key."""
+    """`tol`, `min`, `max`, and `value` are meters on every length
+    kind, and on `count` integers of what the entry names (DESIGN 5.2):
+    value errors name the unit, and a misplaced key's refusal names the
+    right key."""
     doc = json.loads(_parse_asset())
     doc["asserts"][0].update(kind="contact", tol=-1)
     with pytest.raises(AssetError) as exc:

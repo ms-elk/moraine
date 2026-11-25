@@ -224,9 +224,10 @@ always and a green one under `validate --full`. An output name in a
 call may be a group's (see *groups*). The IR writes an entry as one
 JSON object per line under `"asserts"`, the same keys with `kind`
 and `owner` beside them (see *A complete minimal asset*). `tol`, `min`, `max`, and
-`value` carry the kind's own measure (meters on every length kind,
-copies on `count`), never a unit that
-depends on which other keys are present. Every length comparison
+`value` carry the kind's own measure: meters on every length kind,
+and on `count` integers of what the entry names (copies for
+`outputs`, patches for `faces`). No other key changes a unit. Every
+length comparison
 against a `tol` or band edge has a storage-noise floor of 1e-6 m: a
 measurement that misses its bound by less passes, and the entry then
 carries `noise_floor: 1e-06`, on a green verdict only, since an entry
@@ -265,7 +266,7 @@ bar takes none.
   | `mated` | a copy index per face. `every = [name]` judges every copy of the named outputs, two named outputs paired by index | - | refused (a group has no faces) |
   | `extent` | `outputs` form: the union of the copies; `faces` form: one indexed copy | `every = True`, each copy's own bounds or face set | `outputs` form: the members' united bounds, `every` every member's copies; `faces` form refused |
   | `offset` | each side is the union of its copies, read at its own position; `every` refused | - | either side: the members' united bounds |
-  | `count` | the copies are the measure | - | refused (a sum of copy counts is no output's count) |
+  | `count` | `outputs` form: the copies are the measure; `faces` form: the prototype's set, counted once | - | refused (a sum of copy counts is no output's count, and a group has no faces) |
 
   Without the opt-in an entry names what it did not quantify under
   `unchecked` (`instanced_self_pairs` / `instanced_copies`); copy
@@ -369,8 +370,8 @@ or exports an absent output, and `validate`, `stats`, `eval`,
 one, or a group with one among its members, fails with the names
 under `absent` while every other entry is judged, and the report
 lists them at the top level under `absent`. A group never narrows to
-the members left. `count` alone still measures an output that is
-declared and has no copies, as 0. The fix is the output: a
+the members left. `count` over `outputs` alone still measures an
+output that is declared and has no copies, as 0. The fix is the output: a
 human-owned entry is removed only with the human's approval. The one exception is a part
 the human made optional (`mo.optional`, see *requirements*): absent
 while its knob is off, a requirement over it judges nothing and is
@@ -756,22 +757,64 @@ Examples: `examples/brick_shed`.
 
 ### count (assert kind)
 
-Recipe: `mo.assert_count(id = ..., outputs = ..., value = int, min = int, max = int)`
+Recipe: `mo.assert_count(id = ..., outputs = ..., faces = ..., value = int, min = int, max = int)`
 
-The output's **copy count** (an instanced output's
-copies, a plain mesh counting one) against `value` (`"outputs":
-["saddle"], "value": 2`, what `every` cannot say: two saddles, not
-one) or an integer `min`/`max` band (`outputs = ["stones"], "min":
-150`; `min` equal to `max` is refused, because that is `value`). The
-check `array`/`scatter` pair with: it reads the evaluated copies, so
-on an instanced output it reads that node's `count` back. The entry's
-content is the requirement's ownership (a count held only in a node
-param is yours to edit with no approval and no report line) and the
-instancing itself (an output later baked or unioned into one mesh
-reads 1 and fails, the change `every` misses). Reports `measured`;
-an image output is unevaluatable.
+How many of one subject there are, against `value` or an integer
+`min`/`max` band (`min` equal to `max` is refused, because that is
+`value`). The subject is `outputs` or `faces`, one of them. Reports
+`measured`; an image output is unevaluatable.
 
-Examples: `examples/stairs`, `examples/scatter_field`.
+`outputs = [name]` is the output's **copy count** (an instanced
+output's copies, a plain mesh counting one): `"outputs": ["saddle"],
+"value": 2`, what `every` cannot say (two saddles, not one), or
+`outputs = ["stones"], "min": 150`. The check `array`/`scatter` pair
+with: it reads the evaluated copies, so on an instanced output it
+reads that node's `count` back. The entry's content is the
+requirement's ownership (a count held only in a node param is yours
+to edit with no approval and no report line) and the instancing
+itself (an output later baked or unioned into one mesh reads 1 and
+fails, the change `every` misses).
+
+`faces = [output, tag]` is the number of **patches** in one tagged
+face set: the faces joined through shared edges, vertices at one
+position taken as one. It states a number of features in one entry.
+Eight bolt holes are `faces = ["pipe", "bolt_holes"], value = 8` over
+a `tag` that selects the holes' walls, placed after the `boolean`
+that cut them (a hole has no faces of its own, and the cut drops
+earlier tags). Each hole's wall is one patch, so a hole that goes
+missing reads 7 and fails the entry that says eight.
+
+The entry counts what the tag selects and nothing else, so the tag
+is where it goes wrong:
+
+- It covers only the tag's reach. `examples/flange_pipe` tags the
+  bottom flange's holes, and the top flange losing all eight leaves
+  the entry green. A second flange is a second tag and entry.
+- A face of another feature the tag lets in is one more patch, which
+  can hide a missing one (nine and eight, then eight and seven). A
+  bound that depends on the mesh density, such as `area`, has to
+  follow that density: the example derives its bound from the
+  segment count the rim is built with.
+- Two patches that meet at a point alone count two, and a face the
+  tag misses can split one patch.
+
+Read the selection with `moraine query --tag` before stating the
+number.
+
+- **Instanced outputs.** The set is counted once, on the prototype:
+  the number is one copy's, the same on every copy, so the entry
+  takes no copy index and no `every`. After `bake_instances` the
+  mesh carries the set on every copy and its patches are counted
+  across the whole mesh.
+- **Nothing to count.** A tag that matched no face, or only faces
+  without area, fails the entry with the reason. The face form never
+  measures 0.
+- **An output without copies.** The `outputs` form measures 0. The
+  `faces` form has no face set to read, so it fails as any entry
+  over an absent output does, or judges nothing where the output is
+  optional (see *groups*).
+
+Examples: `examples/stairs`, `examples/scatter_field` (copies), `examples/flange_pipe` (the patches of a face set).
 
 ### budgets (`mo.budget`, asset-declared acceptance budgets)
 

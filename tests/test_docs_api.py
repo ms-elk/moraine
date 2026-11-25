@@ -59,7 +59,7 @@ def test_signatures_follow_the_registries():
                 continue  # written by the build from the input keywords
             assert f"{param} = " in sig, (name, param)
     assert api.assertion("count") == (
-        "mo.assert_count(id = ..., outputs = ..., value = int, min = int, max = int)"
+        "mo.assert_count(id = ..., outputs = ..., faces = ..., value = int, min = int, max = int)"
     )
     for kind in vocab.AUTHORABLE_KINDS:
         sig = api.assertion(kind)

@@ -22,7 +22,7 @@ from . import dialect, prelude
 # Bump on any change to what a recipe means that the prelude's text
 # does not show: the id derivation, a knob's resolution order, the
 # load rules, the IR's keys.
-CONTRACT = 10
+CONTRACT = 11
 
 
 @functools.cache

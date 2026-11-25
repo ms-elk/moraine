@@ -18,13 +18,15 @@
 {"id": "ht06", "op": "transform", "inputs": ["hl01"], "params": {"translate": [-0.1043, 0.5, -0.1043]}},
 {"id": "ht07", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.0, 0.5, -0.1475]}},
 {"id": "ht08", "op": "transform", "inputs": ["hl01"], "params": {"translate": [0.1043, 0.5, -0.1043]}},
-{"id": "cut1", "op": "boolean", "inputs": ["un01", "bt01", "ht01", "ht02", "ht03", "ht04", "ht05", "ht06", "ht07", "ht08"], "params": {"mode": "difference"}}
+{"id": "cut1", "op": "boolean", "inputs": ["un01", "bt01", "ht01", "ht02", "ht03", "ht04", "ht05", "ht06", "ht07", "ht08"], "params": {"mode": "difference"}},
+{"id": "tg01", "op": "tag", "inputs": ["cut1"], "params": {"name": "bolt_holes", "select": {"normal_y": {"gt": -0.1, "lt": 0.1}, "center_y": {"lt": 0.024}, "area": {"lt": 0.00013351768777756623}}}}
 ],
 "outputs": {
-"pipe": "cut1"
+"pipe": "tg01"
 },
 "asserts": [
 {"id": "length", "kind": "extent", "outputs": ["pipe"], "measure": "size_y", "value": 1.0, "owner": "human"},
-{"id": "flange_dia", "kind": "extent", "outputs": ["pipe"], "measure": "size_x", "value": 0.34, "owner": "human"}
+{"id": "flange_dia", "kind": "extent", "outputs": ["pipe"], "measure": "size_x", "value": 0.34, "owner": "human"},
+{"id": "bolt_hole_count", "kind": "count", "faces": ["pipe", "bolt_holes"], "value": 8, "owner": "human"}
 ]
 }
