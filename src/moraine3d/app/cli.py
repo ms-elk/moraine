@@ -113,7 +113,7 @@ def _note_asset(opened, ev, *, partial: bool = False, **summary) -> None:
 
 
 def _resolve_target(path_arg) -> Path | workspace_mod.Workspace:
-    """Workspace-aware resolution (stats, validate, serve): a workspace
+    """Workspace-aware resolution (stats, validate, export, serve): a workspace
     directory returns its discovery; anything else resolves as a
     single asset (DESIGN 6)."""
     p = Path(path_arg)

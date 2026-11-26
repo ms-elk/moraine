@@ -112,7 +112,7 @@ SEED_MAX = 2**63 - 1
 
 # Shared crease-angle default (degrees): the smooth_normals judgment -
 # a bend at or under it still reads smooth. Ops that classify creases
-# (smooth_normals, revolve) share it so their documented equivalence
+# (smooth_normals, revolve, sweep) share it so their documented equivalence
 # cannot drift.
 CREASE_ANGLE_DEG_DEFAULT = 30.0
 
@@ -122,8 +122,8 @@ CREASE_ANGLE_DEG_DEFAULT = 30.0
 # asset-quality bars are the asset's own budgets). The value is the
 # shipped generators' maximum product (grid's 4096 x 4096): grid and
 # sphere satisfy it structurally, so only an op whose tessellation can
-# multiply past it (box, over its three segment counts; revolve, via
-# hard-joint ring duplication) checks it at runtime. Pinned against
+# multiply past it (box, over its three segment counts; revolve and
+# sweep, via hard-joint ring duplication) checks it at runtime. Pinned against
 # the per-op ceilings by a hardening test.
 TESSELLATION_CELLS_MAX = 4096 * 4096
 

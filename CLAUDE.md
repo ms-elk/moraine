@@ -181,4 +181,4 @@ pytest                          # golden-mesh + determinism tests
 
 `PROJECT` = a project dir (default: cwd) or an asset-file path (an
 IR path is evaluated as it is, with no build);
-`stats`/`validate`/`serve` also take a workspace root (§6).
+`stats`/`validate`/`export`/`serve` also take a workspace root (§6).

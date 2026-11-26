@@ -252,7 +252,7 @@ class FaceGroupError(MoraineError):
     """A named face group (or a pointed-at face, ``resolve_pin``) that
     cannot be resolved on a value; ``code`` names why: ``image``,
     ``unknown_group``, ``empty_group``, ``missing_instance``,
-    ``bad_instance``, ``bad_face``. Messages are factual and
+    ``bad_instance``, ``bad_face``, ``no_copies``. Messages are factual and
     subject-prefixed; the caller maps the code into its own vocabulary
     (an op's error codes, an assertion's unevaluatable reason)."""
 
