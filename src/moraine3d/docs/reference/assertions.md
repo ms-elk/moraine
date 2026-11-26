@@ -294,6 +294,24 @@ bar takes none.
   assert come as a pair. `mate` constructs the joint, `mated` checks
   it from evaluated geometry; `array`/`scatter` emit the copies,
   `count` checks them from the evaluated output.
+
+An output is **absent** when a requirements file names it and no
+`mo.output` declares it at these knob values (a branch of the recipe
+did not run, or the output is not built yet), or when it is declared
+and has no copies (an `array` of `count` 0). Nothing checks, draws,
+or exports an absent output, and `validate`, `stats`, `eval`,
+`query`, and `export` name it under `absent`. An entry that names
+one, or a group with one among its members, fails with the names
+under `absent` while every other entry is judged, and the report
+lists them at the top level under `absent`. A group never narrows to
+the members left. `count` over `outputs` alone still measures an
+output that is declared and has no copies, as 0, optional or not. The fix is the output: a
+human-owned entry is removed only with the human's approval. The one exception is a part
+the human made optional (`mo.optional`, see *requirements*): a
+requirement whose absent outputs are all optional under a knob that
+is off judges nothing and is counted under `unchecked.optional`. One
+absent output that is not excused still fails it.
+
 Examples: `examples/shelf_pair` (groups, the one-vs-rest clearance, a
 contained mate over every board, a feature-bound extent, count),
 `examples/scatter_field` (contact quantified per copy, free-overlap
@@ -360,22 +378,6 @@ names a relating kind takes must stand for disjoint outputs. A
 group beside one of its own members is refused, since that output
 would be measured against itself. The entry echoes the resolution
 as `members`. Example: `examples/shelf_pair`.
-
-An output is **absent** when a requirements file names it and no
-`mo.output` declares it at these knob values (a branch of the recipe
-did not run, or the output is not built yet), or when it is declared
-and has no copies (an `array` of `count` 0). Nothing checks, draws,
-or exports an absent output, and `validate`, `stats`, `eval`,
-`query`, and `export` name it under `absent`. An entry that names
-one, or a group with one among its members, fails with the names
-under `absent` while every other entry is judged, and the report
-lists them at the top level under `absent`. A group never narrows to
-the members left. `count` over `outputs` alone still measures an
-output that is declared and has no copies, as 0. The fix is the output: a
-human-owned entry is removed only with the human's approval. The one exception is a part
-the human made optional (`mo.optional`, see *requirements*): absent
-while its knob is off, a requirement over it judges nothing and is
-counted under `unchecked.optional`.
 
 ### contact (assert kind)
 
@@ -812,7 +814,7 @@ number.
 - **An output without copies.** The `outputs` form measures 0. The
   `faces` form has no face set to read, so it fails as any entry
   over an absent output does, or judges nothing where the output is
-  optional (see *groups*).
+  optional (see *Asset assertions*).
 
 Examples: `examples/stairs`, `examples/scatter_field` (copies), `examples/flange_pipe` (the patches of a face set).
 
