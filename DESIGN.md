@@ -1679,8 +1679,8 @@ attribute policy — live in the shipped reference (`moraine docs`).
 | `transform` | numpy | TRS, instancing-aware |
 | `extrude` | numpy/trimesh | faces along their normal or a vector (a vector opposing every normal sweeps the flipped sheet; tangent or mixed-orientation vectors, and flat-shaded closed inputs, are actionable errors) |
 | `boolean` | manifold3d | union / difference / intersection; output is flat-shaded |
-| `revolve` | numpy/manifold3d | solid of revolution of an inline `[radius, y]` profile around +Y, always watertight. An open profile closes to the axis at its ends, a `closed` one stays clear of the axis and makes a ring. An `arc_deg` below the default 360 turns part of the circle and caps both cut faces |
-| `sweep` | numpy/manifold3d | a closed inline `[x, y]` profile carried along an inline 3D polyline `path`, mitered at each bend and never twisting about the path, always watertight: an open path is capped at both ends, a `closed` one is a loop |
+| `revolve` | numpy/manifold3d/trimesh | solid of revolution of an inline `[radius, y]` profile around +Y, always watertight. An open profile closes to the axis at its ends, a `closed` one stays clear of the axis and makes a ring. An `arc_deg` below the default 360 turns part of the circle and caps both cut faces |
+| `sweep` | numpy/manifold3d/trimesh | a closed inline `[x, y]` profile carried along an inline 3D polyline `path`, mitered at each bend and never twisting about the path, always watertight: an open path is capped at both ends, a `closed` one is a loop |
 | `array` / `scatter` | numpy | emit prototype + transforms (instanced) |
 | `noise_displace` | numpy | fBm displacement along normals; flat-shaded input is refused with the `smooth_normals` fix named, never welded (welding would merge the attributes `preserved` promises to keep) |
 | `bevel` | own | single-segment chamfer; `segments > 1` is refused until a multi-segment kernel lands. No matching edge is a `no_effect` error, and manifold/degeneracy/volume post-conditions gate the result with `broken_result` — never a silent pass-through |
@@ -3005,8 +3005,12 @@ single-material panel stays flat. The controls:
 | tier | control | why |
 |---|---|---|
 | factor | slider driving the material uniform on every input tick | real-time, no server round trip on the visual path; the client re-applies factor uniforms from the latest schema after every GLB load so a loaded material's last-evaluated factors never undo an active preview |
-| evaluation | entry field (typed or stepped), staged behind Apply; commits clamp to the declared range | a slider's drag affordance promises exactly the live response this tier lacks, so it would misread as broken rather than staged |
+| evaluation | entry field (typed or stepped), or a checkbox for a boolean, staged behind Apply; commits clamp to the declared range | a slider's drag affordance promises exactly the live response this tier lacks, so it would misread as broken rather than staged |
 | seed | value readout, reroll, back/forward over a client-local history | a seed is unordered; ordering it on a slider turns its declared range into an accidental cache-budget declaration |
+
+A checkbox toggles by its box alone, a knob's and the ground
+toggle's alike: a label runs the panel's width, and a click anywhere
+on its line would stage a change nobody aimed at.
 
 A knob whose value the human's file holds shows that value as
 `accepted`, with the recipe's default beside it, and the two stand
@@ -3367,9 +3371,9 @@ flag.)
   (cartesian meters, vertical fov in degrees),
   consumable by a rasterizer or a path tracer with no client-side
   framing logic. The client renders those GLBs in a throwaway scene
-  (assets + the §7.1 lighting rig, environment map and ground shadow
-  catcher included; grid, axes, and pin helpers are viewer chrome, not
-  file state) and answers with base64 PNG, or `error` with the reason
+  (assets + the §7.1 lighting rig, environment map and ground plate
+  included; grid, axes, and pin helpers stay out of a shot) and
+  answers with base64 PNG, or `error` with the reason
   (fetch/parse failures report instead of timing out). `protocol` is a
   version stamp echoed back. A result without the current stamp comes
   from a pre-upgrade tab and is ignored, not resolved, so a current
