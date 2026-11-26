@@ -113,12 +113,17 @@ def _section(params: dict) -> list[tuple[float, float]]:
         raise _bad(
             "profile",
             f"sweep 'profile' self-intersects - the segment from point {hit[0]} "
-            f"crosses the segment from point {hit[1]}; the swept solid would be "
-            "ill-defined",
+            f"intersects the segment from point {hit[1]}; the swept solid would be "
+            "ill-defined; move or reorder the points so non-adjacent segments "
+            "neither cross nor touch",
         )
     area2 = profile.area2(pts)
     if area2 == 0:
-        raise _bad("profile", "sweep 'profile' encloses no area - a degenerate solid")
+        raise _bad(
+            "profile",
+            "sweep 'profile' encloses no area - a degenerate solid; give "
+            "points that enclose an area",
+        )
     if area2 < 0:
         raise _bad(
             "profile",
