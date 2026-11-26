@@ -1872,7 +1872,7 @@ def test_distance_asserts_deterministic(tmp_path, monkeypatch):
     assert first == second
 
 
-def test_distance_failures_only_mixed_kinds(tmp_path, monkeypatch):
+def test_distance_compact_mixed_kinds(tmp_path, monkeypatch):
     monkeypatch.setenv("MORAINE_CACHE_DIR", str(tmp_path / "cache"))
     from moraine3d.verify.validate import compact
 
