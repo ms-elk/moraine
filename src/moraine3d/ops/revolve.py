@@ -3,7 +3,8 @@
 Semantics: emits the solid of revolution of ``profile`` - a list of two
 or more [radius, y] points (m) forming an open polyline in the +X
 half-plane - turned around the +Y axis through ``arc_deg`` degrees
-(default 360, above 0) in ``segments`` steps (default 32, 3..4096).
+(default 360, above 0 and at most 360) in ``segments`` steps
+(default 32, 3..4096).
 The turn starts at angle 0 (+X) and runs toward -Z, and below 360
 both cut faces are closed with flat caps. ``segments`` counts the
 steps across the arc, so a half turn of 16 has the facets of a full
@@ -18,9 +19,9 @@ always watertight. Radii must be >= 0, with 0 only at the ends;
 consecutive duplicates, identical endpoints, interior zero radii,
 exact double-backs, self-intersections (the closure to the axis
 included), and profiles enclosing no area are refused, as is a
-rings x segments product beyond the shared 4096 x 4096 cell budget
-(hard joints duplicate rings, so the per-param ceilings alone do not
-bound it).
+rings x columns product beyond the shared 4096 x 4096 cell budget (a
+column per step, and one more below 360; hard joints duplicate rings,
+so the per-param ceilings alone do not bound it).
 ``closed`` (default false) joins the last point to the first instead:
 three or more points, every radius above 0, wound counter-clockwise
 around the section, which the turn carries around the axis as a ring
@@ -244,14 +245,14 @@ def evaluate(inputs: list, params: dict, ctx) -> Mesh:
         if k < bands:
             band_lo[k] = len(rings) - 1
 
-    # Hard joints duplicate rings, so the rings x segments product can
+    # Hard joints duplicate rings, so the rings x columns product can
     # exceed what the per-param ceilings admit alone - refuse before
     # allocating, per the ceilings' own rationale.
     if len(rings) * cols > common.TESSELLATION_CELLS_MAX:
         raise OpError(
             "bad_param",
             f"revolve tessellation is too large: {len(rings)} rings x "
-            f"{seg} segments exceeds the {common.TESSELLATION_CELLS_MAX} "
+            f"{cols} columns exceeds the {common.TESSELLATION_CELLS_MAX} "
             "cell budget; reduce segments, profile points, or hard joints",
             param="segments",
         )

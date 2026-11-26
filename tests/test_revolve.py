@@ -154,10 +154,11 @@ def test_revolve_refusals(params, fragment):
 
 
 def test_revolve_cell_budget_refused_before_allocation():
-    """Semantics: a rings x segments product beyond the shared
-    4096 x 4096 cell budget is refused (hard joints duplicate rings, so
-    the per-param ceilings alone do not bound the product) - a
-    structured refusal, never a raw allocation failure (DESIGN 5)."""
+    """Semantics: a rings x columns product beyond the shared
+    4096 x 4096 cell budget is refused (a column per step, and one more
+    below 360; hard joints duplicate rings, so the per-param ceilings
+    alone do not bound the product) - a structured refusal, never a raw
+    allocation failure (DESIGN 5)."""
     # 4096-point zigzag, every joint a hard ~178-degree bend, strictly
     # rising y (simple polygon): rings = 2*(P-2)+2 = 8190.
     prof = []
@@ -167,7 +168,12 @@ def test_revolve_cell_budget_refused_before_allocation():
     with pytest.raises(OpError) as exc:
         revolve.evaluate([], {"profile": prof, "segments": 4096}, None)
     assert exc.value.code == "bad_param"
+    assert "8190 rings x 4096 columns" in exc.value.message
     assert "cell budget" in exc.value.message
+    with pytest.raises(OpError) as exc:
+        revolve.evaluate(
+            [], {"profile": prof, "segments": 4096, "arc_deg": 180}, None)
+    assert "8190 rings x 4097 columns" in exc.value.message
 
 
 def test_revolve_profile_count_ceiling():

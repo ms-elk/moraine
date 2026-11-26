@@ -77,8 +77,8 @@ Recipe: `mo.revolve(id = ..., profile = ..., segments = int, angle_max_deg = ...
 
 Emits the solid of revolution of `profile`, a list of two or more
 `[radius, y]` points (m) forming an open polyline in the +X half-plane,
-turned around the +Y axis through `arc_deg` (default 360, above 0) in
-`segments` steps (default 32, 3..4096). The turn starts at angle 0
+turned around the +Y axis through `arc_deg` (default 360, above 0 and
+at most 360) in `segments` steps (default 32, 3..4096). The turn starts at angle 0
 (+X) and runs toward -Z, and below 360 both cut faces are closed with
 flat caps. `segments` counts the steps across the arc: a half turn of
 16 has the facets of a full turn of 32, and at equal `segments` the
@@ -94,9 +94,10 @@ normals, center-vertex fan). The result is always watertight. Radii
 must be >= 0, with 0 allowed only at the ends; consecutive duplicate
 points, identical endpoints, interior zero radii, exact double-backs,
 self-intersections (the closure to the axis included), and profiles
-enclosing no area are errors, as is a rings x segments product beyond
-the 4096 x 4096 cell budget (hard joints duplicate rings, so the
-per-param ceilings alone do not bound it). `closed` (default false)
+enclosing no area are errors, as is a rings x columns product beyond
+the 4096 x 4096 cell budget (a column per step, and one more below
+360; hard joints duplicate rings, so the per-param ceilings alone do
+not bound it). `closed` (default false)
 joins the last point to the first instead: three or more points, every
 radius above 0, wound counter-clockwise around the section, which the
 turn carries around the axis as a ring with no end caps (a circle of
