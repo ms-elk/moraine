@@ -28,15 +28,15 @@ sections. Per output, an entry each under `--full`, green or red:
   (`mo.waive("<output>", "not_sunk")`) for deliberate
   below-ground geometry only.
 
-Asset-level (`asset_checks` in the report; one entry when the asset
-has geometry outputs):
+Asset-level (`asset_checks` in the report; under `--full` one entry,
+green or red, when at least one geometry output passes `finite`):
 
 - `grounded`: the lowest geometry output reaches the ground plane
   within 1e-3 m, from above or below. Waivable at the asset level
   (`mo.waive_asset("grounded")`) for support outside the
   asset.
 
-Listed only on failure, waiver, or an unquantified copy:
+Under `--full`, listed only on failure, waiver, or an unquantified copy:
 
 - `not_enclosed`: the output does not lie entirely inside another
   single-mesh output's solid that is finite, watertight, and opaque

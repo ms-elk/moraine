@@ -269,7 +269,7 @@ and the offset are integers. A threshold its kind refuses once
 resolved (a `min` that came out negative) fails the build at the
 requirement, with the knob's value and the result. The handle stands
 as `value`, `tol`,
-`min`, or `max` of an assert in this file and nowhere else, and names
+`min`, `max`, or `min_area` of an assert in this file and nowhere else, and names
 a number knob of this file's asset. It holds no number while the file
 runs, so arithmetic and `<` on it fail the build (see *refusals*).
 `==` and `if` on it learn nothing (a handle equals no number and is

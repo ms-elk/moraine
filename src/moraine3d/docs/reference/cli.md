@@ -187,7 +187,13 @@ parts, orientation, scale, instances.
 ### pins (CLI, the pointing channel)
 
 `moraine pins (list | add --output NAME (--select '{...}' | --face N)
-[--instance I] | clear [--id N]) [--port N]` on the running server. A
+[--instance I] | clear [--id N]) [PROJECT] [--port N]` on the running
+server. `PROJECT` is the project the pins belong to (default the
+current directory's): while the viewer shows another, `list` is empty
+and names the displayed project, and `add` and `clear` are refused
+(`not_displayed`). From a workspace root with no `PROJECT` the
+command speaks for the displayed project, so `pins clear` there
+removes that project's pins. A
 pin is the human clicking geometry in the
 viewer; `pins list` returns each one resolved into your vocabulary
 (`output`, `instance`, `face`, its `groups`, face fields, and the

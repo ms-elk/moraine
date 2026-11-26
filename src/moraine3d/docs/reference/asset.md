@@ -39,7 +39,8 @@ shown under *recipe*, and it passes `validate`:
 ```
 
 Root keys in canonical order `build_version, nodes, params, outputs,
-groups, checks, asset_checks, asserts, budgets, provenance`, an
+groups, absent, optional, checks, asset_checks, asserts, budgets,
+provenance`, an
 absent section omitted. Every node line is `{"id", "op", "inputs",
 "params", "site", "via"}` in that order. Zero-input ops omit
 `"inputs"`, while `"params"` is always present. `site` is the recipe
