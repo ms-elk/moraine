@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-<p><img src="docs/images/truss_bridge_plaza.png" width="24%" alt="掘り下げた広場に架かるトラス歩道橋"> <img src="docs/images/press.png" width="24%" alt="油圧プレス"> <img src="docs/images/pipe_organ.png" width="24%" alt="パイプオルガン"> <img src="docs/images/lake.png" width="24%" alt="湖のジオラマ"></p>
+<p><img src="docs/images/observatory.png" width="24%" alt="ドームを開いて望遠鏡をのぞかせた天文台"> <img src="docs/images/chart_room.png" width="24%" alt="天文台の中の星図室"> <img src="docs/images/buggy.png" width="24%" alt="前輪を切ったバギー"> <img src="docs/images/lake.png" width="24%" alt="湖のジオラマ"></p>
 
 Moraine は、リアルタイム 3D アセット向けの AI ネイティブなプロシージャルモデリングツールです。AI エージェントとともに 3D アセットを組み立て、作り込み、拡張することができます。エージェントがレシピを書き、テストが要件を検証し、あなたがどんなアセットにするかを決めます。
 

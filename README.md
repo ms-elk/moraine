@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-<p><img src="docs/images/truss_bridge_plaza.png" width="24%" alt="truss footbridge over a sunken plaza"> <img src="docs/images/press.png" width="24%" alt="hydraulic press"> <img src="docs/images/pipe_organ.png" width="24%" alt="pipe organ"> <img src="docs/images/lake.png" width="24%" alt="lake diorama"></p>
+<p><img src="docs/images/observatory.png" width="24%" alt="observatory with its dome open and a telescope"> <img src="docs/images/chart_room.png" width="24%" alt="star chart room inside the observatory"> <img src="docs/images/buggy.png" width="24%" alt="dune buggy with its front wheels turned"> <img src="docs/images/lake.png" width="24%" alt="lake diorama"></p>
 
 Moraine is an AI-native procedural modeling tool for real-time 3D
 assets. It lets you build, refine, and extend 3D assets together with
