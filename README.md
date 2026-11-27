@@ -181,6 +181,17 @@ The shipped [skill](plugin/skills/moraine/SKILL.md) can do this setup for you:
 In a new session, ask your agent to set up Moraine in the directory
 you want the workspace in.
 
+To upgrade Moraine:
+
+```bash
+uv tool upgrade moraine3d
+moraine init          # at the root of each workspace
+```
+
+`init` updates the workspace's copy of the authoring guide and leaves
+`AGENTS.md` and your assets as they are. With the skill, you can ask
+your agent to upgrade Moraine instead.
+
 ## Sample workspace
 
 [ms-elk/moraine-sample-workspace](https://github.com/ms-elk/moraine-sample-workspace)

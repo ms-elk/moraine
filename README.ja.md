@@ -118,6 +118,15 @@ cd my-workspace
 
 そのあと、新しいセッションで、ワークスペースにしたいディレクトリに Moraine をセットアップするようエージェントに頼んでください。
 
+Moraine をアップグレードするには、次を実行します。
+
+```bash
+uv tool upgrade moraine3d
+moraine init          # 各ワークスペースのルートで
+```
+
+`init` はワークスペースにあるオーサリングガイドを更新します。`AGENTS.md` とアセットには手を加えません。Skill を入れている場合は、エージェントにアップグレードを頼むこともできます。
+
 ## サンプルワークスペース
 
 [ms-elk/moraine-sample-workspace](https://github.com/ms-elk/moraine-sample-workspace) は、再利用可能なアセットを組み合わせて鉄道駅のシーンを構築した、Moraine のワークスペースです。レシピ、人間が定めた要件、依頼内容、ジャーナルが揃っており、制作から改良までの過程が 1 ラウンド 1 コミットで記録されています。
