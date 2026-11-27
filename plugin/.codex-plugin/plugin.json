@@ -1,6 +1,6 @@
 {
   "name": "moraine",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Moraine is an AI-native procedural modeling tool for real-time 3D assets. It lets you build, refine, and extend 3D assets together with an AI agent — the agent writes the recipe, tests verify your declared requirements, you decide what they become. This plugin installs or upgrades Moraine, scaffolds a workspace, and hands off to the authoring guide it ships.",
   "author": {
     "name": "ms-elk"
